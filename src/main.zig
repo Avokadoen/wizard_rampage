@@ -81,3 +81,7 @@ pub fn main() anyerror!void {
         }
     }
 }
+
+test {
+    _ = @import("2d_physics.zig");
+}
