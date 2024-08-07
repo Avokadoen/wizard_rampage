@@ -17,21 +17,22 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const exe = b.addExecutable(.{
-        .name = "2d_test",
+        .name = "gamejam",
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
 
     const exe_unit_tests = b.addTest(.{
+        .name = "gamejam_tests",
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
 
-    // This declares intent for the executable to be installed into the
-    // standard location when the user invokes the "install" step (the default
-    // step when running `zig build`).
+    // Create binary for tests to make it debuggable in vscode
+    b.installArtifact(exe_unit_tests);
+    // Create main binary
     b.installArtifact(exe);
 
     // Raylib
