@@ -25,6 +25,12 @@ pub const DrawSystems = struct {
         }
     };
 
+    pub const Circle = struct {
+        pub fn draw(pos: components.Position, circle: components.CircleCollider, _: components.DrawCircleTag) void {
+            rl.drawCircle(@intFromFloat(pos.vec[0]), @intFromFloat(pos.vec[1]), circle.radius, rl.Color.blue);
+        }
+    };
+
     pub const StaticTexture = struct {
         // TODO: account for scale and rotation
         pub fn draw(pos: components.Position, static_texture: components.StaticTexture, draw_context: Context) void {
@@ -80,6 +86,12 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 const player = player_iter.next() orelse @panic("no player panic");
                 const camera_offset = zm.f32x4((camera.width * 0.5 - player.rec.width * 0.5) / scale.value, (camera.height * 0.5 - player.rec.height * 0.5) / scale.value, 0, 0);
                 pos.vec = player.pos.vec - camera_offset;
+            }
+        };
+        pub const UpdateVelocity = struct {
+            pub fn updatePositionBasedOnVelocity(pos: *components.Position, vel: components.Velocity) void {
+                const delta_time: f32 = 1.0 / 60.0;
+                pos.vec += vel.vec * @as(zm.Vec, @splat(delta_time));
             }
         };
     };

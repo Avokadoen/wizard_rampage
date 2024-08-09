@@ -21,13 +21,15 @@ const Scheduler = ecez.CreateScheduler(
     .{
         ecez.Event("game_update", .{
             UpdateSystems.MovableToImmovableRecToRecCollisionResolve,
-            ecez.DependOn(UpdateSystems.UpdateCamera, .{UpdateSystems.MovableToImmovableRecToRecCollisionResolve}),
+            ecez.DependOn(UpdateSystems.UpdateVelocity, .{UpdateSystems.MovableToImmovableRecToRecCollisionResolve}),
+            ecez.DependOn(UpdateSystems.UpdateCamera, .{UpdateSystems.UpdateVelocity}),
         }, .{}),
         ecez.Event(
             "game_draw",
             .{
                 systems.DrawSystems.Rectangle,
                 ecez.DependOn(systems.DrawSystems.StaticTexture, .{systems.DrawSystems.Rectangle}),
+                ecez.DependOn(systems.DrawSystems.Circle, .{systems.DrawSystems.StaticTexture}),
             },
             systems.DrawSystems.Context,
         ),
@@ -216,9 +218,10 @@ pub fn main() anyerror!void {
             // Input handling
             {
                 const player_pos_ptr = try storage.getComponent(player_entity, *components.Position);
+                const player_vec_ptr = try storage.getComponent(player_entity, *components.Velocity);
                 inline for (input.key_down_actions) |input_action| {
                     if (rl.isKeyDown(input_action.key)) {
-                        input_action.callback(player_pos_ptr, &storage);
+                        input_action.callback(player_pos_ptr, player_vec_ptr, &storage);
                     }
                 }
             }

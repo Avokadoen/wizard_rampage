@@ -2,46 +2,55 @@ const rl = @import("raylib");
 const components = @import("components.zig");
 const ecez = @import("ecez");
 const zm = @import("zmath");
-
-fn moveUp(pos: *components.Position, _: anytype) void {
-    pos.vec[1] -= 10;
+const delta_time: f32 = 1.0 / 60.0;
+fn moveUp(_: *components.Position, vel: *components.Velocity, _: anytype) void {
+    vel.vec[1] -= 10;
+    if (vel.vec[1] > -500) {
+        vel.vec[1] -= 100;
+    }
 }
 
-fn moveDown(pos: *components.Position, _: anytype) void {
-    pos.vec[1] += 10;
+fn moveDown(_: *components.Position, vel: *components.Velocity, _: anytype) void {
+    if (vel.vec[1] < 500) {
+        vel.vec[1] += 100;
+    }
 }
 
-fn moveRight(pos: *components.Position, _: anytype) void {
-    pos.vec[0] += 10;
+fn moveRight(_: *components.Position, vel: *components.Velocity, _: anytype) void {
+    if (vel.vec[0] < 500) {
+        vel.vec[0] += 100;
+    }
 }
 
-fn moveLeft(pos: *components.Position, _: anytype) void {
-    pos.vec[0] -= 10;
+fn moveLeft(_: *components.Position, vel: *components.Velocity, _: anytype) void {
+    if (vel.vec[0] > -500) {
+        vel.vec[0] -= 100;
+    }
 }
 
-fn shootUp(pos: *components.Position, storage: anytype) void {
+fn shootUp(pos: *components.Position, _: *components.Velocity, storage: anytype) void {
     const vel = zm.f32x4(
         0,
-        -10,
+        -1000,
         0,
         0,
     );
     fireProjectile(pos.*, storage, vel);
 }
 
-fn shootDown(pos: *components.Position, storage: anytype) void {
+fn shootDown(pos: *components.Position, _: *components.Velocity, storage: anytype) void {
     const vel = zm.f32x4(
         0,
-        10,
+        1000,
         0,
         0,
     );
     fireProjectile(pos.*, storage, vel);
 }
 
-fn shootRight(pos: *components.Position, storage: anytype) void {
+fn shootRight(pos: *components.Position, _: *components.Velocity, storage: anytype) void {
     const vel = zm.f32x4(
-        10,
+        1000,
         0,
         0,
         0,
@@ -49,9 +58,9 @@ fn shootRight(pos: *components.Position, storage: anytype) void {
     fireProjectile(pos.*, storage, vel);
 }
 
-fn shootLeft(pos: *components.Position, storage: anytype) void {
+fn shootLeft(pos: *components.Position, _: *components.Velocity, storage: anytype) void {
     const vel = zm.f32x4(
-        -10,
+        -1000,
         0,
         0,
         0,
@@ -79,7 +88,7 @@ fn fireProjectile(pos: components.Position, storage: anytype, vel: zm.Vec) void 
 
 const action = struct {
     key: rl.KeyboardKey,
-    callback: fn (player: *components.Position, storage: anytype) void,
+    callback: fn (player: *components.Position, velocity: *components.Velocity, storage: anytype) void,
 };
 
 pub const key_down_actions = [_]action{
