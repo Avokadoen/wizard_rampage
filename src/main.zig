@@ -9,6 +9,9 @@ const components = @import("components.zig");
 const physics = @import("physics_2d.zig");
 const ecez = @import("ecez");
 
+const arena_height = 3000;
+const arena_width = 3000;
+
 const Storage = ecez.CreateStorage(components.all);
 
 const UpdateSystems = systems.CreateUpdateSystems(Storage);
@@ -18,6 +21,7 @@ const Scheduler = ecez.CreateScheduler(
     .{
         ecez.Event("game_update", .{
             UpdateSystems.MovableToImmovableRecToRecCollisionResolve,
+            ecez.DependOn(UpdateSystems.UpdateCamera, .{UpdateSystems.MovableToImmovableRecToRecCollisionResolve}),
         }, .{}),
         ecez.Event("game_draw", .{
             systems.DrawSystems,
@@ -70,11 +74,12 @@ pub fn main() anyerror!void {
             scale: components.Scale,
             vel: components.Velocity,
             col: components.RectangleCollider,
-            tag: components.DrawRectangleTag,
+            rec_tag: components.DrawRectangleTag,
+            player_tag: components.PlayerTag,
             // Anim,
         };
 
-        const scale: f32 = 0.4;
+        const scale: f32 = 0.2;
         const width = @as(f32, @floatFromInt(player_sprite.width)) * scale;
         const height = @as(f32, @floatFromInt(player_sprite.height)) * scale;
 
@@ -91,11 +96,31 @@ pub fn main() anyerror!void {
                 .width = width,
                 .height = height,
             },
-            .tag = components.DrawRectangleTag{},
+            .rec_tag = components.DrawRectangleTag{},
+            .player_tag = components.PlayerTag{},
         });
     };
 
-    // Create level boundaries (TODO: should only need a single rectangle and do reverse hit detection)
+    // Create camera
+    const camera_entity = try create_camera_blk: {
+        const Camera = struct {
+            pos: components.Position,
+            scale: components.Scale,
+            camera: components.Camera,
+            // Anim,
+        };
+
+        break :create_camera_blk storage.createEntity(Camera{
+            .pos = components.Position{ .vec = zm.f32x4s(0) },
+            .scale = components.Scale{ .value = 1 },
+            .camera = components.Camera{
+                .width = window_width,
+                .height = window_height,
+            },
+        });
+    };
+
+    // Create level boundaries
     {
         const room_boundary_thickness = 100;
         const LevelBoundary = struct {
@@ -104,16 +129,43 @@ pub fn main() anyerror!void {
             tag: components.DrawRectangleTag,
         };
 
-        // North
+        // North with door
         _ = try storage.createEntity(LevelBoundary{
             .pos = components.Position{ .vec = zm.f32x4(
                 0,
-                window_height - room_boundary_thickness,
+                0,
                 0,
                 0,
             ) },
             .collider = components.RectangleCollider{
-                .width = window_width,
+                .width = arena_width / 3,
+                .height = room_boundary_thickness,
+            },
+            .tag = components.DrawRectangleTag{},
+        });
+        _ = try storage.createEntity(LevelBoundary{
+            .pos = components.Position{ .vec = zm.f32x4(
+                (arena_width / 3) * 2,
+                0,
+                0,
+                0,
+            ) },
+            .collider = components.RectangleCollider{
+                .width = arena_width / 3,
+                .height = room_boundary_thickness,
+            },
+            .tag = components.DrawRectangleTag{},
+        });
+        // South
+        _ = try storage.createEntity(LevelBoundary{
+            .pos = components.Position{ .vec = zm.f32x4(
+                0,
+                arena_height - room_boundary_thickness,
+                0,
+                0,
+            ) },
+            .collider = components.RectangleCollider{
+                .width = arena_width,
                 .height = room_boundary_thickness,
             },
             .tag = components.DrawRectangleTag{},
@@ -123,47 +175,25 @@ pub fn main() anyerror!void {
             .pos = components.Position{ .vec = zm.f32x4s(0) },
             .collider = components.RectangleCollider{
                 .width = room_boundary_thickness,
-                .height = window_height,
-            },
-            .tag = components.DrawRectangleTag{},
-        });
-        // South
-        _ = try storage.createEntity(LevelBoundary{
-            .pos = components.Position{ .vec = zm.f32x4s(0) },
-            .collider = components.RectangleCollider{
-                .width = window_width,
-                .height = room_boundary_thickness,
+                .height = arena_height,
             },
             .tag = components.DrawRectangleTag{},
         });
         // East
         _ = try storage.createEntity(LevelBoundary{
             .pos = components.Position{ .vec = zm.f32x4(
-                window_width - room_boundary_thickness,
+                arena_width - room_boundary_thickness,
                 0,
                 0,
                 0,
             ) },
             .collider = components.RectangleCollider{
                 .width = room_boundary_thickness,
-                .height = window_height,
+                .height = arena_height,
             },
             .tag = components.DrawRectangleTag{},
         });
     }
-
-    var camera = rl.Camera2D{
-        .offset = rl.Vector2.init(
-            0,
-            0,
-        ),
-        .target = rl.Vector2.init(
-            0,
-            0,
-        ),
-        .rotation = 0,
-        .zoom = 1,
-    };
 
     rl.setTargetFPS(60); // Set our game to run at 60 frames-per-second
     const delta_time: f32 = 1 / 60;
@@ -194,6 +224,21 @@ pub fn main() anyerror!void {
             defer rl.endDrawing();
             {
                 // Start gameplay drawing
+                const camera_pos = try storage.getComponent(camera_entity, components.Position);
+                const camera_zoom = try storage.getComponent(camera_entity, components.Scale);
+
+                const camera = rl.Camera2D{
+                    .offset = rl.Vector2{
+                        .x = 0,
+                        .y = 0,
+                    },
+                    .target = rl.Vector2{
+                        .x = camera_pos.vec[0],
+                        .y = camera_pos.vec[1],
+                    },
+                    .rotation = 0,
+                    .zoom = camera_zoom.value,
+                };
                 camera.begin();
                 defer camera.end();
 

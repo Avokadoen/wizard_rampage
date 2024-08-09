@@ -10,6 +10,8 @@ pub const all = .{
     Collision,
     DrawRectangleTag,
     Anim,
+    Camera,
+    PlayerTag,
 };
 
 pub const Position = struct {
@@ -49,3 +51,9 @@ pub const Anim = packed struct {
     frame_count: u8,
     frames_per_frame: u8,
 };
+
+pub const Camera = struct {
+    width: f32,
+    height: f32,
+};
+pub const PlayerTag = struct {};
