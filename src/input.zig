@@ -1,28 +1,29 @@
 const rl = @import("raylib");
+const components = @import("components.zig");
 
-fn moveUp(player: *rl.Rectangle, delta_time: f32) void {
+fn moveUp(pos: *components.Position, delta_time: f32) void {
     _ = delta_time; // autofix
-    player.y -= 10;
+    pos.vec[1] -= 10;
 }
 
-fn moveDown(player: *rl.Rectangle, delta_time: f32) void {
+fn moveDown(pos: *components.Position, delta_time: f32) void {
     _ = delta_time; // autofix
-    player.y += 10;
+    pos.vec[1] += 10;
 }
 
-fn moveRight(player: *rl.Rectangle, delta_time: f32) void {
+fn moveRight(pos: *components.Position, delta_time: f32) void {
     _ = delta_time; // autofix
-    player.x += 10;
+    pos.vec[0] += 10;
 }
 
-fn moveLeft(player: *rl.Rectangle, delta_time: f32) void {
+fn moveLeft(pos: *components.Position, delta_time: f32) void {
     _ = delta_time; // autofix
-    player.x -= 10;
+    pos.vec[0] -= 10;
 }
 
 const action = struct {
     key: rl.KeyboardKey,
-    callback: fn (player: *rl.Rectangle, delta_time: f32) void,
+    callback: fn (player: *components.Position, delta_time: f32) void,
 };
 
 pub const key_down_actions = [_]action{

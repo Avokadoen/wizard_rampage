@@ -4,8 +4,26 @@ const zm = @import("zmath");
 
 const input = @import("input.zig");
 
+const systems = @import("systems.zig");
 const components = @import("components.zig");
 const physics = @import("physics_2d.zig");
+const ecez = @import("ecez");
+
+const Storage = ecez.CreateStorage(components.all);
+
+const UpdateSystems = systems.CreateUpdateSystems(Storage);
+
+const Scheduler = ecez.CreateScheduler(
+    Storage,
+    .{
+        ecez.Event("game_update", .{
+            UpdateSystems.MovableToImmovableRecToRecCollisionResolve,
+        }, .{}),
+        ecez.Event("game_draw", .{
+            systems.DrawSystems,
+        }, .{}),
+    },
+);
 
 pub fn main() anyerror!void {
     // Initialize window
@@ -28,14 +46,16 @@ pub fn main() anyerror!void {
     const player_sprite: rl.Texture = rl.Texture.init("resources/textures/wizard_01.png");
     defer player_sprite.unload();
 
-    const player_scale: f32 = 0.4;
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
 
-    const player_sprite_frame = rl.Rectangle.init(
-        0,
-        0,
-        @as(f32, @floatFromInt(player_sprite.width)) * player_scale,
-        @as(f32, @floatFromInt(player_sprite.height)) * player_scale,
-    );
+    const allocator = gpa.allocator();
+
+    var storage = try Storage.init(allocator);
+    defer storage.deinit();
+
+    var scheduler = try Scheduler.init(allocator, .{});
+    defer scheduler.deinit();
 
     const room_center = zm.f32x4(
         window_width * @as(f32, 0.5),
@@ -44,45 +64,93 @@ pub fn main() anyerror!void {
         0,
     );
 
-    var debug_player_rect = rl.Rectangle{
-        .x = room_center[0] - player_sprite_frame.width,
-        .y = room_center[1] - player_sprite_frame.height,
-        .width = player_sprite_frame.width,
-        .height = player_sprite_frame.height,
+    const player_entity = try create_player_blk: {
+        const Player = struct {
+            pos: components.Position,
+            scale: components.Scale,
+            vel: components.Velocity,
+            col: components.RectangleCollider,
+            tag: components.DrawRectangleTag,
+            // Anim,
+        };
+
+        const scale: f32 = 0.4;
+        const width = @as(f32, @floatFromInt(player_sprite.width)) * scale;
+        const height = @as(f32, @floatFromInt(player_sprite.height)) * scale;
+
+        break :create_player_blk storage.createEntity(Player{
+            .pos = components.Position{ .vec = zm.f32x4(
+                room_center[0] - width,
+                room_center[1] - height,
+                0,
+                0,
+            ) },
+            .scale = components.Scale{ .value = scale },
+            .vel = components.Velocity{ .vec = zm.f32x4s(0) },
+            .col = components.RectangleCollider{
+                .width = width,
+                .height = height,
+            },
+            .tag = components.DrawRectangleTag{},
+        });
     };
 
-    const room_boundary_thickness = 100;
-    // TODO: just have a single rectangle for room and reverse hit detection (problem is resolve no hit to a hit)
-    const room_boundaries = [_]rl.Rectangle{
+    // Create level boundaries (TODO: should only need a single rectangle and do reverse hit detection)
+    {
+        const room_boundary_thickness = 100;
+        const LevelBoundary = struct {
+            pos: components.Position,
+            collider: components.RectangleCollider,
+            tag: components.DrawRectangleTag,
+        };
+
         // North
-        .{
-            .x = 0,
-            .y = window_height - room_boundary_thickness,
-            .width = window_width,
-            .height = room_boundary_thickness,
-        },
+        _ = try storage.createEntity(LevelBoundary{
+            .pos = components.Position{ .vec = zm.f32x4(
+                0,
+                window_height - room_boundary_thickness,
+                0,
+                0,
+            ) },
+            .collider = components.RectangleCollider{
+                .width = window_width,
+                .height = room_boundary_thickness,
+            },
+            .tag = components.DrawRectangleTag{},
+        });
         // West
-        .{
-            .x = 0,
-            .y = 0,
-            .width = room_boundary_thickness,
-            .height = window_height,
-        },
+        _ = try storage.createEntity(LevelBoundary{
+            .pos = components.Position{ .vec = zm.f32x4s(0) },
+            .collider = components.RectangleCollider{
+                .width = room_boundary_thickness,
+                .height = window_height,
+            },
+            .tag = components.DrawRectangleTag{},
+        });
         // South
-        .{
-            .x = 0,
-            .y = 0,
-            .width = window_width,
-            .height = room_boundary_thickness,
-        },
+        _ = try storage.createEntity(LevelBoundary{
+            .pos = components.Position{ .vec = zm.f32x4s(0) },
+            .collider = components.RectangleCollider{
+                .width = window_width,
+                .height = room_boundary_thickness,
+            },
+            .tag = components.DrawRectangleTag{},
+        });
         // East
-        .{
-            .x = window_width - room_boundary_thickness,
-            .y = 0,
-            .width = room_boundary_thickness,
-            .height = window_height,
-        },
-    };
+        _ = try storage.createEntity(LevelBoundary{
+            .pos = components.Position{ .vec = zm.f32x4(
+                window_width - room_boundary_thickness,
+                0,
+                0,
+                0,
+            ) },
+            .collider = components.RectangleCollider{
+                .width = room_boundary_thickness,
+                .height = window_height,
+            },
+            .tag = components.DrawRectangleTag{},
+        });
+    }
 
     var camera = rl.Camera2D{
         .offset = rl.Vector2.init(
@@ -107,46 +175,17 @@ pub fn main() anyerror!void {
         {
             // Input handling
             {
+                const player_pos_ptr = try storage.getComponent(player_entity, *components.Position);
                 inline for (input.key_down_actions) |input_action| {
                     if (rl.isKeyDown(input_action.key)) {
-                        input_action.callback(&debug_player_rect, delta_time);
+                        input_action.callback(player_pos_ptr, delta_time);
                     }
                 }
             }
 
-            // Resolve collisions
-            {
-                const player_collider = components.RectangleCollider{
-                    .width = debug_player_rect.width,
-                    .height = debug_player_rect.height,
-                };
-                var player_pos = components.Position{
-                    .vec = .{ debug_player_rect.x, debug_player_rect.y, 0, 0 },
-                };
-
-                for (room_boundaries) |room_boundary| {
-                    const room_collider = components.RectangleCollider{
-                        .width = room_boundary.width,
-                        .height = room_boundary.height,
-                    };
-                    const room_pos = components.Position{
-                        .vec = .{ room_boundary.x, room_boundary.y, 0, 0 },
-                    };
-
-                    const maybe_collision = physics.Intersection.rectAndRectResolve(
-                        player_collider,
-                        player_pos,
-                        room_collider,
-                        room_pos,
-                    );
-                    if (maybe_collision) |collision| {
-                        player_pos.vec += collision;
-
-                        debug_player_rect.x += collision[0];
-                        debug_player_rect.y += collision[1];
-                    }
-                }
-            }
+            // system update dispatch
+            scheduler.dispatchEvent(&storage, .game_update, .{});
+            scheduler.waitEvent(.game_update);
         }
 
         {
@@ -160,10 +199,9 @@ pub fn main() anyerror!void {
 
                 rl.clearBackground(rl.Color.ray_white);
 
-                for (room_boundaries) |room_boundary| {
-                    rl.drawRectanglePro(room_boundary, rl.Vector2.init(0, 0), 0, rl.Color.red);
-                }
-                player_sprite.drawEx(rl.Vector2{ .x = debug_player_rect.x, .y = debug_player_rect.y }, 0, player_scale, rl.Color.white);
+                scheduler.dispatchEvent(&storage, .game_draw, .{});
+                scheduler.waitEvent(.game_draw);
+                // player_sprite.drawEx(rl.Vector2{ .x = debug_player_rect.x, .y = debug_player_rect.y }, 0, player_scale, rl.Color.white);
             }
 
             {
