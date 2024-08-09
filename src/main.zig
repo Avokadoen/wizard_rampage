@@ -23,6 +23,7 @@ const Scheduler = ecez.CreateScheduler(
             UpdateSystems.MovableToImmovableRecToRecCollisionResolve,
             ecez.DependOn(UpdateSystems.UpdateVelocity, .{UpdateSystems.MovableToImmovableRecToRecCollisionResolve}),
             ecez.DependOn(UpdateSystems.UpdateCamera, .{UpdateSystems.UpdateVelocity}),
+            ecez.DependOn(UpdateSystems.OrientTexture, .{UpdateSystems.UpdateCamera}),
         }, .{}),
         ecez.Event(
             "game_draw",
@@ -83,7 +84,8 @@ pub fn main() anyerror!void {
             col: components.RectangleCollider,
             // tag: components.DrawRectangleTag,
             rec_tag: components.DrawRectangleTag,
-            texture: components.StaticTexture,
+            texture: components.Texture,
+            orientation_texture: components.OrientationTexture,
             player_tag: components.PlayerTag,
         };
 
@@ -105,8 +107,11 @@ pub fn main() anyerror!void {
                 .height = height,
             },
             // .tag = components.DrawRectangleTag{},
-            .texture = components.StaticTexture{
+            .texture = components.Texture{
                 .index = @intFromEnum(TextureRepo.which.Cloak0001),
+            },
+            .orientation_texture = components.OrientationTexture{
+                .start_texture_index = @intFromEnum(TextureRepo.which.Cloak0001),
             },
             .rec_tag = components.DrawRectangleTag{},
             .player_tag = components.PlayerTag{},

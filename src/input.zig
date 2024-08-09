@@ -28,44 +28,44 @@ fn moveLeft(_: *components.Position, vel: *components.Velocity, _: anytype) void
     }
 }
 
-fn shootUp(pos: *components.Position, _: *components.Velocity, storage: anytype) void {
-    const vel = zm.f32x4(
+fn shootUp(pos: *components.Position, vel: *components.Velocity, storage: anytype) void {
+    const projectile_vel = zm.f32x4(
         0,
-        -1000,
+        -1000 + vel.vec[1],
         0,
         0,
     );
-    fireProjectile(pos.*, storage, vel);
+    fireProjectile(pos.*, storage, projectile_vel);
 }
 
-fn shootDown(pos: *components.Position, _: *components.Velocity, storage: anytype) void {
-    const vel = zm.f32x4(
+fn shootDown(pos: *components.Position, vel: *components.Velocity, storage: anytype) void {
+    const projectile_vel = zm.f32x4(
         0,
-        1000,
+        1000 + vel.vec[1],
         0,
         0,
     );
-    fireProjectile(pos.*, storage, vel);
+    fireProjectile(pos.*, storage, projectile_vel);
 }
 
-fn shootRight(pos: *components.Position, _: *components.Velocity, storage: anytype) void {
-    const vel = zm.f32x4(
-        1000,
+fn shootRight(pos: *components.Position, vel: *components.Velocity, storage: anytype) void {
+    const projectile_vel = zm.f32x4(
+        1000 + vel.vec[0],
         0,
         0,
         0,
     );
-    fireProjectile(pos.*, storage, vel);
+    fireProjectile(pos.*, storage, projectile_vel);
 }
 
-fn shootLeft(pos: *components.Position, _: *components.Velocity, storage: anytype) void {
-    const vel = zm.f32x4(
-        -1000,
+fn shootLeft(pos: *components.Position, vel: *components.Velocity, storage: anytype) void {
+    const projectile_vel = zm.f32x4(
+        -1000 + vel.vec[0],
         0,
         0,
         0,
     );
-    fireProjectile(pos.*, storage, vel);
+    fireProjectile(pos.*, storage, projectile_vel);
 }
 
 fn fireProjectile(pos: components.Position, storage: anytype, vel: zm.Vec) void {
