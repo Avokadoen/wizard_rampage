@@ -63,9 +63,9 @@ pub const Intersection = struct {
             const abs_resolve = @abs(resolve_vector);
 
             if (abs_resolve[0] < abs_resolve[1]) {
-                return zm.f32x4(resolve_vector[0], 0, 0, 0);
+                return zm.f32x4(if (a_pos.vec[0] < b_pos.vec[0]) resolve_vector[0] else -resolve_vector[0], 0, 0, 0);
             } else {
-                return zm.f32x4(0, resolve_vector[1], 0, 0);
+                return zm.f32x4(0, if (a_pos.vec[1] < b_pos.vec[1]) resolve_vector[1] else -resolve_vector[1], 0, 0);
             }
         } else return null;
     }
