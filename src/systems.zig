@@ -1,5 +1,6 @@
 const rl = @import("raylib");
 const ecez = @import("ecez");
+const zm = @import("zmath");
 
 const physics = @import("physics_2d.zig");
 const components = @import("components.zig");
@@ -63,6 +64,22 @@ pub fn CreateUpdateSystems(Storage: type) type {
                         a_pos.vec += collision;
                     }
                 }
+            }
+        };
+        pub const UpdateCamera = struct {
+            const QueryPlayer = Storage.Query(
+                struct {
+                    pos: components.Position,
+                    rec: components.RectangleCollider,
+                    player_tag: components.PlayerTag,
+                },
+                // exclude type
+                .{},
+            ).Iter;
+            pub fn updateCamera(pos: *components.Position, scale: components.Scale, camera: components.Camera, player_iter: *QueryPlayer) void {
+                const player = player_iter.next() orelse @panic("no player panic");
+                const camera_offset = zm.f32x4((camera.width * 0.5 - player.rec.width * 0.5) / scale.value, (camera.height * 0.5 - player.rec.height * 0.5) / scale.value, 0, 0);
+                pos.vec = player.pos.vec - camera_offset;
             }
         };
     };

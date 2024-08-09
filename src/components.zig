@@ -11,6 +11,9 @@ pub const all = .{
     DrawRectangleTag,
     StaticTexture,
     AnimTexture,
+    DrawCircleTag,
+    Camera,
+    PlayerTag,
 };
 
 pub const Position = struct {
@@ -44,6 +47,7 @@ pub const Collision = struct {
 };
 
 pub const DrawRectangleTag = struct {};
+pub const DrawCircleTag = struct {};
 
 pub const StaticTexture = struct { index: u8 };
 
@@ -52,3 +56,9 @@ pub const AnimTexture = packed struct {
     frame_count: u8,
     frames_per_frame: u8,
 };
+
+pub const Camera = struct {
+    width: f32,
+    height: f32,
+};
+pub const PlayerTag = struct {};
