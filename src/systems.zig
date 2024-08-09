@@ -1,3 +1,5 @@
+const std = @import("std");
+
 const rl = @import("raylib");
 const ecez = @import("ecez");
 const zm = @import("zmath");
@@ -27,7 +29,7 @@ pub const DrawSystems = struct {
 
     pub const StaticTexture = struct {
         // TODO: account for scale and rotation
-        pub fn draw(pos: components.Position, static_texture: components.StaticTexture, draw_context: Context) void {
+        pub fn draw(pos: components.Position, static_texture: components.Texture, draw_context: Context) void {
             const texture = draw_context.texture_repo[static_texture.index];
             rl.drawTexture(texture, @intFromFloat(pos.vec[0]), @intFromFloat(pos.vec[1]), rl.Color.white);
         }
@@ -80,6 +82,31 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 const player = player_iter.next() orelse @panic("no player panic");
                 const camera_offset = zm.f32x4((camera.width * 0.5 - player.rec.width * 0.5) / scale.value, (camera.height * 0.5 - player.rec.height * 0.5) / scale.value, 0, 0);
                 pos.vec = player.pos.vec - camera_offset;
+            }
+        };
+
+        pub const OrientTexture = struct {
+            pub fn orientTexture(velocity: components.Velocity, texture: *components.Texture, orientation_texture: components.OrientationTexture) void {
+                var smalled_index: usize = 0;
+                var smallest_dist = std.math.floatMax(f32);
+                for (&[_]zm.Vec{
+                    zm.f32x4(0, -1, 0, 0),
+                    zm.f32x4(-0.5, -0.5, 0, 0),
+                    zm.f32x4(-1, 0, 0, 0),
+                    zm.f32x4(-0.5, 0.5, 0, 0),
+                    zm.f32x4(0, 1, 0, 0),
+                    zm.f32x4(0.5, 0.5, 0, 0),
+                    zm.f32x4(1, 0, 0, 0),
+                    zm.f32x4(0.5, -0.5, 0, 0),
+                }, 0..) |direction, index| {
+                    const dist = zm.length2(@abs(velocity.vec - direction))[0];
+                    if (dist < smallest_dist) {
+                        smallest_dist = dist;
+                        smalled_index = index;
+                    }
+                }
+
+                texture.index = @intCast(orientation_texture.start_texture_index + smalled_index);
             }
         };
     };

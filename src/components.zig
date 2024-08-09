@@ -9,7 +9,8 @@ pub const all = .{
     CircleCollider,
     Collision,
     DrawRectangleTag,
-    StaticTexture,
+    Texture,
+    OrientationTexture,
     AnimTexture,
     DrawCircleTag,
     Camera,
@@ -49,7 +50,11 @@ pub const Collision = struct {
 pub const DrawRectangleTag = struct {};
 pub const DrawCircleTag = struct {};
 
-pub const StaticTexture = struct { index: u8 };
+pub const Texture = struct { index: u8 };
+
+pub const OrientationTexture = packed struct {
+    start_texture_index: u8,
+};
 
 pub const AnimTexture = packed struct {
     current_frame: u8,
