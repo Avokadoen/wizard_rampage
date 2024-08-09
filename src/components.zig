@@ -9,7 +9,8 @@ pub const all = .{
     CircleCollider,
     Collision,
     DrawRectangleTag,
-    Anim,
+    StaticTexture,
+    AnimTexture,
 };
 
 pub const Position = struct {
@@ -17,7 +18,7 @@ pub const Position = struct {
 };
 
 pub const Rotation = struct {
-    quat: zm.Quat,
+    value: f32,
 };
 
 pub const Scale = struct {
@@ -44,7 +45,9 @@ pub const Collision = struct {
 
 pub const DrawRectangleTag = struct {};
 
-pub const Anim = packed struct {
+pub const StaticTexture = struct { index: u8 };
+
+pub const AnimTexture = packed struct {
     current_frame: u8,
     frame_count: u8,
     frames_per_frame: u8,

@@ -5,18 +5,32 @@ const physics = @import("physics_2d.zig");
 const components = @import("components.zig");
 
 pub const DrawSystems = struct {
-    pub fn drawRectrangles(pos: components.Position, rectangle: components.RectangleCollider, draw_rectangle_tag: components.DrawRectangleTag) void {
-        _ = draw_rectangle_tag;
+    pub const Context = struct {
+        texture_repo: []const rl.Texture,
+    };
 
-        const draw_rectangle = rl.Rectangle{
-            .x = pos.vec[0],
-            .y = pos.vec[1],
-            .width = rectangle.width,
-            .height = rectangle.height,
-        };
+    pub const Rectangle = struct {
+        pub fn draw(pos: components.Position, rectangle: components.RectangleCollider, draw_rectangle_tag: components.DrawRectangleTag) void {
+            _ = draw_rectangle_tag;
 
-        rl.drawRectanglePro(draw_rectangle, rl.Vector2.init(0, 0), 0, rl.Color.red);
-    }
+            const draw_rectangle = rl.Rectangle{
+                .x = pos.vec[0],
+                .y = pos.vec[1],
+                .width = rectangle.width,
+                .height = rectangle.height,
+            };
+
+            rl.drawRectanglePro(draw_rectangle, rl.Vector2.init(0, 0), 0, rl.Color.red);
+        }
+    };
+
+    pub const StaticTexture = struct {
+        // TODO: account for scale and rotation
+        pub fn draw(pos: components.Position, static_texture: components.StaticTexture, draw_context: Context) void {
+            const texture = draw_context.texture_repo[static_texture.index];
+            rl.drawTexture(texture, @intFromFloat(pos.vec[0]), @intFromFloat(pos.vec[1]), rl.Color.white);
+        }
+    };
 };
 
 pub fn CreateUpdateSystems(Storage: type) type {
