@@ -196,7 +196,7 @@ pub fn main() anyerror!void {
     }
 
     rl.setTargetFPS(60); // Set our game to run at 60 frames-per-second
-    const delta_time: f32 = 1 / 60;
+    //const delta_time: f32 = 1 / 60;
     //--------------------------------------------------------------------------------------
 
     // Main game loop
@@ -208,7 +208,7 @@ pub fn main() anyerror!void {
                 const player_pos_ptr = try storage.getComponent(player_entity, *components.Position);
                 inline for (input.key_down_actions) |input_action| {
                     if (rl.isKeyDown(input_action.key)) {
-                        input_action.callback(player_pos_ptr, delta_time);
+                        input_action.callback(player_pos_ptr, &storage);
                     }
                 }
             }

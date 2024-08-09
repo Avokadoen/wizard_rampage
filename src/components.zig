@@ -9,6 +9,7 @@ pub const all = .{
     CircleCollider,
     Collision,
     DrawRectangleTag,
+    DrawCircleTag,
     Anim,
     Camera,
     PlayerTag,
@@ -45,6 +46,7 @@ pub const Collision = struct {
 };
 
 pub const DrawRectangleTag = struct {};
+pub const DrawCircleTag = struct {};
 
 pub const Anim = packed struct {
     current_frame: u8,
