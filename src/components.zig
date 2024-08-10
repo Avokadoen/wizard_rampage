@@ -65,6 +65,7 @@ pub const Texture = struct {
         o3,
     };
 
+    type: u8,
     index: u8,
     draw_order: DrawOrder,
 };

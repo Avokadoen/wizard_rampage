@@ -2,6 +2,7 @@ const rl = @import("raylib");
 const components = @import("components.zig");
 const ecez = @import("ecez");
 const zm = @import("zmath");
+const TextureRepo = @import("TextureRepo.zig");
 const delta_time: f32 = 1.0 / 60.0;
 fn moveUp(_: *components.Position, vel: *components.Velocity, _: *components.FireRate, _: anytype) void {
     vel.vec[1] -= 10;
@@ -73,6 +74,7 @@ fn fireProjectile(pos: components.Position, vel: zm.Vec, fire_rate: *components.
         pos: components.Position,
         vel: components.Velocity,
         collider: components.CircleCollider,
+        texture: components.Texture,
         tag: components.DrawCircleTag,
         life_time: components.LifeTime,
     };
@@ -82,6 +84,11 @@ fn fireProjectile(pos: components.Position, vel: zm.Vec, fire_rate: *components.
             .vel = components.Velocity{ .vec = vel, .drag = 0.98 },
             .collider = components.CircleCollider{
                 .radius = 30,
+            },
+            .texture = components.Texture{
+                .type = @intFromEnum(TextureRepo.texture_type.projectile),
+                .index = @intFromEnum(TextureRepo.which_projectile.Bolt0001),
+                .draw_order = .o3,
             },
             .tag = components.DrawCircleTag{},
             .life_time = components.LifeTime{

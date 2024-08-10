@@ -2,27 +2,40 @@ const rl = @import("raylib");
 
 const TextureRepo = @This();
 
-textures: [72]rl.Texture,
+player_textures: [72]rl.Texture,
+projectile_textures: [5]rl.Texture,
 
 pub fn init() TextureRepo {
-    var textures: [72]rl.Texture = undefined;
-    const which_info = @typeInfo(which);
-    inline for (which_info.Enum.fields, &textures) |which_texture, *texture| {
+    var player_textures: [72]rl.Texture = undefined;
+    const which_player_info = @typeInfo(which_player);
+    inline for (which_player_info.Enum.fields, &player_textures) |which_texture, *texture| {
         texture.* = rl.loadTexture("resources/textures/player/" ++ which_texture.name ++ ".png");
     }
 
+    var projectile_textures: [5]rl.Texture = undefined;
+    const which_projectile_info = @typeInfo(which_projectile);
+    inline for (which_projectile_info.Enum.fields, &projectile_textures) |which_texture, *texture| {
+        texture.* = rl.loadTexture("resources/textures/projectiles/" ++ which_texture.name ++ ".png");
+    }
+
     return TextureRepo{
-        .textures = textures,
+        .player_textures = player_textures,
+        .projectile_textures = projectile_textures,
     };
 }
 
 pub fn deinit(self: TextureRepo) void {
-    inline for (self.textures) |texture| {
+    inline for (self.player_textures) |texture| {
         texture.unload();
     }
 }
 
-pub const which = enum {
+pub const texture_type = enum {
+    player,
+    projectile,
+};
+
+pub const which_player = enum {
     Cloak0001,
     Cloak0002,
     Cloak0003,
@@ -95,4 +108,11 @@ pub const which = enum {
     Staff0006,
     Staff0007,
     Staff0008,
+};
+pub const which_projectile = enum {
+    Bolt0001,
+    Bolt0002,
+    Bolt0003,
+    Bolt0004,
+    Bolt0005,
 };

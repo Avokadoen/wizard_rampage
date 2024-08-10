@@ -147,11 +147,12 @@ pub fn main() anyerror!void {
                 .drag = 1,
             },
             .texture = components.Texture{
-                .index = @intFromEnum(TextureRepo.which.Cloak0001),
+                .type = @intFromEnum(TextureRepo.texture_type.player),
+                .index = @intFromEnum(TextureRepo.which_player.Cloak0001),
                 .draw_order = .o0,
             },
             .orientation_texture = components.OrientationTexture{
-                .start_texture_index = @intFromEnum(TextureRepo.which.Cloak0001),
+                .start_texture_index = @intFromEnum(TextureRepo.which_player.Cloak0001),
             },
             .child_of = components.ChildOf{
                 .parent = player,
@@ -168,11 +169,12 @@ pub fn main() anyerror!void {
                 .drag = 1,
             },
             .texture = components.Texture{
-                .index = @intFromEnum(TextureRepo.which.Head0001),
+                .type = @intFromEnum(TextureRepo.texture_type.player),
+                .index = @intFromEnum(TextureRepo.which_player.Head0001),
                 .draw_order = .o1,
             },
             .orientation_texture = components.OrientationTexture{
-                .start_texture_index = @intFromEnum(TextureRepo.which.Head0001),
+                .start_texture_index = @intFromEnum(TextureRepo.which_player.Head0001),
             },
             .child_of = components.ChildOf{
                 .parent = player,
@@ -186,14 +188,15 @@ pub fn main() anyerror!void {
             .scale = components.Scale{ .value = 1 },
             .vel = components.Velocity{
                 .vec = zm.f32x4s(0),
-                .drag = 1,
+                .drag = 0.94,
             },
             .texture = components.Texture{
-                .index = @intFromEnum(TextureRepo.which.Hat0001),
+                .type = @intFromEnum(TextureRepo.texture_type.player),
+                .index = @intFromEnum(TextureRepo.which_player.Hat0001),
                 .draw_order = .o2,
             },
             .orientation_texture = components.OrientationTexture{
-                .start_texture_index = @intFromEnum(TextureRepo.which.Hat0001),
+                .start_texture_index = @intFromEnum(TextureRepo.which_player.Hat0001),
             },
             .child_of = components.ChildOf{
                 .parent = player,
@@ -220,7 +223,8 @@ pub fn main() anyerror!void {
                 .drag = 1,
             },
             .texture = components.Texture{
-                .index = @intFromEnum(TextureRepo.which.Hand_L0001),
+                .type = @intFromEnum(TextureRepo.texture_type.player),
+                .index = @intFromEnum(TextureRepo.which_player.Hand_L0001),
                 .draw_order = .o3,
             },
             .orientation_based_draw_order = components.OrientationBasedDrawOrder{
@@ -236,7 +240,7 @@ pub fn main() anyerror!void {
                 },
             },
             .orientation_texture = components.OrientationTexture{
-                .start_texture_index = @intFromEnum(TextureRepo.which.Hand_L0001),
+                .start_texture_index = @intFromEnum(TextureRepo.which_player.Hand_L0001),
             },
             .child_of = components.ChildOf{
                 .parent = player,
@@ -253,7 +257,8 @@ pub fn main() anyerror!void {
                 .drag = 1,
             },
             .texture = components.Texture{
-                .index = @intFromEnum(TextureRepo.which.Hand_R0001),
+                .type = @intFromEnum(TextureRepo.texture_type.player),
+                .index = @intFromEnum(TextureRepo.which_player.Hand_R0001),
                 .draw_order = .o3,
             },
             .orientation_based_draw_order = components.OrientationBasedDrawOrder{
@@ -269,7 +274,7 @@ pub fn main() anyerror!void {
                 },
             },
             .orientation_texture = components.OrientationTexture{
-                .start_texture_index = @intFromEnum(TextureRepo.which.Hand_R0001),
+                .start_texture_index = @intFromEnum(TextureRepo.which_player.Hand_R0001),
             },
             .child_of = components.ChildOf{
                 .parent = player,
@@ -299,7 +304,8 @@ pub fn main() anyerror!void {
                 .drag = 1,
             },
             .texture = components.Texture{
-                .index = @intFromEnum(TextureRepo.which.Staff0001),
+                .type = @intFromEnum(TextureRepo.texture_type.player),
+                .index = @intFromEnum(TextureRepo.which_player.Staff0001),
                 .draw_order = .o1,
             },
             .orientation_based_draw_order = components.OrientationBasedDrawOrder{
@@ -315,7 +321,7 @@ pub fn main() anyerror!void {
                 },
             },
             .orientation_texture = components.OrientationTexture{
-                .start_texture_index = @intFromEnum(TextureRepo.which.Staff0001),
+                .start_texture_index = @intFromEnum(TextureRepo.which_player.Staff0001),
             },
             .child_of = components.ChildOf{
                 .parent = player_entity,
@@ -336,7 +342,7 @@ pub fn main() anyerror!void {
 
         break :create_camera_blk storage.createEntity(Camera{
             .pos = components.Position{ .vec = zm.f32x4s(0) },
-            .scale = components.Scale{ .value = 3 },
+            .scale = components.Scale{ .value = 1 },
             .camera = components.Camera{
                 .width = window_width,
                 .height = window_height,
@@ -479,7 +485,10 @@ pub fn main() anyerror!void {
                 rl.clearBackground(rl.Color.ray_white);
 
                 const draw_context = DrawSystems.Context{
-                    .texture_repo = &texture_repo.textures,
+                    .texture_repo = &[_][]const rl.Texture{
+                        &texture_repo.player_textures,
+                        &texture_repo.projectile_textures,
+                    },
                     .storage = storage,
                 };
                 scheduler.dispatchEvent(&storage, .game_draw, draw_context);

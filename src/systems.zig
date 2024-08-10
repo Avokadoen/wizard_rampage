@@ -12,7 +12,7 @@ const delta_time: f32 = 1.0 / 60.0;
 pub fn CreateDrawSystems(Storage: type) type {
     return struct {
         pub const Context = struct {
-            texture_repo: []const rl.Texture,
+            texture_repo: []const []const rl.Texture,
             storage: Storage,
         };
 
@@ -60,7 +60,7 @@ pub fn CreateDrawSystems(Storage: type) type {
 
                     const rotation = draw_context.storage.getComponent(entity, components.Rotation) catch components.Rotation{ .value = 0 };
                     const scale = draw_context.storage.getComponent(entity, components.Scale) catch components.Scale{ .value = 1 };
-                    const texture = draw_context.texture_repo[static_texture.index];
+                    const texture = draw_context.texture_repo[static_texture.type][static_texture.index];
                     const postion = rl.Vector2{ .x = pos.vec[0], .y = pos.vec[1] };
                     rl.drawTextureEx(texture, postion, rotation.value, scale.value, rl.Color.white);
                 }
@@ -181,6 +181,7 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 _: ecez.ExcludeEntityWith(.{ components.InactiveTag, components.ChildOf }),
             ) void {
                 pos.vec += vel.vec * @as(zm.Vec, @splat(delta_time));
+                vel.vec = vel.vec * @as(zm.Vec, @splat(vel.drag));
             }
         };
 
