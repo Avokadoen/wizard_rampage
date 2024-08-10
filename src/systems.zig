@@ -241,6 +241,17 @@ pub fn CreateUpdateSystems(Storage: type) type {
             }
         };
 
+        pub const OrientationBasedDrawOrder = struct {
+            pub fn orientationBasedDrawOrder(
+                texture: *components.Texture,
+                orientation_draw_order: components.OrientationBasedDrawOrder,
+                orientation_texture: components.OrientationTexture,
+            ) void {
+                const draw_order_index = texture.index - orientation_texture.start_texture_index;
+                texture.draw_order = orientation_draw_order.draw_orders[draw_order_index];
+            }
+        };
+
         pub const LifeTime = struct {
             pub fn lifeTime(
                 entity: ecez.Entity,
