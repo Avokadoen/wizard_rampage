@@ -54,7 +54,6 @@ pub fn CreateDrawSystems(Storage: type) type {
                     pos: components.Position,
                     static_texture: components.Texture,
                     draw_context: Context,
-                    _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
                 ) void {
                     if (static_texture.draw_order != order) return;
 
@@ -73,9 +72,9 @@ pub fn CreateDrawSystems(Storage: type) type {
                 pos: components.Position,
                 static_texture: components.Texture,
                 draw_context: Context,
-                e: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
-                StaticTextureOrderN(.o0).draw(entity, pos, static_texture, draw_context, e);
+                StaticTextureOrderN(.o0).draw(entity, pos, static_texture, draw_context);
             }
         };
 
@@ -85,9 +84,9 @@ pub fn CreateDrawSystems(Storage: type) type {
                 pos: components.Position,
                 static_texture: components.Texture,
                 draw_context: Context,
-                e: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
-                StaticTextureOrderN(.o1).draw(entity, pos, static_texture, draw_context, e);
+                StaticTextureOrderN(.o1).draw(entity, pos, static_texture, draw_context);
             }
         };
 
@@ -97,9 +96,9 @@ pub fn CreateDrawSystems(Storage: type) type {
                 pos: components.Position,
                 static_texture: components.Texture,
                 draw_context: Context,
-                e: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
-                StaticTextureOrderN(.o2).draw(entity, pos, static_texture, draw_context, e);
+                StaticTextureOrderN(.o2).draw(entity, pos, static_texture, draw_context);
             }
         };
 
@@ -109,9 +108,9 @@ pub fn CreateDrawSystems(Storage: type) type {
                 pos: components.Position,
                 static_texture: components.Texture,
                 draw_context: Context,
-                e: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
-                StaticTextureOrderN(.o3).draw(entity, pos, static_texture, draw_context, e);
+                StaticTextureOrderN(.o3).draw(entity, pos, static_texture, draw_context);
             }
         };
     };
@@ -248,6 +247,19 @@ pub fn CreateUpdateSystems(Storage: type) type {
             }
         };
 
+        pub const RegisterDead = struct {
+            pub fn registerDead(
+                entity: ecez.Entity,
+                health: components.Health,
+                edit_queue: *Storage.StorageEditQueue,
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
+                if (health.value <= 0) {
+                    edit_queue.queueSetComponent(entity, components.InactiveTag{}) catch @panic("registerDead: wtf");
+                }
+            }
+        };
+
         pub const UpdateCamera = struct {
             const QueryPlayer = Storage.Query(
                 struct {
@@ -277,20 +289,46 @@ pub fn CreateUpdateSystems(Storage: type) type {
         };
 
         pub const InherentFromParent = struct {
-            pub fn inherentParentVelocity(vel: *components.Velocity, child_of: components.ChildOf, update_context: Context) void {
+            pub fn inherentParentVelocity(
+                vel: *components.Velocity,
+                child_of: components.ChildOf,
+                update_context: Context,
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
                 const parent_vel = update_context.storage.getComponent(child_of.parent, components.Velocity) catch @panic("inherentParentVelocity: wtf");
                 vel.* = parent_vel;
             }
 
-            pub fn inherentParentPosition(pos: *components.Position, child_of: components.ChildOf, update_context: Context) void {
+            pub fn inherentParentPosition(
+                pos: *components.Position,
+                child_of: components.ChildOf,
+                update_context: Context,
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
                 const parent_pos = update_context.storage.getComponent(child_of.parent, components.Position) catch @panic("inherentParentPosition: wtf");
                 const offset = zm.f32x4(child_of.offset_x, child_of.offset_y, 0, 0);
                 pos.vec = parent_pos.vec + offset;
             }
 
-            pub fn inherentParentScale(scale: *components.Scale, child_of: components.ChildOf, update_context: Context) void {
+            pub fn inherentParentScale(
+                scale: *components.Scale,
+                child_of: components.ChildOf,
+                update_context: Context,
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
                 const parent_scale = update_context.storage.getComponent(child_of.parent, components.Scale) catch @panic("inherentParentScale: wtf");
                 scale.* = parent_scale;
+            }
+
+            pub fn inherentInactiveFromParent(
+                entity: ecez.Entity,
+                child_of: components.ChildOf,
+                update_context: Context,
+                edit_queue: *Storage.StorageEditQueue,
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
+                const parent_tag = update_context.storage.getComponent(child_of.parent, components.InactiveTag) catch return;
+                edit_queue.queueSetComponent(entity, parent_tag) catch @panic("inherentInactiveFromParent: wtf");
             }
         };
 
