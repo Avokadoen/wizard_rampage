@@ -6,18 +6,21 @@ player_textures: [72]rl.Texture,
 projectile_textures: [15]rl.Texture,
 farmer_textures: [48]rl.Texture,
 blood_splatter_textures: [9]rl.Texture,
+country_textures: [6]rl.Texture,
 
 pub fn init() GameTextureRepo {
     const player_textures = loadTextureGroup(which_player, "resources/textures/player/");
     const projectile_textures = loadTextureGroup(which_projectile, "resources/textures/projectiles/");
     const farmer_textures = loadTextureGroup(which_farmer, "resources/textures/farmer/");
     const blood_splatter_textures = loadTextureGroup(which_bloodsplat, "resources/textures/effects/bloodsplat/");
+    const country_textures = loadTextureGroup(which_country_side, "resources/textures/country_side/");
 
     return GameTextureRepo{
         .player_textures = player_textures,
         .projectile_textures = projectile_textures,
         .farmer_textures = farmer_textures,
         .blood_splatter_textures = blood_splatter_textures,
+        .country_textures = country_textures,
     };
 }
 
@@ -52,6 +55,7 @@ pub const texture_type = enum {
     projectile,
     farmer,
     blood_splatter,
+    country,
 };
 
 pub const which_player = enum {
@@ -205,4 +209,12 @@ pub const which_bloodsplat = enum {
     Blood_Splat0006,
     Blood_Splat0007,
     Blood_Splat0008,
+};
+pub const which_country_side = enum {
+    Dirt,
+    Fence_Horizontal,
+    Fence_Vertical,
+    Grass,
+    Mushroom,
+    Tree,
 };
