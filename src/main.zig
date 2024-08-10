@@ -23,9 +23,9 @@ const Scheduler = ecez.CreateScheduler(
         ecez.Event("game_update", .{
             UpdateSystems.FireRate,
             UpdateSystems.LifeTime,
-            UpdateSystems.MovableToImmovableRecToRecCollisionResolve,
-            ecez.DependOn(UpdateSystems.UpdateVelocity, .{UpdateSystems.MovableToImmovableRecToRecCollisionResolve}),
-            ecez.DependOn(UpdateSystems.InherentFromParent, .{UpdateSystems.UpdateVelocity}),
+            UpdateSystems.UpdateVelocity,
+            ecez.DependOn(UpdateSystems.MovableToImmovableRecToRecCollisionResolve, .{UpdateSystems.UpdateVelocity}),
+            ecez.DependOn(UpdateSystems.InherentFromParent, .{UpdateSystems.MovableToImmovableRecToRecCollisionResolve}),
             // run in parallel
             ecez.DependOn(UpdateSystems.UpdateCamera, .{UpdateSystems.InherentFromParent}),
             ecez.DependOn(UpdateSystems.OrientTexture, .{UpdateSystems.InherentFromParent}),
