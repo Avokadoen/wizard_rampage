@@ -102,7 +102,6 @@ pub fn main() anyerror!void {
             vel: components.Velocity,
             col: components.RectangleCollider,
             rec_tag: components.DrawRectangleTag,
-            fire_rate: components.FireRate,
             player_tag: components.PlayerTag,
         };
 
@@ -116,17 +115,13 @@ pub fn main() anyerror!void {
             .scale = components.Scale{ .value = player_scale },
             .vel = components.Velocity{
                 .vec = zm.f32x4s(0),
-                .drag = 0.94,
+                .drag = 0.8,
             },
             .col = components.RectangleCollider{
                 .width = player_hit_box_width,
                 .height = player_hit_box_height,
             },
             .rec_tag = components.DrawRectangleTag{},
-            .fire_rate = components.FireRate{
-                .base_fire_rate = 60,
-                .cooldown_fire_rate = 0,
-            },
             .player_tag = components.PlayerTag{},
         });
 
@@ -294,6 +289,7 @@ pub fn main() anyerror!void {
             texture: components.Texture,
             orientation_based_draw_order: components.OrientationBasedDrawOrder,
             orientation_texture: components.OrientationTexture,
+            fire_rate: components.FireRate,
             child_of: components.ChildOf,
         };
         break :create_player_staff_blk try storage.createEntity(Staff{
@@ -323,6 +319,10 @@ pub fn main() anyerror!void {
             .orientation_texture = components.OrientationTexture{
                 .start_texture_index = @intFromEnum(TextureRepo.which_player.Staff0001),
             },
+            .fire_rate = components.FireRate{
+                .base_fire_rate = 60,
+                .cooldown_fire_rate = 0,
+            },
             .child_of = components.ChildOf{
                 .parent = player_entity,
                 .offset_x = player_part_offset_x,
@@ -330,7 +330,6 @@ pub fn main() anyerror!void {
             },
         });
     };
-    _ = player_staff_entity; // autofix
 
     // Create camera
     const camera_entity = try create_camera_blk: {
@@ -437,7 +436,7 @@ pub fn main() anyerror!void {
             {
                 const player_pos_ptr = try storage.getComponent(player_entity, *components.Position);
                 const player_vec_ptr = try storage.getComponent(player_entity, *components.Velocity);
-                const player_fire_rate = try storage.getComponent(player_entity, *components.FireRate);
+                const player_fire_rate = try storage.getComponent(player_staff_entity, *components.FireRate);
                 inline for (input.key_down_actions) |input_action| {
                     if (rl.isKeyDown(input_action.key)) {
                         input_action.callback(player_pos_ptr, player_vec_ptr, player_fire_rate, &storage);
