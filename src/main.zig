@@ -75,6 +75,11 @@ pub fn main() anyerror!void {
     rl.initAudioDevice();
     defer rl.closeAudioDevice();
 
+    const music = rl.loadMusicStream("resources/music/Gameplay_Loop.wav");
+    defer rl.unloadMusicStream(music);
+    rl.playMusicStream(music);
+    rl.setMusicVolume(music, 0.25);
+
     rl.setTargetFPS(60); // Set our game to run at 60 frames-per-second
 
     const LoopState = enum {
@@ -109,7 +114,11 @@ pub fn main() anyerror!void {
                 const main_menu_texture_repo = MainTextureRepo.init();
                 defer main_menu_texture_repo.deinit();
 
-                while (true) { // Detect window close button or ESC key
+                while (true) {
+                    // Start music
+                    rl.updateMusicStream(music);
+                    const time_played = rl.getMusicTimePlayed(music) / rl.getMusicTimeLength(music);
+                    if (time_played > 1.0) rl.seekMusicStream(music, 27);
                     // Start draw
                     rl.beginDrawing();
                     defer rl.endDrawing();
@@ -293,6 +302,9 @@ pub fn main() anyerror!void {
                 }
             },
             .game => {
+                //rl.updateMusicStream(music);
+                //const time_played_test = rl.getMusicTimePlayed(music) / rl.getMusicTimeLength(music);
+                //if (time_played_test > 1.0) rl.seekMusicStream(music, 27);
                 const texture_repo = GameTextureRepo.init();
                 defer texture_repo.deinit();
 
@@ -645,6 +657,10 @@ pub fn main() anyerror!void {
 
                 // TODO: pause
                 while (!rl.windowShouldClose()) {
+                    // Play music
+                    rl.updateMusicStream(music);
+                    const time_played = rl.getMusicTimePlayed(music) / rl.getMusicTimeLength(music);
+                    if (time_played > 1.0) rl.seekMusicStream(music, 27);
                     // Update
                     {
                         // Input handling
