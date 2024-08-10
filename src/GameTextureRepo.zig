@@ -5,6 +5,7 @@ const GameTextureRepo = @This();
 player_textures: [72]rl.Texture,
 projectile_textures: [15]rl.Texture,
 farmer_textures: [48]rl.Texture,
+country_textures: [6]rl.Texture,
 
 pub fn init() GameTextureRepo {
     var player_textures: [72]rl.Texture = undefined;
@@ -25,10 +26,17 @@ pub fn init() GameTextureRepo {
         texture.* = rl.loadTexture("resources/textures/farmer/" ++ which_texture.name ++ ".png");
     }
 
+    var country_textures: [6]rl.Texture = undefined;
+    const country_info = @typeInfo(country_side);
+    inline for (country_info.Enum.fields, &country_textures) |country_texture, *texture| {
+        texture.* = rl.loadTexture("resources/textures/country_side/" ++ country_texture.name ++ ".png");
+    }
+
     return GameTextureRepo{
         .player_textures = player_textures,
         .projectile_textures = projectile_textures,
         .farmer_textures = farmer_textures,
+        .country_textures = country_textures,
     };
 }
 
@@ -50,6 +58,7 @@ pub const texture_type = enum {
     player,
     projectile,
     farmer,
+    country,
 };
 
 pub const which_player = enum {
@@ -192,4 +201,12 @@ pub const which_farmer = enum {
     Farmer_Pitchfork0006,
     Farmer_Pitchfork0007,
     Farmer_Pitchfork0008,
+};
+pub const country_side = enum {
+    Dirt,
+    Fence_Horizontal,
+    Fence_Vertical,
+    Grass,
+    Mushroom,
+    Tree,
 };

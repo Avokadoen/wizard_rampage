@@ -344,7 +344,10 @@ pub fn main() anyerror!void {
                             0,
                             0,
                         ) },
-                        .scale = components.Scale{ .value = player_scale },
+                        .scale = components.Scale{
+                            .x = player_scale,
+                            .y = player_scale,
+                        },
                         .vel = components.Velocity{
                             .vec = zm.f32x4s(0),
                             .drag = 0.8,
@@ -368,7 +371,10 @@ pub fn main() anyerror!void {
                     // Cloak
                     _ = try storage.createEntity(PlayerParts{
                         .pos = components.Position{ .vec = zm.f32x4s(0) },
-                        .scale = components.Scale{ .value = 1 },
+                        .scale = components.Scale{
+                            .x = player_scale,
+                            .y = player_scale,
+                        },
                         .vel = components.Velocity{
                             .vec = zm.f32x4s(0),
                             .drag = 1,
@@ -390,7 +396,10 @@ pub fn main() anyerror!void {
                     // Head
                     _ = try storage.createEntity(PlayerParts{
                         .pos = components.Position{ .vec = zm.f32x4s(0) },
-                        .scale = components.Scale{ .value = 1 },
+                        .scale = components.Scale{
+                            .x = player_scale,
+                            .y = player_scale,
+                        },
                         .vel = components.Velocity{
                             .vec = zm.f32x4s(0),
                             .drag = 1,
@@ -412,7 +421,10 @@ pub fn main() anyerror!void {
                     // Hat
                     _ = try storage.createEntity(PlayerParts{
                         .pos = components.Position{ .vec = zm.f32x4s(0) },
-                        .scale = components.Scale{ .value = 1 },
+                        .scale = components.Scale{
+                            .x = player_scale,
+                            .y = player_scale,
+                        },
                         .vel = components.Velocity{
                             .vec = zm.f32x4s(0),
                             .drag = 0.94,
@@ -444,7 +456,10 @@ pub fn main() anyerror!void {
                     // Left hand
                     _ = try storage.createEntity(Hand{
                         .pos = components.Position{ .vec = zm.f32x4s(0) },
-                        .scale = components.Scale{ .value = 1 },
+                        .scale = components.Scale{
+                            .x = player_scale,
+                            .y = player_scale,
+                        },
                         .vel = components.Velocity{
                             .vec = zm.f32x4s(0),
                             .drag = 1,
@@ -478,7 +493,10 @@ pub fn main() anyerror!void {
                     // Right hand
                     _ = try storage.createEntity(Hand{
                         .pos = components.Position{ .vec = zm.f32x4s(0) },
-                        .scale = components.Scale{ .value = 1 },
+                        .scale = components.Scale{
+                            .x = player_scale,
+                            .y = player_scale,
+                        },
                         .vel = components.Velocity{
                             .vec = zm.f32x4s(0),
                             .drag = 1,
@@ -526,7 +544,10 @@ pub fn main() anyerror!void {
                     };
                     break :create_player_staff_blk try storage.createEntity(Staff{
                         .pos = components.Position{ .vec = zm.f32x4s(0) },
-                        .scale = components.Scale{ .value = 1 },
+                        .scale = components.Scale{
+                            .x = player_scale,
+                            .y = player_scale,
+                        },
                         .vel = components.Velocity{
                             .vec = zm.f32x4s(0),
                             .drag = 1,
@@ -573,7 +594,10 @@ pub fn main() anyerror!void {
 
                     break :create_camera_blk storage.createEntity(Camera{
                         .pos = components.Position{ .vec = zm.f32x4s(0) },
-                        .scale = components.Scale{ .value = 1 },
+                        .scale = components.Scale{
+                            .x = 1,
+                            .y = 1,
+                        },
                         .camera = components.Camera{
                             .width = window_width,
                             .height = window_height,
@@ -586,74 +610,111 @@ pub fn main() anyerror!void {
                     const room_boundary_thickness = 100;
                     const LevelBoundary = struct {
                         pos: components.Position,
+                        scale: components.Scale,
                         collider: components.RectangleCollider,
-                        tag: components.DrawRectangleTag,
+                        texture: components.Texture,
                     };
-
-                    // North with door
-                    _ = try storage.createEntity(LevelBoundary{
-                        .pos = components.Position{ .vec = zm.f32x4(
-                            0,
-                            0,
-                            0,
-                            0,
-                        ) },
-                        .collider = components.RectangleCollider{
-                            .width = arena_width / 3,
-                            .height = room_boundary_thickness,
-                        },
-                        .tag = components.DrawRectangleTag{},
-                    });
-                    _ = try storage.createEntity(LevelBoundary{
-                        .pos = components.Position{ .vec = zm.f32x4(
-                            (arena_width / 3) * 2,
-                            0,
-                            0,
-                            0,
-                        ) },
-                        .collider = components.RectangleCollider{
-                            .width = arena_width / 3,
-                            .height = room_boundary_thickness,
-                        },
-                        .tag = components.DrawRectangleTag{},
-                    });
-                    // South
-                    _ = try storage.createEntity(LevelBoundary{
-                        .pos = components.Position{ .vec = zm.f32x4(
-                            0,
-                            arena_height - room_boundary_thickness,
-                            0,
-                            0,
-                        ) },
-                        .collider = components.RectangleCollider{
-                            .width = arena_width,
-                            .height = room_boundary_thickness,
-                        },
-                        .tag = components.DrawRectangleTag{},
-                    });
-                    // West
-                    _ = try storage.createEntity(LevelBoundary{
-                        .pos = components.Position{ .vec = zm.f32x4s(0) },
-                        .collider = components.RectangleCollider{
-                            .width = room_boundary_thickness,
-                            .height = arena_height,
-                        },
-                        .tag = components.DrawRectangleTag{},
-                    });
-                    // East
-                    _ = try storage.createEntity(LevelBoundary{
-                        .pos = components.Position{ .vec = zm.f32x4(
-                            arena_width - room_boundary_thickness,
-                            0,
-                            0,
-                            0,
-                        ) },
-                        .collider = components.RectangleCollider{
-                            .width = room_boundary_thickness,
-                            .height = arena_height,
-                        },
-                        .tag = components.DrawRectangleTag{},
-                    });
+                    const hor_fence_height: u32 = @intCast(texture_repo.country_textures[@intFromEnum(GameTextureRepo.country_side.Fence_Horizontal)].height);
+                    const hor_fence_width: u32 = @intCast(texture_repo.country_textures[@intFromEnum(GameTextureRepo.country_side.Fence_Horizontal)].width);
+                    var i: u32 = 0;
+                    while (i < arena_width) : (i += hor_fence_width) {
+                        // // South
+                        _ = try storage.createEntity(LevelBoundary{
+                            .pos = components.Position{ .vec = zm.f32x4(
+                                @floatFromInt(i),
+                                arena_height - room_boundary_thickness,
+                                0,
+                                0,
+                            ) },
+                            .scale = components.Scale{
+                                .x = 1,
+                                .y = 1,
+                            },
+                            .collider = components.RectangleCollider{
+                                .width = @floatFromInt(hor_fence_width),
+                                .height = @floatFromInt(hor_fence_height),
+                            },
+                            .texture = components.Texture{
+                                .draw_order = .o2,
+                                .type = @intFromEnum(GameTextureRepo.texture_type.country),
+                                .index = @intFromEnum(GameTextureRepo.country_side.Fence_Horizontal),
+                            },
+                        });
+                        // North with door
+                        if (hor_fence_width * 13 == i) {
+                            continue;
+                        }
+                        _ = try storage.createEntity(LevelBoundary{
+                            .pos = components.Position{ .vec = zm.f32x4(
+                                @floatFromInt(i),
+                                0,
+                                0,
+                                0,
+                            ) },
+                            .scale = components.Scale{
+                                .x = 1,
+                                .y = 1,
+                            },
+                            .collider = components.RectangleCollider{
+                                .width = @floatFromInt(hor_fence_width),
+                                .height = @floatFromInt(hor_fence_height),
+                            },
+                            .texture = components.Texture{
+                                .draw_order = .o2,
+                                .type = @intFromEnum(GameTextureRepo.texture_type.country),
+                                .index = @intFromEnum(GameTextureRepo.country_side.Fence_Horizontal),
+                            },
+                        });
+                    }
+                    const vert_fence_height: u32 = @intCast(texture_repo.country_textures[@intFromEnum(GameTextureRepo.country_side.Fence_Vertical)].height);
+                    const vert_fence_width: u32 = @intCast(texture_repo.country_textures[@intFromEnum(GameTextureRepo.country_side.Fence_Vertical)].width);
+                    i = 0;
+                    while (i < arena_width - vert_fence_height) : (i += vert_fence_height) {
+                        // West
+                        _ = try storage.createEntity(LevelBoundary{
+                            .pos = components.Position{ .vec = zm.f32x4(
+                                0,
+                                @floatFromInt(i),
+                                0,
+                                0,
+                            ) },
+                            .scale = components.Scale{
+                                .x = 1,
+                                .y = 1,
+                            },
+                            .collider = components.RectangleCollider{
+                                .width = @floatFromInt(vert_fence_width),
+                                .height = @floatFromInt(vert_fence_height),
+                            },
+                            .texture = components.Texture{
+                                .draw_order = .o2,
+                                .type = @intFromEnum(GameTextureRepo.texture_type.country),
+                                .index = @intFromEnum(GameTextureRepo.country_side.Fence_Vertical),
+                            },
+                        });
+                        // East
+                        _ = try storage.createEntity(LevelBoundary{
+                            .pos = components.Position{ .vec = zm.f32x4(
+                                arena_width,
+                                @floatFromInt(i),
+                                0,
+                                0,
+                            ) },
+                            .scale = components.Scale{
+                                .x = 1,
+                                .y = 1,
+                            },
+                            .collider = components.RectangleCollider{
+                                .width = @floatFromInt(vert_fence_width),
+                                .height = @floatFromInt(vert_fence_height),
+                            },
+                            .texture = components.Texture{
+                                .draw_order = .o2,
+                                .type = @intFromEnum(GameTextureRepo.texture_type.country),
+                                .index = @intFromEnum(GameTextureRepo.country_side.Fence_Vertical),
+                            },
+                        });
+                    }
                 }
 
                 const farmer = try createFarmer(&storage, zm.f32x4(0, 0, 0, 0), player_scale);
@@ -709,7 +770,7 @@ pub fn main() anyerror!void {
                                         .y = camera_pos.vec[1],
                                     },
                                     .rotation = 0,
-                                    .zoom = camera_zoom.value,
+                                    .zoom = camera_zoom.x,
                                 };
                             };
 
@@ -719,10 +780,11 @@ pub fn main() anyerror!void {
                             rl.clearBackground(rl.Color.ray_white);
 
                             const draw_context = DrawSystems.Context{
-                                .texture_repo = [_][]const rl.Texture{
+                                .texture_repo = &[_][]const rl.Texture{
                                     &texture_repo.player_textures,
                                     &texture_repo.projectile_textures,
                                     &texture_repo.farmer_textures,
+                                    &texture_repo.country_textures,
                                 },
                                 .storage = storage,
                             };
@@ -754,7 +816,7 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
 
     const farmer = try storage.createEntity(Farmer{
         .pos = components.Position{ .vec = pos },
-        .scale = components.Scale{ .value = scale },
+        .scale = components.Scale{ .x = scale, .y = scale },
         .vel = components.Velocity{
             .vec = zm.f32x4s(0),
             .drag = 0.7,
@@ -778,7 +840,7 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
     // Cloak
     _ = try storage.createEntity(FarmerParts{
         .pos = components.Position{ .vec = zm.f32x4s(0) },
-        .scale = components.Scale{ .value = 1 },
+        .scale = components.Scale{ .x = 1, .y = 1 },
         .vel = components.Velocity{
             .vec = zm.f32x4s(0),
             .drag = 1,
@@ -800,7 +862,7 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
     // Head
     _ = try storage.createEntity(FarmerParts{
         .pos = components.Position{ .vec = zm.f32x4s(0) },
-        .scale = components.Scale{ .value = 1 },
+        .scale = components.Scale{ .x = 1, .y = 1 },
         .vel = components.Velocity{
             .vec = zm.f32x4s(0),
             .drag = 1,
@@ -822,7 +884,7 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
     // Hat
     _ = try storage.createEntity(FarmerParts{
         .pos = components.Position{ .vec = zm.f32x4s(0) },
-        .scale = components.Scale{ .value = 1 },
+        .scale = components.Scale{ .x = 1, .y = 1 },
         .vel = components.Velocity{
             .vec = zm.f32x4s(0),
             .drag = 0.94,
@@ -854,7 +916,7 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
     // Left hand
     _ = try storage.createEntity(Hand{
         .pos = components.Position{ .vec = zm.f32x4s(0) },
-        .scale = components.Scale{ .value = 1 },
+        .scale = components.Scale{ .x = 1, .y = 1 },
         .vel = components.Velocity{
             .vec = zm.f32x4s(0),
             .drag = 1,
@@ -888,7 +950,7 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
     // Right hand
     _ = try storage.createEntity(Hand{
         .pos = components.Position{ .vec = zm.f32x4s(0) },
-        .scale = components.Scale{ .value = 1 },
+        .scale = components.Scale{ .x = 1, .y = 1 },
         .vel = components.Velocity{
             .vec = zm.f32x4s(0),
             .drag = 1,

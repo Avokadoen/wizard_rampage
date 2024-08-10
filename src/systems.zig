@@ -12,7 +12,7 @@ const delta_time: f32 = 1.0 / 60.0;
 pub fn CreateDrawSystems(Storage: type) type {
     return struct {
         pub const Context = struct {
-            texture_repo: [3][]const rl.Texture,
+            texture_repo: []const []const rl.Texture,
             storage: Storage,
         };
 
@@ -59,10 +59,22 @@ pub fn CreateDrawSystems(Storage: type) type {
                     if (static_texture.draw_order != order) return;
 
                     const rotation = draw_context.storage.getComponent(entity, components.Rotation) catch components.Rotation{ .value = 0 };
-                    const scale = draw_context.storage.getComponent(entity, components.Scale) catch components.Scale{ .value = 1 };
+                    const scale = draw_context.storage.getComponent(entity, components.Scale) catch components.Scale{ .x = 1, .y = 1 };
                     const texture = draw_context.texture_repo[static_texture.type][static_texture.index];
-                    const postion = rl.Vector2{ .x = pos.vec[0], .y = pos.vec[1] };
-                    rl.drawTextureEx(texture, postion, rotation.value, scale.value, rl.Color.white);
+                    const rect_texture = rl.Rectangle{
+                        .x = 0,
+                        .y = 0,
+                        .height = @floatFromInt(texture.height),
+                        .width = @floatFromInt(texture.width),
+                    };
+                    const rect_render_target = rl.Rectangle{
+                        .x = pos.vec[0],
+                        .y = pos.vec[1],
+                        .height = @as(f32, @floatFromInt(texture.height)) * scale.x,
+                        .width = @as(f32, @floatFromInt(texture.width)) * scale.y,
+                    };
+                    const center = rl.Vector2{ .x = 0, .y = 0 };
+                    rl.drawTexturePro(texture, rect_texture, rect_render_target, center, rotation.value, rl.Color.white);
                 }
             };
         }
@@ -211,7 +223,7 @@ pub fn CreateUpdateSystems(Storage: type) type {
             ).Iter;
             pub fn updateCamera(pos: *components.Position, scale: components.Scale, camera: components.Camera, player_iter: *QueryPlayer) void {
                 const player = player_iter.next() orelse @panic("no player panic");
-                const camera_offset = zm.f32x4((camera.width * 0.5 - player.rec.width * 0.5) / scale.value, (camera.height * 0.5 - player.rec.height * 0.5) / scale.value, 0, 0);
+                const camera_offset = zm.f32x4((camera.width * 0.5 - player.rec.width * 0.5) / scale.x, (camera.height * 0.5 - player.rec.height * 0.5) / scale.y, 0, 0);
                 pos.vec = player.pos.vec - camera_offset;
             }
         };

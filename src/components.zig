@@ -33,7 +33,8 @@ pub const Rotation = struct {
 };
 
 pub const Scale = struct {
-    value: f32,
+    x: f32,
+    y: f32,
 };
 
 pub const Velocity = struct {
