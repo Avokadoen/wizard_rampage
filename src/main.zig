@@ -37,6 +37,7 @@ const Scheduler = ecez.CreateScheduler(
             // run in parallel
             ecez.DependOn(UpdateSystems.UpdateCamera, .{UpdateSystems.InherentFromParent}),
             ecez.DependOn(UpdateSystems.OrientTexture, .{UpdateSystems.InherentFromParent}),
+            ecez.DependOn(UpdateSystems.AnimateTexture, .{UpdateSystems.InherentFromParent}),
             // end run in parallel
             ecez.DependOn(UpdateSystems.OrientationBasedDrawOrder, .{UpdateSystems.OrientTexture}),
             // flush in game loop
@@ -101,6 +102,7 @@ pub fn main() anyerror!void {
                 const load_assets_zone = tracy.ZoneN(@src(), "main menu load assets and init");
 
                 var main_menu_animation = components.AnimTexture{
+                    .start_frame = 0,
                     .current_frame = 0,
                     .frame_count = 0,
                     .frames_per_frame = 8,
@@ -776,66 +778,7 @@ pub fn main() anyerror!void {
                         try storage.flushStorageQueue(); // flush any edits which occured in dispatch game_update
 
                         // Spawn blood splatter
-                        {
-                            const BloodSplatter = struct {
-                                pos: components.Position,
-                                scale: components.Scale,
-                                texture: components.Texture,
-                                lifetime: components.LifeTime,
-                                blood_splatter_tag: components.BloodSplatterGroundTag,
-                            };
-
-                            const InactiveBloodSplatterQuery = Storage.Query(struct {
-                                entity: ecez.Entity,
-                                pos: components.Position,
-                                scale: components.Scale,
-                                texture: components.Texture,
-                                lifetime: components.LifeTime,
-                                inactive_tag: components.InactiveTag,
-                                blood_splatter_tag: components.BloodSplatterGroundTag,
-                            }, .{});
-                            var inactive_blood_iter = InactiveBloodSplatterQuery.submit(&storage);
-
-                            const DiedThisFrameQuery = Storage.Query(struct {
-                                entity: ecez.Entity,
-                                pos: components.Position,
-                                died: components.DiedThisFrameTag,
-                            }, .{});
-                            var died_this_frame_iter = DiedThisFrameQuery.submit(&storage);
-
-                            const lifetime: f32 = 6;
-                            while (died_this_frame_iter.next()) |dead_this_frame| {
-                                const scale = storage.getComponent(dead_this_frame.entity, components.Scale) catch components.Scale{ .x = 1, .y = 1 };
-                                const splatter_offset = zm.f32x4(-100 * scale.x, -100 * scale.y, 0, 0);
-
-                                const position = components.Position{
-                                    .vec = dead_this_frame.pos.vec + splatter_offset,
-                                };
-
-                                if (inactive_blood_iter.next()) |inactive_blood_splatter| {
-                                    try storage.removeComponent(inactive_blood_splatter.entity, components.InactiveTag);
-                                    try storage.setComponent(inactive_blood_splatter.entity, position);
-                                    try storage.setComponent(inactive_blood_splatter.entity, scale);
-                                    try storage.setComponent(inactive_blood_splatter.entity, components.LifeTime{ .value = lifetime });
-                                } else {
-                                    _ = try storage.createEntity(BloodSplatter{
-                                        .pos = position,
-                                        .scale = scale,
-                                        .texture = components.Texture{
-                                            .type = @intFromEnum(GameTextureRepo.texture_type.blood_splatter),
-                                            .index = @intFromEnum(GameTextureRepo.which_bloodsplat.Blood_Splat),
-                                            .draw_order = .o0,
-                                        },
-                                        .blood_splatter_tag = .{},
-                                        .lifetime = components.LifeTime{ .value = lifetime },
-                                    });
-                                }
-
-                                try storage.queueRemoveComponent(dead_this_frame.entity, components.DiedThisFrameTag);
-                            }
-
-                            try storage.flushStorageQueue();
-                        }
+                        try spawnBloodSplatter(&storage);
                     }
 
                     {
@@ -1078,6 +1021,119 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
     });
 
     return farmer;
+}
+
+pub fn spawnBloodSplatter(storage: *Storage) !void {
+    const GoreSplatter = struct {
+        pos: components.Position,
+        // rot: components.Rotation,
+        scale: components.Scale,
+        texture: components.Texture,
+        anim: components.AnimTexture,
+        lifetime: components.LifeTime,
+        blood_gore_tag: components.BloodGoreGroundTag,
+    };
+    const InactiveGoreSplatterQuery = Storage.Query(struct {
+        entity: ecez.Entity,
+        pos: components.Position,
+        // rot: components.Rotation,
+        scale: components.Scale,
+        texture: components.Texture,
+        anim: components.AnimTexture,
+        lifetime: components.LifeTime,
+        inactive_tag: components.InactiveTag,
+        blood_gore_tag: components.BloodGoreGroundTag,
+    }, .{});
+    var inactive_gore_iter = InactiveGoreSplatterQuery.submit(storage);
+
+    const BloodSplatter = struct {
+        pos: components.Position,
+        scale: components.Scale,
+        texture: components.Texture,
+        lifetime: components.LifeTime,
+        blood_splatter_tag: components.BloodSplatterGroundTag,
+    };
+    const InactiveBloodSplatterQuery = Storage.Query(struct {
+        entity: ecez.Entity,
+        pos: components.Position,
+        scale: components.Scale,
+        texture: components.Texture,
+        lifetime: components.LifeTime,
+        inactive_tag: components.InactiveTag,
+        blood_splatter_tag: components.BloodSplatterGroundTag,
+    }, .{});
+    var inactive_blood_iter = InactiveBloodSplatterQuery.submit(storage);
+
+    const DiedThisFrameQuery = Storage.Query(struct {
+        entity: ecez.Entity,
+        pos: components.Position,
+        died: components.DiedThisFrameTag,
+    }, .{});
+    var died_this_frame_iter = DiedThisFrameQuery.submit(storage);
+
+    const lifetime: f32 = 6;
+    while (died_this_frame_iter.next()) |dead_this_frame| {
+        const scale = storage.getComponent(dead_this_frame.entity, components.Scale) catch components.Scale{ .x = 1, .y = 1 };
+        const splatter_offset = zm.f32x4(-100 * scale.x, -100 * scale.y, 0, 0);
+
+        const position = components.Position{
+            .vec = dead_this_frame.pos.vec + splatter_offset,
+        };
+
+        if (inactive_blood_iter.next()) |inactive_blood_splatter| {
+            try storage.removeComponent(inactive_blood_splatter.entity, components.InactiveTag);
+            try storage.setComponent(inactive_blood_splatter.entity, position);
+            try storage.setComponent(inactive_blood_splatter.entity, scale);
+            try storage.setComponent(inactive_blood_splatter.entity, components.LifeTime{ .value = lifetime });
+        } else {
+            _ = try storage.createEntity(BloodSplatter{
+                .pos = position,
+                .scale = scale,
+                .texture = components.Texture{
+                    .type = @intFromEnum(GameTextureRepo.texture_type.blood_splatter),
+                    .index = @intFromEnum(GameTextureRepo.which_bloodsplat.Blood_Splat),
+                    .draw_order = .o0,
+                },
+                .blood_splatter_tag = .{},
+                .lifetime = components.LifeTime{ .value = lifetime },
+            });
+        }
+
+        const anim = components.AnimTexture{
+            .start_frame = @intFromEnum(GameTextureRepo.which_bloodsplat.Blood_Splat0001),
+            .current_frame = 0,
+            .frame_count = 8,
+            .frames_per_frame = 4,
+            .frames_drawn_current_frame = 0,
+        };
+        const lifetime_comp = components.LifeTime{
+            .value = @as(f32, @floatFromInt(anim.frame_count)) * @as(f32, @floatFromInt(anim.frames_per_frame)) / 60.0,
+        };
+        if (inactive_gore_iter.next()) |inactive_gore| {
+            try storage.removeComponent(inactive_gore.entity, components.InactiveTag);
+            try storage.setComponent(inactive_gore.entity, position);
+            try storage.setComponent(inactive_gore.entity, scale);
+            try storage.setComponent(inactive_gore.entity, anim);
+            try storage.setComponent(inactive_gore.entity, lifetime_comp);
+        } else {
+            _ = try storage.createEntity(GoreSplatter{
+                .pos = position,
+                .scale = scale,
+                .texture = components.Texture{
+                    .type = @intFromEnum(GameTextureRepo.texture_type.blood_splatter),
+                    .index = @intFromEnum(GameTextureRepo.which_bloodsplat.Blood_Splat0001),
+                    .draw_order = .o1,
+                },
+                .anim = anim,
+                .lifetime = lifetime_comp,
+                .blood_gore_tag = .{},
+            });
+        }
+
+        try storage.queueRemoveComponent(dead_this_frame.entity, components.DiedThisFrameTag);
+    }
+
+    try storage.flushStorageQueue();
 }
 
 test {
