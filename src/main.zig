@@ -26,7 +26,7 @@ const Scheduler = ecez.CreateScheduler(
             ecez.DependOn(UpdateSystems.UpdateVelocity, .{UpdateSystems.MovableToImmovableRecToRecCollisionResolve}),
             ecez.DependOn(UpdateSystems.UpdateCamera, .{UpdateSystems.UpdateVelocity}),
             ecez.DependOn(UpdateSystems.OrientTexture, .{UpdateSystems.UpdateCamera}),
-            ecez.FlushEditQueue(Storage),
+            // flush in game loop
         }, .{}),
         ecez.Event(
             "game_draw",
@@ -243,6 +243,8 @@ pub fn main() anyerror!void {
             // system update dispatch
             scheduler.dispatchEvent(&storage, .game_update, .{});
             scheduler.waitEvent(.game_update);
+
+            try storage.flushStorageQueue();
         }
 
         {
