@@ -242,21 +242,24 @@ pub fn main() anyerror!void {
             defer rl.endDrawing();
             {
                 // Start gameplay drawing
-                const camera_pos = try storage.getComponent(camera_entity, components.Position);
-                const camera_zoom = try storage.getComponent(camera_entity, components.Scale);
+                const camera = create_rl_camera_blk: {
+                    const camera_pos = try storage.getComponent(camera_entity, components.Position);
+                    const camera_zoom = try storage.getComponent(camera_entity, components.Scale);
 
-                const camera = rl.Camera2D{
-                    .offset = rl.Vector2{
-                        .x = 0,
-                        .y = 0,
-                    },
-                    .target = rl.Vector2{
-                        .x = camera_pos.vec[0],
-                        .y = camera_pos.vec[1],
-                    },
-                    .rotation = 0,
-                    .zoom = camera_zoom.value,
+                    break :create_rl_camera_blk rl.Camera2D{
+                        .offset = rl.Vector2{
+                            .x = 0,
+                            .y = 0,
+                        },
+                        .target = rl.Vector2{
+                            .x = camera_pos.vec[0],
+                            .y = camera_pos.vec[1],
+                        },
+                        .rotation = 0,
+                        .zoom = camera_zoom.value,
+                    };
                 };
+
                 camera.begin();
                 defer camera.end();
 
