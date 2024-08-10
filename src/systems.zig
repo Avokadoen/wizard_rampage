@@ -330,6 +330,18 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 const parent_tag = update_context.storage.getComponent(child_of.parent, components.InactiveTag) catch return;
                 edit_queue.queueSetComponent(entity, parent_tag) catch @panic("inherentInactiveFromParent: wtf");
             }
+
+            pub fn inherentActiveFromParent(
+                entity: ecez.Entity,
+                _: components.InactiveTag,
+                child_of: components.ChildOf,
+                update_context: Context,
+                edit_queue: *Storage.StorageEditQueue,
+            ) void {
+                _ = update_context.storage.getComponent(child_of.parent, components.InactiveTag) catch {
+                    edit_queue.queueRemoveComponent(entity, components.InactiveTag) catch @panic("inherentActiveFromParent: wtf");
+                };
+            }
         };
 
         pub const OrientTexture = struct {
