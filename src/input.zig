@@ -116,7 +116,7 @@ fn fireProjectile(pos: components.Position, vel: zm.Vec, fire_rate: *components.
             },
             .projectile = components.Projectile{
                 .dmg = 15,
-                .weight = 300,
+                .weight = 500,
             },
         }) catch (@panic("rip projectiles"));
         fire_rate.cooldown_fire_rate = fire_rate.base_fire_rate;

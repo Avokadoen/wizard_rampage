@@ -536,9 +536,17 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 const player = player_iter.next() orelse @panic("targetPlayer: wtf");
 
                 const move_dir = zm.normalize2(player.pos.vec - pos.vec);
+                const vel_dir = zm.normalize2(pos.vec);
 
-                const move_vector = move_dir * @as(zm.Vec, @splat(100));
-                vel.vec = move_vector;
+                // TODO: dont hardcode this
+                const npc_max_speed = 240;
+                const npc_move_speed = 40;
+
+                // if max speed has been reached or npc want to move in another direction
+                if (zm.length2(vel.vec)[0] < npc_max_speed or zm.dot2(move_dir, vel_dir)[0] < 0.6) {
+                    const move_vector = move_dir * @as(zm.Vec, @splat(npc_move_speed));
+                    vel.vec += move_vector;
+                }
             }
         };
     };
