@@ -114,10 +114,11 @@ pub fn CreateUpdateSystems(Storage: type) type {
         pub const UpdateVelocity = struct {
             pub fn updatePositionBasedOnVelocity(
                 pos: *components.Position,
-                vel: components.Velocity,
+                vel: *components.Velocity,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
                 pos.vec += vel.vec * @as(zm.Vec, @splat(delta_time));
+                vel.vec = vel.vec * @as(zm.Vec, @splat(vel.drag));
             }
         };
 

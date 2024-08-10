@@ -79,13 +79,13 @@ fn fireProjectile(pos: components.Position, vel: zm.Vec, fire_rate: *components.
     if (fire_rate.cooldown_fire_rate == 0) {
         _ = storage.createEntity(Projectile{
             .pos = pos,
-            .vel = components.Velocity{ .vec = vel },
+            .vel = components.Velocity{ .vec = vel, .drag = 0.98 },
             .collider = components.CircleCollider{
                 .radius = 30,
             },
             .tag = components.DrawCircleTag{},
             .life_time = components.LifeTime{
-                .value = 1.0,
+                .value = 1.3,
             },
         }) catch (@panic("rip projectiles"));
         fire_rate.cooldown_fire_rate = fire_rate.base_fire_rate;

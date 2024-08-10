@@ -105,7 +105,10 @@ pub fn main() anyerror!void {
                 0,
             ) },
             .scale = components.Scale{ .value = scale },
-            .vel = components.Velocity{ .vec = zm.f32x4s(0) },
+            .vel = components.Velocity{
+                .vec = zm.f32x4s(0),
+                .drag = 0.94,
+            },
             .col = components.RectangleCollider{
                 .width = width,
                 .height = height,
