@@ -28,6 +28,7 @@ const Scheduler = ecez.CreateScheduler(
             ecez.DependOn(UpdateSystems.MovableToImmovableRecToRecCollisionResolve, .{UpdateSystems.UpdateVelocity}),
             ecez.DependOn(UpdateSystems.MovableToMovableRecToRecCollisionResolve, .{UpdateSystems.MovableToImmovableRecToRecCollisionResolve}),
             ecez.DependOn(UpdateSystems.InherentFromParent, .{UpdateSystems.MovableToMovableRecToRecCollisionResolve}),
+            ecez.DependOn(UpdateSystems.TargetPlayer, .{UpdateSystems.InherentFromParent}),
             // run in parallel
             ecez.DependOn(UpdateSystems.UpdateCamera, .{UpdateSystems.InherentFromParent}),
             ecez.DependOn(UpdateSystems.OrientTexture, .{UpdateSystems.InherentFromParent}),

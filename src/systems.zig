@@ -229,18 +229,18 @@ pub fn CreateUpdateSystems(Storage: type) type {
 
         pub const InherentFromParent = struct {
             pub fn inherentParentVelocity(vel: *components.Velocity, child_of: components.ChildOf, update_context: Context) void {
-                const parent_vel = update_context.storage.getComponent(child_of.parent, components.Velocity) catch @panic("wtf");
+                const parent_vel = update_context.storage.getComponent(child_of.parent, components.Velocity) catch @panic("inherentParentVelocity: wtf");
                 vel.* = parent_vel;
             }
 
             pub fn inherentParentPosition(pos: *components.Position, child_of: components.ChildOf, update_context: Context) void {
-                const parent_pos = update_context.storage.getComponent(child_of.parent, components.Position) catch @panic("wtf");
+                const parent_pos = update_context.storage.getComponent(child_of.parent, components.Position) catch @panic("inherentParentPosition: wtf");
                 const offset = zm.f32x4(child_of.offset_x, child_of.offset_y, 0, 0);
                 pos.vec = parent_pos.vec + offset;
             }
 
             pub fn inherentParentScale(scale: *components.Scale, child_of: components.ChildOf, update_context: Context) void {
-                const parent_scale = update_context.storage.getComponent(child_of.parent, components.Scale) catch @panic("wtf");
+                const parent_scale = update_context.storage.getComponent(child_of.parent, components.Scale) catch @panic("inherentParentScale: wtf");
                 scale.* = parent_scale;
             }
         };
@@ -272,8 +272,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                     .{ 1, 0 },
                     .{ 0.5, -0.5 },
                 }, 0..) |direction_values, index| {
+                    const move_dir = zm.normalize2(velocity.vec);
                     const direction = zm.f32x4(direction_values[0], direction_values[1], 0, 0);
-                    const dist = zm.lengthSq2(velocity.vec - direction)[0];
+                    const dist = zm.lengthSq2(move_dir - direction)[0];
                     if (dist < smallest_dist) {
                         smallest_dist = dist;
                         smalled_index = index;
@@ -317,6 +318,31 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 if (fire_rate.cooldown_fire_rate > 0) {
                     fire_rate.cooldown_fire_rate -= 5;
                 }
+            }
+        };
+
+        pub const TargetPlayer = struct {
+            const QueryPlayer = Storage.Query(
+                struct {
+                    pos: components.Position,
+                    player_tag: components.PlayerTag,
+                },
+                // exclude type
+                .{},
+            ).Iter;
+
+            pub fn targetPlayer(
+                pos: components.Position,
+                vel: *components.Velocity,
+                _: components.HostileTag,
+                player_iter: *QueryPlayer,
+            ) void {
+                const player = player_iter.next() orelse @panic("targetPlayer: wtf");
+
+                const move_dir = zm.normalize2(player.pos.vec - pos.vec);
+
+                const move_vector = move_dir * @as(zm.Vec, @splat(100));
+                vel.vec = move_vector;
             }
         };
     };
