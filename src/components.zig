@@ -1,4 +1,5 @@
 const zm = @import("zmath");
+const ecez = @import("ecez");
 
 pub const all = .{
     Position,
@@ -18,6 +19,7 @@ pub const all = .{
     PlayerTag,
     LifeTime,
     InactiveTag,
+    ChildOf,
 };
 
 pub const Position = struct {
@@ -79,3 +81,9 @@ pub const LifeTime = struct {
     value: f32,
 };
 pub const InactiveTag = struct {};
+
+pub const ChildOf = struct {
+    parent: ecez.Entity,
+    offset_x: f32,
+    offset_y: f32,
+};

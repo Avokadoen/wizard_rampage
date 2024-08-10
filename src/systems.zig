@@ -9,58 +9,66 @@ const components = @import("components.zig");
 
 const delta_time: f32 = 1.0 / 60.0;
 
-pub const DrawSystems = struct {
-    pub const Context = struct {
-        texture_repo: []const rl.Texture,
+pub fn CreateDrawSystems(Storage: type) type {
+    _ = Storage;
+
+    return struct {
+        pub const Context = struct {
+            texture_repo: []const rl.Texture,
+        };
+
+        pub const Rectangle = struct {
+            pub fn draw(
+                pos: components.Position,
+                rectangle: components.RectangleCollider,
+                draw_rectangle_tag: components.DrawRectangleTag,
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
+                _ = draw_rectangle_tag;
+
+                const draw_rectangle = rl.Rectangle{
+                    .x = pos.vec[0],
+                    .y = pos.vec[1],
+                    .width = rectangle.width,
+                    .height = rectangle.height,
+                };
+
+                rl.drawRectanglePro(draw_rectangle, rl.Vector2.init(0, 0), 0, rl.Color.red);
+            }
+        };
+
+        pub const Circle = struct {
+            pub fn draw(
+                pos: components.Position,
+                circle: components.CircleCollider,
+                _: components.DrawCircleTag,
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
+                rl.drawCircle(@intFromFloat(pos.vec[0]), @intFromFloat(pos.vec[1]), circle.radius, rl.Color.blue);
+            }
+        };
+
+        pub const StaticTexture = struct {
+            // TODO: account for scale and rotation
+            pub fn draw(
+                pos: components.Position,
+                static_texture: components.Texture,
+                draw_context: Context,
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
+                const texture = draw_context.texture_repo[static_texture.index];
+                rl.drawTexture(texture, @intFromFloat(pos.vec[0]), @intFromFloat(pos.vec[1]), rl.Color.white);
+            }
+        };
     };
-
-    pub const Rectangle = struct {
-        pub fn draw(
-            pos: components.Position,
-            rectangle: components.RectangleCollider,
-            draw_rectangle_tag: components.DrawRectangleTag,
-            _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
-        ) void {
-            _ = draw_rectangle_tag;
-
-            const draw_rectangle = rl.Rectangle{
-                .x = pos.vec[0],
-                .y = pos.vec[1],
-                .width = rectangle.width,
-                .height = rectangle.height,
-            };
-
-            rl.drawRectanglePro(draw_rectangle, rl.Vector2.init(0, 0), 0, rl.Color.red);
-        }
-    };
-
-    pub const Circle = struct {
-        pub fn draw(
-            pos: components.Position,
-            circle: components.CircleCollider,
-            _: components.DrawCircleTag,
-            _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
-        ) void {
-            rl.drawCircle(@intFromFloat(pos.vec[0]), @intFromFloat(pos.vec[1]), circle.radius, rl.Color.blue);
-        }
-    };
-
-    pub const StaticTexture = struct {
-        // TODO: account for scale and rotation
-        pub fn draw(
-            pos: components.Position,
-            static_texture: components.Texture,
-            draw_context: Context,
-            _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
-        ) void {
-            const texture = draw_context.texture_repo[static_texture.index];
-            rl.drawTexture(texture, @intFromFloat(pos.vec[0]), @intFromFloat(pos.vec[1]), rl.Color.white);
-        }
-    };
-};
+}
 
 pub fn CreateUpdateSystems(Storage: type) type {
     return struct {
+        pub const Context = struct {
+            storage: Storage,
+        };
+
         pub const MovableToImmovableRecToRecCollisionResolve = struct {
             const QueryImmovableRecColliders = Storage.Query(
                 struct {
@@ -111,13 +119,27 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 pos.vec = player.pos.vec - camera_offset;
             }
         };
+
         pub const UpdateVelocity = struct {
             pub fn updatePositionBasedOnVelocity(
                 pos: *components.Position,
                 vel: components.Velocity,
-                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+                _: ecez.ExcludeEntityWith(.{ components.InactiveTag, components.ChildOf }),
             ) void {
                 pos.vec += vel.vec * @as(zm.Vec, @splat(delta_time));
+            }
+        };
+
+        pub const InherentFromParent = struct {
+            pub fn inherentParentVelocity(vel: *components.Velocity, child_of: components.ChildOf, update_context: Context) void {
+                const parent_vel = update_context.storage.getComponent(child_of.parent, components.Velocity) catch @panic("wtf");
+                vel.* = parent_vel;
+            }
+
+            pub fn inherentParentPosition(pos: *components.Position, child_of: components.ChildOf, update_context: Context) void {
+                const parent_pos = update_context.storage.getComponent(child_of.parent, components.Position) catch @panic("wtf");
+                const offset = zm.f32x4(child_of.offset_x, child_of.offset_y, 0, 0);
+                pos.vec = parent_pos.vec + offset;
             }
         };
 

@@ -15,6 +15,7 @@ const arena_width = 3000;
 const Storage = ecez.CreateStorage(components.all);
 
 const UpdateSystems = systems.CreateUpdateSystems(Storage);
+const DrawSystems = systems.CreateDrawSystems(Storage);
 
 const Scheduler = ecez.CreateScheduler(
     Storage,
@@ -24,18 +25,21 @@ const Scheduler = ecez.CreateScheduler(
             UpdateSystems.LifeTime,
             UpdateSystems.MovableToImmovableRecToRecCollisionResolve,
             ecez.DependOn(UpdateSystems.UpdateVelocity, .{UpdateSystems.MovableToImmovableRecToRecCollisionResolve}),
-            ecez.DependOn(UpdateSystems.UpdateCamera, .{UpdateSystems.UpdateVelocity}),
-            ecez.DependOn(UpdateSystems.OrientTexture, .{UpdateSystems.UpdateCamera}),
+            ecez.DependOn(UpdateSystems.InherentFromParent, .{UpdateSystems.UpdateVelocity}),
+            // run in parallel
+            ecez.DependOn(UpdateSystems.UpdateCamera, .{UpdateSystems.InherentFromParent}),
+            ecez.DependOn(UpdateSystems.OrientTexture, .{UpdateSystems.InherentFromParent}),
+            // end run in parallel
             // flush in game loop
-        }, .{}),
+        }, UpdateSystems.Context),
         ecez.Event(
             "game_draw",
             .{
-                systems.DrawSystems.Rectangle,
-                ecez.DependOn(systems.DrawSystems.StaticTexture, .{systems.DrawSystems.Rectangle}),
-                ecez.DependOn(systems.DrawSystems.Circle, .{systems.DrawSystems.StaticTexture}),
+                DrawSystems.Rectangle,
+                ecez.DependOn(DrawSystems.StaticTexture, .{DrawSystems.Rectangle}),
+                ecez.DependOn(DrawSystems.Circle, .{DrawSystems.StaticTexture}),
             },
-            systems.DrawSystems.Context,
+            DrawSystems.Context,
         ),
     },
 );
@@ -79,7 +83,7 @@ pub fn main() anyerror!void {
         0,
     );
 
-    const player_entity = try create_player_blk: {
+    const player_entity = create_player_blk: {
         const Player = struct {
             pos: components.Position,
             scale: components.Scale,
@@ -97,7 +101,7 @@ pub fn main() anyerror!void {
         const width = @as(f32, @floatFromInt(200)) * scale;
         const height = @as(f32, @floatFromInt(200)) * scale;
 
-        break :create_player_blk storage.createEntity(Player{
+        const player = try storage.createEntity(Player{
             .pos = components.Position{ .vec = zm.f32x4(
                 room_center[0] - width,
                 room_center[1] - height,
@@ -124,6 +128,34 @@ pub fn main() anyerror!void {
             },
             .player_tag = components.PlayerTag{},
         });
+
+        const PlayerParts = struct {
+            pos: components.Position,
+            scale: components.Scale,
+            vel: components.Velocity,
+            texture: components.Texture,
+            orientation_texture: components.OrientationTexture,
+            child_of: components.ChildOf,
+        };
+        // hat
+        _ = try storage.createEntity(PlayerParts{
+            .pos = components.Position{ .vec = zm.f32x4s(0) },
+            .scale = components.Scale{ .value = 1 },
+            .vel = components.Velocity{ .vec = zm.f32x4s(0) },
+            .texture = components.Texture{
+                .index = @intFromEnum(TextureRepo.which.Hat0001),
+            },
+            .orientation_texture = components.OrientationTexture{
+                .start_texture_index = @intFromEnum(TextureRepo.which.Hat0001),
+            },
+            .child_of = components.ChildOf{
+                .parent = player,
+                .offset_x = 0,
+                .offset_y = 0,
+            },
+        });
+
+        break :create_player_blk player;
     };
 
     // Create camera
@@ -241,10 +273,13 @@ pub fn main() anyerror!void {
             }
 
             // system update dispatch
-            scheduler.dispatchEvent(&storage, .game_update, .{});
+            const update_context = UpdateSystems.Context{
+                .storage = storage,
+            };
+            scheduler.dispatchEvent(&storage, .game_update, update_context);
             scheduler.waitEvent(.game_update);
 
-            try storage.flushStorageQueue();
+            try storage.flushStorageQueue(); // flush any edits which occured in dispatch game_update
         }
 
         {
@@ -276,7 +311,10 @@ pub fn main() anyerror!void {
 
                 rl.clearBackground(rl.Color.ray_white);
 
-                scheduler.dispatchEvent(&storage, .game_draw, systems.DrawSystems.Context{ .texture_repo = &texture_repo.textures });
+                const draw_context = DrawSystems.Context{
+                    .texture_repo = &texture_repo.textures,
+                };
+                scheduler.dispatchEvent(&storage, .game_draw, draw_context);
                 scheduler.waitEvent(.game_draw);
                 // player_sprite.drawEx(rl.Vector2{ .x = debug_player_rect.x, .y = debug_player_rect.y }, 0, player_scale, rl.Color.white);
             }
