@@ -26,6 +26,7 @@ pub const all = .{
     Health,
     DiedThisFrameTag,
     BloodSplatterGroundTag,
+    BloodGoreGroundTag,
 };
 
 pub const Position = struct {
@@ -87,6 +88,7 @@ pub const OrientationTexture = packed struct {
 };
 
 pub const AnimTexture = struct {
+    start_frame: u8,
     current_frame: u8,
     frame_count: u8,
     frames_per_frame: u8,
@@ -127,3 +129,4 @@ pub const Health = struct {
 
 pub const DiedThisFrameTag = struct {};
 pub const BloodSplatterGroundTag = struct {};
+pub const BloodGoreGroundTag = struct {};

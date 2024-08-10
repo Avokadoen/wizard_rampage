@@ -483,6 +483,23 @@ pub fn CreateUpdateSystems(Storage: type) type {
             }
         };
 
+        pub const AnimateTexture = struct {
+            pub fn animateTexture(
+                texture: *components.Texture,
+                anim: *components.AnimTexture,
+                _: ecez.ExcludeEntityWith(.{components.OrientationTexture}),
+            ) void {
+                if (anim.frames_drawn_current_frame >= anim.frames_per_frame) {
+                    anim.frames_drawn_current_frame = 0;
+                    anim.current_frame = @mod((anim.current_frame + 1), anim.frame_count);
+                    texture.index = anim.start_frame + anim.current_frame;
+                }
+
+                // TODO: if we split update and draw tick then this must be moved to draw
+                anim.frames_drawn_current_frame += 1;
+            }
+        };
+
         pub const LifeTime = struct {
             pub fn lifeTime(
                 entity: ecez.Entity,
