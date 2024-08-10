@@ -36,6 +36,7 @@ pub const Scale = struct {
 
 pub const Velocity = struct {
     vec: zm.Vec,
+    drag: f32,
 };
 
 pub const RectangleCollider = struct {

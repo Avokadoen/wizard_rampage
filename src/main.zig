@@ -109,7 +109,10 @@ pub fn main() anyerror!void {
                 0,
             ) },
             .scale = components.Scale{ .value = scale },
-            .vel = components.Velocity{ .vec = zm.f32x4s(0) },
+            .vel = components.Velocity{
+                .vec = zm.f32x4s(0),
+                .drag = 0.94,
+            },
             .col = components.RectangleCollider{
                 .width = width,
                 .height = height,
@@ -141,7 +144,10 @@ pub fn main() anyerror!void {
         _ = try storage.createEntity(PlayerParts{
             .pos = components.Position{ .vec = zm.f32x4s(0) },
             .scale = components.Scale{ .value = 1 },
-            .vel = components.Velocity{ .vec = zm.f32x4s(0) },
+            .vel = components.Velocity{
+                .vec = zm.f32x4s(0),
+                .drag = 1,
+            },
             .texture = components.Texture{
                 .index = @intFromEnum(TextureRepo.which.Hat0001),
             },
