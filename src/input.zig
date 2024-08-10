@@ -79,10 +79,13 @@ fn fireProjectile(pos: components.Position, vel: zm.Vec, fire_rate: *components.
         texture: components.Texture,
         tag: components.DrawCircleTag,
         life_time: components.LifeTime,
+        projectile: components.Projectile,
     };
     if (fire_rate.cooldown_fire_rate == 0) {
+        const proj_offset = zm.normalize2(vel) * @as(zm.Vec, @splat(50));
+
         _ = storage.createEntity(Projectile{
-            .pos = pos,
+            .pos = components.Position{ .vec = pos.vec + proj_offset },
             .vel = components.Velocity{ .vec = vel, .drag = 0.98 },
             .collider = components.CircleCollider{
                 .radius = 30,
@@ -95,6 +98,10 @@ fn fireProjectile(pos: components.Position, vel: zm.Vec, fire_rate: *components.
             .tag = components.DrawCircleTag{},
             .life_time = components.LifeTime{
                 .value = 1.3,
+            },
+            .projectile = components.Projectile{
+                .dmg = 15,
+                .weight = 300,
             },
         }) catch (@panic("rip projectiles"));
         fire_rate.cooldown_fire_rate = fire_rate.base_fire_rate;

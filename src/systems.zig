@@ -199,6 +199,55 @@ pub fn CreateUpdateSystems(Storage: type) type {
             }
         };
 
+        pub const ProjectileHitKillable = struct {
+            const QueryKillablesMov = Storage.Query(
+                struct {
+                    pos: components.Position,
+                    vel: *components.Velocity,
+                    col: components.RectangleCollider,
+                    health: *components.Health,
+                },
+                // exclude type
+                .{components.InactiveTag},
+            ).Iter;
+
+            const QueryKillablesImMov = Storage.Query(
+                struct {
+                    pos: components.Position,
+                    col: components.RectangleCollider,
+                    health: *components.Health,
+                },
+                // exclude type
+                .{ components.Velocity, components.InactiveTag },
+            ).Iter;
+
+            pub fn projectileHitKillable(
+                pos: components.Position,
+                vel: components.Velocity,
+                circle: components.CircleCollider,
+                proj: components.Projectile,
+                killable_iter_movable: *QueryKillablesMov,
+                killable_iter_immovable: *QueryKillablesImMov,
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
+                while (killable_iter_movable.next()) |killable| {
+                    if (physics.Intersection.circleAndRect(circle, pos, killable.col, killable.pos)) {
+                        if (killable.health.value <= 0) continue;
+
+                        killable.vel.vec += zm.normalize2(vel.vec) * @as(zm.Vec, @splat(proj.weight));
+                        killable.health.value -= proj.dmg;
+                    }
+                }
+
+                while (killable_iter_immovable.next()) |killable| {
+                    if (physics.Intersection.circleAndRect(circle, pos, killable.col, killable.pos)) {
+                        if (killable.health.value <= 0) continue;
+                        killable.health.value -= proj.dmg;
+                    }
+                }
+            }
+        };
+
         pub const UpdateCamera = struct {
             const QueryPlayer = Storage.Query(
                 struct {
