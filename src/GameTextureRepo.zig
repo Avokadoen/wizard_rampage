@@ -37,6 +37,9 @@ pub fn deinit(self: GameTextureRepo) void {
     inline for (self.blood_splatter_textures) |texture| {
         texture.unload();
     }
+    inline for (self.country_textures) |texture| {
+        texture.unload();
+    }
 }
 
 fn loadTextureGroup(comptime TextureEnum: type, comptime texture_group_path: []const u8) [@typeInfo(TextureEnum).Enum.fields.len]rl.Texture {
