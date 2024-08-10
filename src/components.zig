@@ -11,6 +11,7 @@ pub const all = .{
     Collision,
     DrawRectangleTag,
     Texture,
+    OrientationBasedDrawOrder,
     OrientationTexture,
     AnimTexture,
     DrawCircleTag,
@@ -57,8 +58,20 @@ pub const DrawRectangleTag = struct {};
 pub const DrawCircleTag = struct {};
 
 pub const Texture = struct {
+    pub const DrawOrder = enum {
+        o0,
+        o1,
+        o2,
+        o3,
+    };
+
     type: u8,
     index: u8,
+    draw_order: DrawOrder,
+};
+
+pub const OrientationBasedDrawOrder = struct {
+    draw_orders: [8]Texture.DrawOrder,
 };
 
 pub const OrientationTexture = packed struct {
@@ -69,6 +82,7 @@ pub const AnimTexture = packed struct {
     current_frame: u8,
     frame_count: u8,
     frames_per_frame: u8,
+    padding: u8,
 };
 
 pub const Camera = struct {

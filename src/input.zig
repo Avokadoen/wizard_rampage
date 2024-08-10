@@ -88,6 +88,7 @@ fn fireProjectile(pos: components.Position, vel: zm.Vec, fire_rate: *components.
             .texture = components.Texture{
                 .type = @intFromEnum(TextureRepo.texture_type.projectile),
                 .index = @intFromEnum(TextureRepo.which_projectile.Bolt0001),
+                .draw_order = .o3,
             },
             .tag = components.DrawCircleTag{},
             .life_time = components.LifeTime{

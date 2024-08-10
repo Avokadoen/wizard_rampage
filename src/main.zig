@@ -30,19 +30,31 @@ const Scheduler = ecez.CreateScheduler(
             ecez.DependOn(UpdateSystems.UpdateCamera, .{UpdateSystems.InherentFromParent}),
             ecez.DependOn(UpdateSystems.OrientTexture, .{UpdateSystems.InherentFromParent}),
             // end run in parallel
+            ecez.DependOn(UpdateSystems.OrientationBasedDrawOrder, .{UpdateSystems.OrientTexture}),
             // flush in game loop
         }, UpdateSystems.Context),
         ecez.Event(
             "game_draw",
             .{
+                // !! ALL SYSTEMS MUST BE DEPEND ON PREVIOUS FOR DRAW !!
                 DrawSystems.Rectangle,
-                ecez.DependOn(DrawSystems.StaticTexture, .{DrawSystems.Rectangle}),
-                ecez.DependOn(DrawSystems.Circle, .{DrawSystems.StaticTexture}),
+                ecez.DependOn(DrawSystems.StaticTextureOrder0, .{DrawSystems.Rectangle}),
+                ecez.DependOn(DrawSystems.StaticTextureOrder1, .{DrawSystems.StaticTextureOrder0}),
+                ecez.DependOn(DrawSystems.StaticTextureOrder2, .{DrawSystems.StaticTextureOrder1}),
+                ecez.DependOn(DrawSystems.StaticTextureOrder3, .{DrawSystems.StaticTextureOrder2}),
+                ecez.DependOn(DrawSystems.Circle, .{DrawSystems.StaticTextureOrder3}),
             },
             DrawSystems.Context,
         ),
     },
 );
+
+// Some hard-coded values for now! :D
+const player_scale: f32 = 0.4;
+const player_hit_box_width = @as(f32, @floatFromInt(65)) * player_scale;
+const player_hit_box_height = @as(f32, @floatFromInt(70)) * player_scale;
+const player_part_offset_x = -player_hit_box_width * 1.4;
+const player_part_offset_y = -player_hit_box_height * 1.6;
 
 pub fn main() anyerror!void {
     // Initialize window
@@ -89,47 +101,27 @@ pub fn main() anyerror!void {
             scale: components.Scale,
             vel: components.Velocity,
             col: components.RectangleCollider,
-            // tag: components.DrawRectangleTag,
             rec_tag: components.DrawRectangleTag,
-            texture: components.Texture,
-            orientation_texture: components.OrientationTexture,
-            fire_rate: components.FireRate,
             player_tag: components.PlayerTag,
         };
 
-        const scale: f32 = 0.4;
-        const width = @as(f32, @floatFromInt(200)) * scale;
-        const height = @as(f32, @floatFromInt(200)) * scale;
-
         const player = try storage.createEntity(Player{
             .pos = components.Position{ .vec = zm.f32x4(
-                room_center[0] - width,
-                room_center[1] - height,
+                room_center[0] - player_hit_box_width,
+                room_center[1] - player_hit_box_height,
                 0,
                 0,
             ) },
-            .scale = components.Scale{ .value = scale },
+            .scale = components.Scale{ .value = player_scale },
             .vel = components.Velocity{
                 .vec = zm.f32x4s(0),
-                .drag = 0.94,
+                .drag = 0.8,
             },
             .col = components.RectangleCollider{
-                .width = width,
-                .height = height,
-            },
-            // .tag = components.DrawRectangleTag{},
-            .texture = components.Texture{
-                .type = @intFromEnum(TextureRepo.texture_type.player),
-                .index = @intFromEnum(TextureRepo.which_player.Cloak0001),
-            },
-            .orientation_texture = components.OrientationTexture{
-                .start_texture_index = @intFromEnum(TextureRepo.which_player.Cloak0001),
+                .width = player_hit_box_width,
+                .height = player_hit_box_height,
             },
             .rec_tag = components.DrawRectangleTag{},
-            .fire_rate = components.FireRate{
-                .base_fire_rate = 60,
-                .cooldown_fire_rate = 0,
-            },
             .player_tag = components.PlayerTag{},
         });
 
@@ -141,7 +133,51 @@ pub fn main() anyerror!void {
             orientation_texture: components.OrientationTexture,
             child_of: components.ChildOf,
         };
-        // hat
+        // Cloak
+        _ = try storage.createEntity(PlayerParts{
+            .pos = components.Position{ .vec = zm.f32x4s(0) },
+            .scale = components.Scale{ .value = 1 },
+            .vel = components.Velocity{
+                .vec = zm.f32x4s(0),
+                .drag = 1,
+            },
+            .texture = components.Texture{
+                .type = @intFromEnum(TextureRepo.texture_type.player),
+                .index = @intFromEnum(TextureRepo.which_player.Cloak0001),
+                .draw_order = .o0,
+            },
+            .orientation_texture = components.OrientationTexture{
+                .start_texture_index = @intFromEnum(TextureRepo.which_player.Cloak0001),
+            },
+            .child_of = components.ChildOf{
+                .parent = player,
+                .offset_x = player_part_offset_x,
+                .offset_y = player_part_offset_y,
+            },
+        });
+        // Head
+        _ = try storage.createEntity(PlayerParts{
+            .pos = components.Position{ .vec = zm.f32x4s(0) },
+            .scale = components.Scale{ .value = 1 },
+            .vel = components.Velocity{
+                .vec = zm.f32x4s(0),
+                .drag = 1,
+            },
+            .texture = components.Texture{
+                .type = @intFromEnum(TextureRepo.texture_type.player),
+                .index = @intFromEnum(TextureRepo.which_player.Head0001),
+                .draw_order = .o1,
+            },
+            .orientation_texture = components.OrientationTexture{
+                .start_texture_index = @intFromEnum(TextureRepo.which_player.Head0001),
+            },
+            .child_of = components.ChildOf{
+                .parent = player,
+                .offset_x = player_part_offset_x,
+                .offset_y = player_part_offset_y,
+            },
+        });
+        // Hat
         _ = try storage.createEntity(PlayerParts{
             .pos = components.Position{ .vec = zm.f32x4s(0) },
             .scale = components.Scale{ .value = 1 },
@@ -152,18 +188,147 @@ pub fn main() anyerror!void {
             .texture = components.Texture{
                 .type = @intFromEnum(TextureRepo.texture_type.player),
                 .index = @intFromEnum(TextureRepo.which_player.Hat0001),
+                .draw_order = .o2,
             },
             .orientation_texture = components.OrientationTexture{
                 .start_texture_index = @intFromEnum(TextureRepo.which_player.Hat0001),
             },
             .child_of = components.ChildOf{
                 .parent = player,
-                .offset_x = 0,
-                .offset_y = 0,
+                .offset_x = player_part_offset_x,
+                .offset_y = player_part_offset_y,
+            },
+        });
+
+        const Hand = struct {
+            pos: components.Position,
+            scale: components.Scale,
+            vel: components.Velocity,
+            texture: components.Texture,
+            orientation_based_draw_order: components.OrientationBasedDrawOrder,
+            orientation_texture: components.OrientationTexture,
+            child_of: components.ChildOf,
+        };
+        // Left hand
+        _ = try storage.createEntity(Hand{
+            .pos = components.Position{ .vec = zm.f32x4s(0) },
+            .scale = components.Scale{ .value = 1 },
+            .vel = components.Velocity{
+                .vec = zm.f32x4s(0),
+                .drag = 1,
+            },
+            .texture = components.Texture{
+                .type = @intFromEnum(TextureRepo.texture_type.player),
+                .index = @intFromEnum(TextureRepo.which_player.Hand_L0001),
+                .draw_order = .o3,
+            },
+            .orientation_based_draw_order = components.OrientationBasedDrawOrder{
+                .draw_orders = [8]components.Texture.DrawOrder{
+                    .o1, // up
+                    .o3, // up_left
+                    .o3, // left
+                    .o3, // left_down
+                    .o1, // down
+                    .o0, // down_right
+                    .o0, // right
+                    .o1, // up_right
+                },
+            },
+            .orientation_texture = components.OrientationTexture{
+                .start_texture_index = @intFromEnum(TextureRepo.which_player.Hand_L0001),
+            },
+            .child_of = components.ChildOf{
+                .parent = player,
+                .offset_x = player_part_offset_x,
+                .offset_y = player_part_offset_y,
+            },
+        });
+        // Right hand
+        _ = try storage.createEntity(Hand{
+            .pos = components.Position{ .vec = zm.f32x4s(0) },
+            .scale = components.Scale{ .value = 1 },
+            .vel = components.Velocity{
+                .vec = zm.f32x4s(0),
+                .drag = 1,
+            },
+            .texture = components.Texture{
+                .type = @intFromEnum(TextureRepo.texture_type.player),
+                .index = @intFromEnum(TextureRepo.which_player.Hand_R0001),
+                .draw_order = .o3,
+            },
+            .orientation_based_draw_order = components.OrientationBasedDrawOrder{
+                .draw_orders = [8]components.Texture.DrawOrder{
+                    .o2, // up
+                    .o1, // up_left
+                    .o0, // left
+                    .o1, // left_down
+                    .o2, // down
+                    .o3, // down_right
+                    .o3, // right
+                    .o3, // up_right
+                },
+            },
+            .orientation_texture = components.OrientationTexture{
+                .start_texture_index = @intFromEnum(TextureRepo.which_player.Hand_R0001),
+            },
+            .child_of = components.ChildOf{
+                .parent = player,
+                .offset_x = player_part_offset_x,
+                .offset_y = player_part_offset_y,
             },
         });
 
         break :create_player_blk player;
+    };
+
+    const player_staff_entity = create_player_staff_blk: {
+        const Staff = struct {
+            pos: components.Position,
+            scale: components.Scale,
+            vel: components.Velocity,
+            texture: components.Texture,
+            orientation_based_draw_order: components.OrientationBasedDrawOrder,
+            orientation_texture: components.OrientationTexture,
+            fire_rate: components.FireRate,
+            child_of: components.ChildOf,
+        };
+        break :create_player_staff_blk try storage.createEntity(Staff{
+            .pos = components.Position{ .vec = zm.f32x4s(0) },
+            .scale = components.Scale{ .value = 1 },
+            .vel = components.Velocity{
+                .vec = zm.f32x4s(0),
+                .drag = 1,
+            },
+            .texture = components.Texture{
+                .type = @intFromEnum(TextureRepo.texture_type.player),
+                .index = @intFromEnum(TextureRepo.which_player.Staff0001),
+                .draw_order = .o1,
+            },
+            .orientation_based_draw_order = components.OrientationBasedDrawOrder{
+                .draw_orders = [8]components.Texture.DrawOrder{
+                    .o1, // up
+                    .o0, // up_left
+                    .o0, // left
+                    .o0, // left_down
+                    .o1, // down
+                    .o1, // down_right
+                    .o2, // right
+                    .o2, // up_right
+                },
+            },
+            .orientation_texture = components.OrientationTexture{
+                .start_texture_index = @intFromEnum(TextureRepo.which_player.Staff0001),
+            },
+            .fire_rate = components.FireRate{
+                .base_fire_rate = 60,
+                .cooldown_fire_rate = 0,
+            },
+            .child_of = components.ChildOf{
+                .parent = player_entity,
+                .offset_x = player_part_offset_x,
+                .offset_y = player_part_offset_y,
+            },
+        });
     };
 
     // Create camera
@@ -172,7 +337,6 @@ pub fn main() anyerror!void {
             pos: components.Position,
             scale: components.Scale,
             camera: components.Camera,
-            // Anim,
         };
 
         break :create_camera_blk storage.createEntity(Camera{
@@ -318,7 +482,7 @@ pub fn main() anyerror!void {
             {
                 const player_pos_ptr = try storage.getComponent(player_entity, *components.Position);
                 const player_vec_ptr = try storage.getComponent(player_entity, *components.Velocity);
-                const player_fire_rate = try storage.getComponent(player_entity, *components.FireRate);
+                const player_fire_rate = try storage.getComponent(player_staff_entity, *components.FireRate);
                 inline for (input.key_down_actions) |input_action| {
                     if (rl.isKeyDown(input_action.key)) {
                         input_action.callback(player_pos_ptr, player_vec_ptr, player_fire_rate, &storage);
@@ -370,6 +534,7 @@ pub fn main() anyerror!void {
                         &texture_repo.player_textures,
                         &texture_repo.projectile_textures,
                     },
+                    .storage = storage,
                 };
                 scheduler.dispatchEvent(&storage, .game_draw, draw_context);
                 scheduler.waitEvent(.game_draw);
