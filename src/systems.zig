@@ -226,6 +226,15 @@ pub fn CreateUpdateSystems(Storage: type) type {
             }
         };
 
+        pub const RotateAfterVelocity = struct {
+            pub fn rotateAfterVelocity(rotation: *components.Rotation, vel: components.Velocity) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
+                rotation.value = std.math.radiansToDegrees(std.math.atan2(vel.vec[1], vel.vec[0]));
+            }
+        };
+
         pub const ProjectileHitKillable = struct {
             const QueryKillablesMov = Storage.Query(
                 struct {

@@ -74,6 +74,7 @@ fn shootLeft(pos: *components.Position, vel: *components.Velocity, fire_rate: *c
 fn fireProjectile(pos: components.Position, vel: zm.Vec, fire_rate: *components.FireRate, storage: anytype) void {
     const Projectile = struct {
         pos: components.Position,
+        rot: components.Rotation,
         vel: components.Velocity,
         collider: components.CircleCollider,
         texture: components.Texture,
@@ -86,6 +87,7 @@ fn fireProjectile(pos: components.Position, vel: zm.Vec, fire_rate: *components.
 
         _ = storage.createEntity(Projectile{
             .pos = components.Position{ .vec = pos.vec + proj_offset },
+            .rot = components.Rotation{ .value = 0 },
             .vel = components.Velocity{ .vec = vel, .drag = 0.98 },
             .collider = components.CircleCollider{
                 .radius = 30,
