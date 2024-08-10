@@ -261,11 +261,57 @@ pub fn main() anyerror!void {
     }
 
     rl.setTargetFPS(60); // Set our game to run at 60 frames-per-second
-    //const delta_time: f32 = 1 / 60;
+    const delta_time: f32 = 1 / 60;
+    _ = delta_time; // autofix
     //--------------------------------------------------------------------------------------
+    const main_menu = true;
 
+    var anim_frames: i32 = 0;
+
+    const im_scarfy_anim = rl.loadImageAnim("resources/textures/main_menu/main_menu_background.gif", &anim_frames);
+
+    const tex_scarfy_anim = rl.loadTextureFromImage(im_scarfy_anim);
+
+    var current_anim_frame: i32 = 0;
+
+    var next_frame_data_offset: i32 = 0;
+    const frame_delay: i32 = 8;
+    var frame_counter: i32 = 0;
     // Main game loop
     while (!rl.windowShouldClose()) { // Detect window close button or ESC key
+
+        if (main_menu) {
+            // Start draw
+            rl.beginDrawing();
+            defer rl.endDrawing();
+            frame_counter += 1;
+
+            rl.clearBackground(rl.Color.ray_white);
+
+            const rect_texture = rl.Rectangle{
+                .x = 0,
+                .y = 0,
+                .height = @floatFromInt(tex_scarfy_anim.height),
+                .width = @floatFromInt(tex_scarfy_anim.width),
+            };
+            const rect_render_target = rl.Rectangle{
+                .x = 0,
+                .y = 0,
+                .height = window_height,
+                .width = window_width,
+            };
+            const center = rl.Vector2{ .x = 0, .y = 0 };
+
+            rl.drawTexturePro(tex_scarfy_anim, rect_texture, rect_render_target, center, 0, rl.Color.white);
+            next_frame_data_offset = im_scarfy_anim.width * im_scarfy_anim.height * 4 * current_anim_frame;
+            const bytes = @as([*]const u8, @ptrCast(im_scarfy_anim.data));
+            rl.updateTexture(tex_scarfy_anim, bytes[@intCast(next_frame_data_offset)..]);
+            if (frame_counter >= frame_delay) {
+                current_anim_frame = @mod((current_anim_frame + 1), anim_frames);
+                frame_counter = 0;
+            }
+            continue;
+        }
         // Update
         {
             // Input handling
