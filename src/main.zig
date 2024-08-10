@@ -813,7 +813,7 @@ pub fn main() anyerror!void {
                                         .texture = components.Texture{
                                             .type = @intFromEnum(GameTextureRepo.texture_type.blood_splatter),
                                             .index = @intFromEnum(GameTextureRepo.which_bloodsplat.Blood_Splat),
-                                            .draw_order = .o1,
+                                            .draw_order = .o0,
                                         },
                                         .blood_splatter_tag = .{},
                                         .lifetime = components.LifeTime{ .value = lifetime },
