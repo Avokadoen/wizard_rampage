@@ -14,7 +14,7 @@ pub fn CreateDrawSystems(Storage: type) type {
 
     return struct {
         pub const Context = struct {
-            texture_repo: []const rl.Texture,
+            texture_repo: []const []const rl.Texture,
         };
 
         pub const Rectangle = struct {
@@ -56,7 +56,7 @@ pub fn CreateDrawSystems(Storage: type) type {
                 draw_context: Context,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
-                const texture = draw_context.texture_repo[static_texture.index];
+                const texture = draw_context.texture_repo[static_texture.type][static_texture.index];
                 rl.drawTexture(texture, @intFromFloat(pos.vec[0]), @intFromFloat(pos.vec[1]), rl.Color.white);
             }
         };
@@ -127,6 +127,7 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 _: ecez.ExcludeEntityWith(.{ components.InactiveTag, components.ChildOf }),
             ) void {
                 pos.vec += vel.vec * @as(zm.Vec, @splat(delta_time));
+                vel.vec = vel.vec * @as(zm.Vec, @splat(vel.drag));
             }
         };
 

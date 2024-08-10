@@ -119,10 +119,11 @@ pub fn main() anyerror!void {
             },
             // .tag = components.DrawRectangleTag{},
             .texture = components.Texture{
-                .index = @intFromEnum(TextureRepo.which.Cloak0001),
+                .type = @intFromEnum(TextureRepo.texture_type.player),
+                .index = @intFromEnum(TextureRepo.which_player.Cloak0001),
             },
             .orientation_texture = components.OrientationTexture{
-                .start_texture_index = @intFromEnum(TextureRepo.which.Cloak0001),
+                .start_texture_index = @intFromEnum(TextureRepo.which_player.Cloak0001),
             },
             .rec_tag = components.DrawRectangleTag{},
             .fire_rate = components.FireRate{
@@ -146,13 +147,14 @@ pub fn main() anyerror!void {
             .scale = components.Scale{ .value = 1 },
             .vel = components.Velocity{
                 .vec = zm.f32x4s(0),
-                .drag = 1,
+                .drag = 0.94,
             },
             .texture = components.Texture{
-                .index = @intFromEnum(TextureRepo.which.Hat0001),
+                .type = @intFromEnum(TextureRepo.texture_type.player),
+                .index = @intFromEnum(TextureRepo.which_player.Hat0001),
             },
             .orientation_texture = components.OrientationTexture{
-                .start_texture_index = @intFromEnum(TextureRepo.which.Hat0001),
+                .start_texture_index = @intFromEnum(TextureRepo.which_player.Hat0001),
             },
             .child_of = components.ChildOf{
                 .parent = player,
@@ -318,7 +320,10 @@ pub fn main() anyerror!void {
                 rl.clearBackground(rl.Color.ray_white);
 
                 const draw_context = DrawSystems.Context{
-                    .texture_repo = &texture_repo.textures,
+                    .texture_repo = &[_][]const rl.Texture{
+                        &texture_repo.player_textures,
+                        &texture_repo.projectile_textures,
+                    },
                 };
                 scheduler.dispatchEvent(&storage, .game_draw, draw_context);
                 scheduler.waitEvent(.game_draw);

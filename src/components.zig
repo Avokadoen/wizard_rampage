@@ -56,7 +56,10 @@ pub const Collision = struct {
 pub const DrawRectangleTag = struct {};
 pub const DrawCircleTag = struct {};
 
-pub const Texture = struct { index: u8 };
+pub const Texture = struct {
+    type: u8,
+    index: u8,
+};
 
 pub const OrientationTexture = packed struct {
     start_texture_index: u8,
