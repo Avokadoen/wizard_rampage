@@ -5,30 +5,19 @@ const GameTextureRepo = @This();
 player_textures: [72]rl.Texture,
 projectile_textures: [15]rl.Texture,
 farmer_textures: [48]rl.Texture,
+blood_splatter_textures: [9]rl.Texture,
 
 pub fn init() GameTextureRepo {
-    var player_textures: [72]rl.Texture = undefined;
-    const which_player_info = @typeInfo(which_player);
-    inline for (which_player_info.Enum.fields, &player_textures) |which_texture, *texture| {
-        texture.* = rl.loadTexture("resources/textures/player/" ++ which_texture.name ++ ".png");
-    }
-
-    var projectile_textures: [15]rl.Texture = undefined;
-    const which_projectile_info = @typeInfo(which_projectile);
-    inline for (which_projectile_info.Enum.fields, &projectile_textures) |which_texture, *texture| {
-        texture.* = rl.loadTexture("resources/textures/projectiles/" ++ which_texture.name ++ ".png");
-    }
-
-    var farmer_textures: [48]rl.Texture = undefined;
-    const which_farmer_info = @typeInfo(which_farmer);
-    inline for (which_farmer_info.Enum.fields, &farmer_textures) |which_texture, *texture| {
-        texture.* = rl.loadTexture("resources/textures/farmer/" ++ which_texture.name ++ ".png");
-    }
+    const player_textures = loadTextureGroup(which_player, "resources/textures/player/");
+    const projectile_textures = loadTextureGroup(which_projectile, "resources/textures/projectiles/");
+    const farmer_textures = loadTextureGroup(which_farmer, "resources/textures/farmer/");
+    const blood_splatter_textures = loadTextureGroup(which_bloodsplat, "resources/textures/effects/bloodsplat/");
 
     return GameTextureRepo{
         .player_textures = player_textures,
         .projectile_textures = projectile_textures,
         .farmer_textures = farmer_textures,
+        .blood_splatter_textures = blood_splatter_textures,
     };
 }
 
@@ -36,20 +25,33 @@ pub fn deinit(self: GameTextureRepo) void {
     inline for (self.player_textures) |texture| {
         texture.unload();
     }
-
     inline for (self.projectile_textures) |texture| {
         texture.unload();
     }
-
     inline for (self.farmer_textures) |texture| {
         texture.unload();
     }
+    inline for (self.blood_splatter_textures) |texture| {
+        texture.unload();
+    }
+}
+
+fn loadTextureGroup(comptime TextureEnum: type, comptime texture_group_path: []const u8) [@typeInfo(TextureEnum).Enum.fields.len]rl.Texture {
+    const enum_fields = @typeInfo(TextureEnum).Enum.fields;
+
+    var blood_splatter_textures: [enum_fields.len]rl.Texture = undefined;
+    inline for (enum_fields, &blood_splatter_textures) |which_texture, *texture| {
+        texture.* = rl.loadTexture(texture_group_path ++ which_texture.name ++ ".png");
+    }
+
+    return blood_splatter_textures;
 }
 
 pub const texture_type = enum {
     player,
     projectile,
     farmer,
+    blood_splatter,
 };
 
 pub const which_player = enum {
@@ -192,4 +194,15 @@ pub const which_farmer = enum {
     Farmer_Pitchfork0006,
     Farmer_Pitchfork0007,
     Farmer_Pitchfork0008,
+};
+pub const which_bloodsplat = enum {
+    Blood_Splat,
+    Blood_Splat0001,
+    Blood_Splat0002,
+    Blood_Splat0003,
+    Blood_Splat0004,
+    Blood_Splat0005,
+    Blood_Splat0006,
+    Blood_Splat0007,
+    Blood_Splat0008,
 };

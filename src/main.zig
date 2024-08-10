@@ -695,6 +695,57 @@ pub fn main() anyerror!void {
                         scheduler.waitEvent(.game_update);
 
                         try storage.flushStorageQueue(); // flush any edits which occured in dispatch game_update
+
+                        // Spawn blood splatter
+                        {
+                            const BloodSplatter = struct {
+                                pos: components.Position,
+                                texture: components.Texture,
+                                lifetime: components.LifeTime,
+                                blood_splatter_tag: components.BloodSplatterGroundTag,
+                            };
+
+                            const InactiveBloodSplatterQuery = Storage.Query(struct {
+                                entity: ecez.Entity,
+                                pos: components.Position,
+                                texture: components.Texture,
+                                lifetime: components.LifeTime,
+                                inactive_tag: components.InactiveTag,
+                                blood_splatter_tag: components.BloodSplatterGroundTag,
+                            }, .{});
+                            var inactive_blood_iter = InactiveBloodSplatterQuery.submit(&storage);
+
+                            const DiedThisFrameQuery = Storage.Query(struct {
+                                entity: ecez.Entity,
+                                pos: components.Position,
+                                died: components.DiedThisFrameTag,
+                            }, .{});
+                            var died_this_frame_iter = DiedThisFrameQuery.submit(&storage);
+
+                            const lifetime: f32 = 6;
+                            while (died_this_frame_iter.next()) |dead_this_frame| {
+                                if (inactive_blood_iter.next()) |inactive_blood_splatter| {
+                                    try storage.removeComponent(inactive_blood_splatter.entity, components.InactiveTag);
+                                    try storage.setComponent(inactive_blood_splatter.entity, dead_this_frame.pos);
+                                    try storage.setComponent(inactive_blood_splatter.entity, components.LifeTime{ .value = lifetime });
+                                } else {
+                                    _ = try storage.createEntity(BloodSplatter{
+                                        .pos = dead_this_frame.pos,
+                                        .texture = components.Texture{
+                                            .type = @intFromEnum(GameTextureRepo.texture_type.blood_splatter),
+                                            .index = @intFromEnum(GameTextureRepo.which_bloodsplat.Blood_Splat),
+                                            .draw_order = .o1,
+                                        },
+                                        .blood_splatter_tag = .{},
+                                        .lifetime = components.LifeTime{ .value = lifetime },
+                                    });
+                                }
+
+                                try storage.queueRemoveComponent(dead_this_frame.entity, components.DiedThisFrameTag);
+                            }
+
+                            try storage.flushStorageQueue();
+                        }
                     }
 
                     {
@@ -727,10 +778,11 @@ pub fn main() anyerror!void {
                             rl.clearBackground(rl.Color.ray_white);
 
                             const draw_context = DrawSystems.Context{
-                                .texture_repo = [_][]const rl.Texture{
+                                .texture_repo = &[_][]const rl.Texture{
                                     &texture_repo.player_textures,
                                     &texture_repo.projectile_textures,
                                     &texture_repo.farmer_textures,
+                                    &texture_repo.blood_splatter_textures,
                                 },
                                 .storage = storage,
                             };

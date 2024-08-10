@@ -12,7 +12,7 @@ const delta_time: f32 = 1.0 / 60.0;
 pub fn CreateDrawSystems(Storage: type) type {
     return struct {
         pub const Context = struct {
-            texture_repo: [3][]const rl.Texture,
+            texture_repo: []const []const rl.Texture,
             storage: Storage,
         };
 
@@ -139,7 +139,7 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 a_vel: *components.Velocity,
                 a_col: components.RectangleCollider,
                 immovable_iter: *QueryImmovableRecColliders,
-                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+                _: ecez.ExcludeEntityWith(.{ components.InactiveTag, components.Projectile }),
             ) void {
                 while (immovable_iter.next()) |b| {
                     const maybe_collision = physics.Intersection.rectAndRectResolve(
@@ -170,13 +170,13 @@ pub fn CreateUpdateSystems(Storage: type) type {
                     components.InactiveTag,
                 },
             ).Iter;
-            pub fn movableToImmovableRecToRecCollisionResolve(
+            pub fn novableToMovableRecToRecCollisionResolve(
                 a_pos: *components.Position,
                 a_vel: *components.Velocity,
                 a_col: components.RectangleCollider,
                 invocation_count: ecez.InvocationCount,
                 immovable_iter: *QueryMovableRecColliders,
-                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+                _: ecez.ExcludeEntityWith(.{ components.InactiveTag, components.Projectile }),
             ) void {
                 // skip previous colliders
                 immovable_iter.skip(invocation_count.number + 1);
@@ -256,6 +256,7 @@ pub fn CreateUpdateSystems(Storage: type) type {
             ) void {
                 if (health.value <= 0) {
                     edit_queue.queueSetComponent(entity, components.InactiveTag{}) catch @panic("registerDead: wtf");
+                    edit_queue.queueSetComponent(entity, components.DiedThisFrameTag{}) catch @panic("registerDead: wtf");
                 }
             }
         };

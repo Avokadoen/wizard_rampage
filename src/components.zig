@@ -24,6 +24,8 @@ pub const all = .{
     HostileTag,
     Projectile,
     Health,
+    DiedThisFrameTag,
+    BloodSplatterGroundTag,
 };
 
 pub const Position = struct {
@@ -119,3 +121,6 @@ pub const Health = struct {
     max: i32,
     value: i32,
 };
+
+pub const DiedThisFrameTag = struct {};
+pub const BloodSplatterGroundTag = struct {};
