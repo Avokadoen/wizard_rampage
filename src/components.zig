@@ -14,7 +14,10 @@ pub const all = .{
     AnimTexture,
     DrawCircleTag,
     Camera,
+    FireRate,
     PlayerTag,
+    LifeTime,
+    InactiveTag,
 };
 
 pub const Position = struct {
@@ -66,4 +69,13 @@ pub const Camera = struct {
     width: f32,
     height: f32,
 };
+pub const FireRate = struct {
+    base_fire_rate: u8,
+    cooldown_fire_rate: u8,
+};
 pub const PlayerTag = struct {};
+
+pub const LifeTime = struct {
+    value: f32,
+};
+pub const InactiveTag = struct {};

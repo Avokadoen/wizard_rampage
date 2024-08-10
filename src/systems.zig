@@ -7,13 +7,20 @@ const zm = @import("zmath");
 const physics = @import("physics_2d.zig");
 const components = @import("components.zig");
 
+const delta_time: f32 = 1.0 / 60.0;
+
 pub const DrawSystems = struct {
     pub const Context = struct {
         texture_repo: []const rl.Texture,
     };
 
     pub const Rectangle = struct {
-        pub fn draw(pos: components.Position, rectangle: components.RectangleCollider, draw_rectangle_tag: components.DrawRectangleTag) void {
+        pub fn draw(
+            pos: components.Position,
+            rectangle: components.RectangleCollider,
+            draw_rectangle_tag: components.DrawRectangleTag,
+            _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+        ) void {
             _ = draw_rectangle_tag;
 
             const draw_rectangle = rl.Rectangle{
@@ -28,14 +35,24 @@ pub const DrawSystems = struct {
     };
 
     pub const Circle = struct {
-        pub fn draw(pos: components.Position, circle: components.CircleCollider, _: components.DrawCircleTag) void {
+        pub fn draw(
+            pos: components.Position,
+            circle: components.CircleCollider,
+            _: components.DrawCircleTag,
+            _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+        ) void {
             rl.drawCircle(@intFromFloat(pos.vec[0]), @intFromFloat(pos.vec[1]), circle.radius, rl.Color.blue);
         }
     };
 
     pub const StaticTexture = struct {
         // TODO: account for scale and rotation
-        pub fn draw(pos: components.Position, static_texture: components.Texture, draw_context: Context) void {
+        pub fn draw(
+            pos: components.Position,
+            static_texture: components.Texture,
+            draw_context: Context,
+            _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+        ) void {
             const texture = draw_context.texture_repo[static_texture.index];
             rl.drawTexture(texture, @intFromFloat(pos.vec[0]), @intFromFloat(pos.vec[1]), rl.Color.white);
         }
@@ -51,7 +68,10 @@ pub fn CreateUpdateSystems(Storage: type) type {
                     col: components.RectangleCollider,
                 },
                 // exclude type
-                .{components.Velocity},
+                .{
+                    components.Velocity,
+                    components.InactiveTag,
+                },
             ).Iter;
             pub fn movableToImmovableRecToRecCollisionResolve(
                 a_pos: *components.Position,
@@ -92,14 +112,22 @@ pub fn CreateUpdateSystems(Storage: type) type {
             }
         };
         pub const UpdateVelocity = struct {
-            pub fn updatePositionBasedOnVelocity(pos: *components.Position, vel: components.Velocity) void {
-                const delta_time: f32 = 1.0 / 60.0;
+            pub fn updatePositionBasedOnVelocity(
+                pos: *components.Position,
+                vel: components.Velocity,
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
                 pos.vec += vel.vec * @as(zm.Vec, @splat(delta_time));
             }
         };
 
         pub const OrientTexture = struct {
-            pub fn orientTexture(velocity: components.Velocity, texture: *components.Texture, orientation_texture: components.OrientationTexture) void {
+            pub fn orientTexture(
+                velocity: components.Velocity,
+                texture: *components.Texture,
+                orientation_texture: components.OrientationTexture,
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
                 {
                     // early out if velocity is none
                     const speed_estimate = zm.lengthSq2(velocity.vec)[0];
@@ -128,6 +156,31 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 }
 
                 texture.index = @intCast(orientation_texture.start_texture_index + smalled_index);
+            }
+        };
+
+        pub const LifeTime = struct {
+            pub fn lifeTime(
+                entity: ecez.Entity,
+                life_time: *components.LifeTime,
+                storage_edit: *Storage.StorageEditQueue,
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
+                if (life_time.value <= 0) {
+                    storage_edit.queueSetComponent(entity, components.InactiveTag{}) catch (@panic("oom"));
+                }
+                life_time.value -= delta_time;
+            }
+        };
+
+        pub const FireRate = struct {
+            pub fn fireRate(
+                fire_rate: *components.FireRate,
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
+                if (fire_rate.cooldown_fire_rate > 0) {
+                    fire_rate.cooldown_fire_rate -= 5;
+                }
             }
         };
     };

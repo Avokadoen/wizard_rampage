@@ -3,92 +3,98 @@ const components = @import("components.zig");
 const ecez = @import("ecez");
 const zm = @import("zmath");
 const delta_time: f32 = 1.0 / 60.0;
-fn moveUp(_: *components.Position, vel: *components.Velocity, _: anytype) void {
+fn moveUp(_: *components.Position, vel: *components.Velocity, _: *components.FireRate, _: anytype) void {
     vel.vec[1] -= 10;
     if (vel.vec[1] > -500) {
         vel.vec[1] -= 100;
     }
 }
 
-fn moveDown(_: *components.Position, vel: *components.Velocity, _: anytype) void {
+fn moveDown(_: *components.Position, vel: *components.Velocity, _: *components.FireRate, _: anytype) void {
     if (vel.vec[1] < 500) {
         vel.vec[1] += 100;
     }
 }
 
-fn moveRight(_: *components.Position, vel: *components.Velocity, _: anytype) void {
+fn moveRight(_: *components.Position, vel: *components.Velocity, _: *components.FireRate, _: anytype) void {
     if (vel.vec[0] < 500) {
         vel.vec[0] += 100;
     }
 }
 
-fn moveLeft(_: *components.Position, vel: *components.Velocity, _: anytype) void {
+fn moveLeft(_: *components.Position, vel: *components.Velocity, _: *components.FireRate, _: anytype) void {
     if (vel.vec[0] > -500) {
         vel.vec[0] -= 100;
     }
 }
 
-fn shootUp(pos: *components.Position, vel: *components.Velocity, storage: anytype) void {
+fn shootUp(pos: *components.Position, vel: *components.Velocity, fire_rate: *components.FireRate, storage: anytype) void {
     const projectile_vel = zm.f32x4(
         0,
         -1000 + vel.vec[1],
         0,
         0,
     );
-    fireProjectile(pos.*, storage, projectile_vel);
+    fireProjectile(pos.*, projectile_vel, fire_rate, storage);
 }
 
-fn shootDown(pos: *components.Position, vel: *components.Velocity, storage: anytype) void {
+fn shootDown(pos: *components.Position, vel: *components.Velocity, fire_rate: *components.FireRate, storage: anytype) void {
     const projectile_vel = zm.f32x4(
         0,
         1000 + vel.vec[1],
         0,
         0,
     );
-    fireProjectile(pos.*, storage, projectile_vel);
+    fireProjectile(pos.*, projectile_vel, fire_rate, storage);
 }
 
-fn shootRight(pos: *components.Position, vel: *components.Velocity, storage: anytype) void {
+fn shootRight(pos: *components.Position, vel: *components.Velocity, fire_rate: *components.FireRate, storage: anytype) void {
     const projectile_vel = zm.f32x4(
         1000 + vel.vec[0],
         0,
         0,
         0,
     );
-    fireProjectile(pos.*, storage, projectile_vel);
+    fireProjectile(pos.*, projectile_vel, fire_rate, storage);
 }
 
-fn shootLeft(pos: *components.Position, vel: *components.Velocity, storage: anytype) void {
+fn shootLeft(pos: *components.Position, vel: *components.Velocity, fire_rate: *components.FireRate, storage: anytype) void {
     const projectile_vel = zm.f32x4(
         -1000 + vel.vec[0],
         0,
         0,
         0,
     );
-    fireProjectile(pos.*, storage, projectile_vel);
+    fireProjectile(pos.*, projectile_vel, fire_rate, storage);
 }
 
-fn fireProjectile(pos: components.Position, storage: anytype, vel: zm.Vec) void {
+fn fireProjectile(pos: components.Position, vel: zm.Vec, fire_rate: *components.FireRate, storage: anytype) void {
     const Projectile = struct {
         pos: components.Position,
         vel: components.Velocity,
         collider: components.CircleCollider,
         tag: components.DrawCircleTag,
+        life_time: components.LifeTime,
     };
-
-    _ = storage.createEntity(Projectile{
-        .pos = pos,
-        .vel = components.Velocity{ .vec = vel },
-        .collider = components.CircleCollider{
-            .radius = 30,
-        },
-        .tag = components.DrawCircleTag{},
-    }) catch (@panic("rip projectiles"));
+    if (fire_rate.cooldown_fire_rate == 0) {
+        _ = storage.createEntity(Projectile{
+            .pos = pos,
+            .vel = components.Velocity{ .vec = vel },
+            .collider = components.CircleCollider{
+                .radius = 30,
+            },
+            .tag = components.DrawCircleTag{},
+            .life_time = components.LifeTime{
+                .value = 1.0,
+            },
+        }) catch (@panic("rip projectiles"));
+        fire_rate.cooldown_fire_rate = fire_rate.base_fire_rate;
+    }
 }
 
 const action = struct {
     key: rl.KeyboardKey,
-    callback: fn (player: *components.Position, velocity: *components.Velocity, storage: anytype) void,
+    callback: fn (player: *components.Position, velocity: *components.Velocity, fire_rate: *components.FireRate, storage: anytype) void,
 };
 
 pub const key_down_actions = [_]action{

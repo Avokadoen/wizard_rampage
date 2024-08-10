@@ -20,10 +20,13 @@ const Scheduler = ecez.CreateScheduler(
     Storage,
     .{
         ecez.Event("game_update", .{
+            UpdateSystems.FireRate,
+            UpdateSystems.LifeTime,
             UpdateSystems.MovableToImmovableRecToRecCollisionResolve,
             ecez.DependOn(UpdateSystems.UpdateVelocity, .{UpdateSystems.MovableToImmovableRecToRecCollisionResolve}),
             ecez.DependOn(UpdateSystems.UpdateCamera, .{UpdateSystems.UpdateVelocity}),
             ecez.DependOn(UpdateSystems.OrientTexture, .{UpdateSystems.UpdateCamera}),
+            ecez.FlushEditQueue(Storage),
         }, .{}),
         ecez.Event(
             "game_draw",
@@ -86,6 +89,7 @@ pub fn main() anyerror!void {
             rec_tag: components.DrawRectangleTag,
             texture: components.Texture,
             orientation_texture: components.OrientationTexture,
+            fire_rate: components.FireRate,
             player_tag: components.PlayerTag,
         };
 
@@ -114,6 +118,10 @@ pub fn main() anyerror!void {
                 .start_texture_index = @intFromEnum(TextureRepo.which.Cloak0001),
             },
             .rec_tag = components.DrawRectangleTag{},
+            .fire_rate = components.FireRate{
+                .base_fire_rate = 60,
+                .cooldown_fire_rate = 0,
+            },
             .player_tag = components.PlayerTag{},
         });
     };
@@ -224,9 +232,10 @@ pub fn main() anyerror!void {
             {
                 const player_pos_ptr = try storage.getComponent(player_entity, *components.Position);
                 const player_vec_ptr = try storage.getComponent(player_entity, *components.Velocity);
+                const player_fire_rate = try storage.getComponent(player_entity, *components.FireRate);
                 inline for (input.key_down_actions) |input_action| {
                     if (rl.isKeyDown(input_action.key)) {
-                        input_action.callback(player_pos_ptr, player_vec_ptr, &storage);
+                        input_action.callback(player_pos_ptr, player_vec_ptr, player_fire_rate, &storage);
                     }
                 }
             }
