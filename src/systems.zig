@@ -59,8 +59,6 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 a_col: components.RectangleCollider,
                 immovable_iter: *QueryImmovableRecColliders,
             ) void {
-                // TODO: reflect
-                _ = a_vel; // autofix
                 while (immovable_iter.next()) |b| {
                     const maybe_collision = physics.Intersection.rectAndRectResolve(
                         a_col,
@@ -69,6 +67,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                         b.pos,
                     );
                     if (maybe_collision) |collision| {
+                        // TODO: reflect
+                        a_vel.vec += collision;
+
                         a_pos.vec += collision;
                     }
                 }
@@ -99,6 +100,14 @@ pub fn CreateUpdateSystems(Storage: type) type {
 
         pub const OrientTexture = struct {
             pub fn orientTexture(velocity: components.Velocity, texture: *components.Texture, orientation_texture: components.OrientationTexture) void {
+                {
+                    // early out if velocity is none
+                    const speed_estimate = zm.lengthSq2(velocity.vec)[0];
+                    if (speed_estimate > -0.05 and speed_estimate < 0.05) {
+                        return;
+                    }
+                }
+
                 var smalled_index: usize = 0;
                 var smallest_dist = std.math.floatMax(f32);
                 for (&[_]zm.Vec{
@@ -111,7 +120,7 @@ pub fn CreateUpdateSystems(Storage: type) type {
                     zm.f32x4(1, 0, 0, 0),
                     zm.f32x4(0.5, -0.5, 0, 0),
                 }, 0..) |direction, index| {
-                    const dist = zm.length2(@abs(velocity.vec - direction))[0];
+                    const dist = zm.lengthSq2(velocity.vec - direction)[0];
                     if (dist < smallest_dist) {
                         smallest_dist = dist;
                         smalled_index = index;
