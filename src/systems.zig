@@ -10,11 +10,10 @@ const components = @import("components.zig");
 const delta_time: f32 = 1.0 / 60.0;
 
 pub fn CreateDrawSystems(Storage: type) type {
-    _ = Storage;
-
     return struct {
         pub const Context = struct {
             texture_repo: []const rl.Texture,
+            storage: Storage,
         };
 
         pub const Rectangle = struct {
@@ -48,16 +47,71 @@ pub fn CreateDrawSystems(Storage: type) type {
             }
         };
 
-        pub const StaticTexture = struct {
-            // TODO: account for scale and rotation
+        fn StaticTextureOrderN(comptime order: components.Texture.DrawOrder) type {
+            return struct {
+                pub fn draw(
+                    entity: ecez.Entity,
+                    pos: components.Position,
+                    static_texture: components.Texture,
+                    draw_context: Context,
+                    _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+                ) void {
+                    if (static_texture.draw_order != order) return;
+
+                    const rotation = draw_context.storage.getComponent(entity, components.Rotation) catch components.Rotation{ .value = 0 };
+                    const scale = draw_context.storage.getComponent(entity, components.Scale) catch components.Scale{ .value = 1 };
+                    const texture = draw_context.texture_repo[static_texture.index];
+                    const postion = rl.Vector2{ .x = pos.vec[0], .y = pos.vec[1] };
+                    rl.drawTextureEx(texture, postion, rotation.value, scale.value, rl.Color.white);
+                }
+            };
+        }
+
+        pub const StaticTextureOrder0 = struct {
             pub fn draw(
+                entity: ecez.Entity,
                 pos: components.Position,
                 static_texture: components.Texture,
                 draw_context: Context,
-                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+                e: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
-                const texture = draw_context.texture_repo[static_texture.index];
-                rl.drawTexture(texture, @intFromFloat(pos.vec[0]), @intFromFloat(pos.vec[1]), rl.Color.white);
+                StaticTextureOrderN(.o0).draw(entity, pos, static_texture, draw_context, e);
+            }
+        };
+
+        pub const StaticTextureOrder1 = struct {
+            pub fn draw(
+                entity: ecez.Entity,
+                pos: components.Position,
+                static_texture: components.Texture,
+                draw_context: Context,
+                e: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
+                StaticTextureOrderN(.o1).draw(entity, pos, static_texture, draw_context, e);
+            }
+        };
+
+        pub const StaticTextureOrder2 = struct {
+            pub fn draw(
+                entity: ecez.Entity,
+                pos: components.Position,
+                static_texture: components.Texture,
+                draw_context: Context,
+                e: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
+                StaticTextureOrderN(.o2).draw(entity, pos, static_texture, draw_context, e);
+            }
+        };
+
+        pub const StaticTextureOrder3 = struct {
+            pub fn draw(
+                entity: ecez.Entity,
+                pos: components.Position,
+                static_texture: components.Texture,
+                draw_context: Context,
+                e: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
+                StaticTextureOrderN(.o3).draw(entity, pos, static_texture, draw_context, e);
             }
         };
     };
@@ -141,6 +195,11 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 const offset = zm.f32x4(child_of.offset_x, child_of.offset_y, 0, 0);
                 pos.vec = parent_pos.vec + offset;
             }
+
+            pub fn inherentParentScale(scale: *components.Scale, child_of: components.ChildOf, update_context: Context) void {
+                const parent_scale = update_context.storage.getComponent(child_of.parent, components.Scale) catch @panic("wtf");
+                scale.* = parent_scale;
+            }
         };
 
         pub const OrientTexture = struct {
@@ -160,16 +219,17 @@ pub fn CreateUpdateSystems(Storage: type) type {
 
                 var smalled_index: usize = 0;
                 var smallest_dist = std.math.floatMax(f32);
-                for (&[_]zm.Vec{
-                    zm.f32x4(0, -1, 0, 0),
-                    zm.f32x4(-0.5, -0.5, 0, 0),
-                    zm.f32x4(-1, 0, 0, 0),
-                    zm.f32x4(-0.5, 0.5, 0, 0),
-                    zm.f32x4(0, 1, 0, 0),
-                    zm.f32x4(0.5, 0.5, 0, 0),
-                    zm.f32x4(1, 0, 0, 0),
-                    zm.f32x4(0.5, -0.5, 0, 0),
-                }, 0..) |direction, index| {
+                for (&[_][2]f32{
+                    .{ 0, -1 },
+                    .{ -0.5, -0.5 },
+                    .{ -1, 0 },
+                    .{ -0.5, 0.5 },
+                    .{ 0, 1 },
+                    .{ 0.5, 0.5 },
+                    .{ 1, 0 },
+                    .{ 0.5, -0.5 },
+                }, 0..) |direction_values, index| {
+                    const direction = zm.f32x4(direction_values[0], direction_values[1], 0, 0);
                     const dist = zm.lengthSq2(velocity.vec - direction)[0];
                     if (dist < smallest_dist) {
                         smallest_dist = dist;

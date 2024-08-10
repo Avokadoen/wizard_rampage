@@ -35,9 +35,13 @@ const Scheduler = ecez.CreateScheduler(
         ecez.Event(
             "game_draw",
             .{
+                // !! ALL SYSTEMS MUST BE DEPEND ON PREVIOUS FOR DRAW !!
                 DrawSystems.Rectangle,
-                ecez.DependOn(DrawSystems.StaticTexture, .{DrawSystems.Rectangle}),
-                ecez.DependOn(DrawSystems.Circle, .{DrawSystems.StaticTexture}),
+                ecez.DependOn(DrawSystems.StaticTextureOrder0, .{DrawSystems.Rectangle}),
+                ecez.DependOn(DrawSystems.StaticTextureOrder1, .{DrawSystems.StaticTextureOrder0}),
+                ecez.DependOn(DrawSystems.StaticTextureOrder2, .{DrawSystems.StaticTextureOrder1}),
+                ecez.DependOn(DrawSystems.StaticTextureOrder3, .{DrawSystems.StaticTextureOrder2}),
+                ecez.DependOn(DrawSystems.Circle, .{DrawSystems.StaticTextureOrder3}),
             },
             DrawSystems.Context,
         ),
@@ -117,9 +121,9 @@ pub fn main() anyerror!void {
                 .width = width,
                 .height = height,
             },
-            // .tag = components.DrawRectangleTag{},
             .texture = components.Texture{
                 .index = @intFromEnum(TextureRepo.which.Cloak0001),
+                .draw_order = .o0,
             },
             .orientation_texture = components.OrientationTexture{
                 .start_texture_index = @intFromEnum(TextureRepo.which.Cloak0001),
@@ -150,6 +154,7 @@ pub fn main() anyerror!void {
             },
             .texture = components.Texture{
                 .index = @intFromEnum(TextureRepo.which.Hat0001),
+                .draw_order = .o1,
             },
             .orientation_texture = components.OrientationTexture{
                 .start_texture_index = @intFromEnum(TextureRepo.which.Hat0001),
@@ -319,6 +324,7 @@ pub fn main() anyerror!void {
 
                 const draw_context = DrawSystems.Context{
                     .texture_repo = &texture_repo.textures,
+                    .storage = storage,
                 };
                 scheduler.dispatchEvent(&storage, .game_draw, draw_context);
                 scheduler.waitEvent(.game_draw);

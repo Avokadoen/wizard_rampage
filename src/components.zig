@@ -56,7 +56,17 @@ pub const Collision = struct {
 pub const DrawRectangleTag = struct {};
 pub const DrawCircleTag = struct {};
 
-pub const Texture = struct { index: u8 };
+pub const Texture = struct {
+    pub const DrawOrder = enum {
+        o0,
+        o1,
+        o2,
+        o3,
+    };
+
+    index: u8,
+    draw_order: DrawOrder,
+};
 
 pub const OrientationTexture = packed struct {
     start_texture_index: u8,
