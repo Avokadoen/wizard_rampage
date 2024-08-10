@@ -78,11 +78,11 @@ pub const OrientationTexture = packed struct {
     start_texture_index: u8,
 };
 
-pub const AnimTexture = packed struct {
+pub const AnimTexture = struct {
     current_frame: u8,
     frame_count: u8,
     frames_per_frame: u8,
-    padding: u8,
+    frames_drawn_current_frame: u8,
 };
 
 pub const Camera = struct {

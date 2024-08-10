@@ -2,8 +2,10 @@ const rl = @import("raylib");
 const components = @import("components.zig");
 const ecez = @import("ecez");
 const zm = @import("zmath");
-const TextureRepo = @import("TextureRepo.zig");
+const GameTextureRepo = @import("GameTextureRepo.zig");
+
 const delta_time: f32 = 1.0 / 60.0;
+
 fn moveUp(_: *components.Position, vel: *components.Velocity, _: *components.FireRate, _: anytype) void {
     vel.vec[1] -= 10;
     if (vel.vec[1] > -500) {
@@ -86,8 +88,8 @@ fn fireProjectile(pos: components.Position, vel: zm.Vec, fire_rate: *components.
                 .radius = 30,
             },
             .texture = components.Texture{
-                .type = @intFromEnum(TextureRepo.texture_type.projectile),
-                .index = @intFromEnum(TextureRepo.which_projectile.Bolt0001),
+                .type = @intFromEnum(GameTextureRepo.texture_type.projectile),
+                .index = @intFromEnum(GameTextureRepo.which_projectile.Bolt0001),
                 .draw_order = .o3,
             },
             .tag = components.DrawCircleTag{},

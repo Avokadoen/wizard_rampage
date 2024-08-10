@@ -1,11 +1,11 @@
 const rl = @import("raylib");
 
-const TextureRepo = @This();
+const GameTextureRepo = @This();
 
 player_textures: [72]rl.Texture,
 projectile_textures: [5]rl.Texture,
 
-pub fn init() TextureRepo {
+pub fn init() GameTextureRepo {
     var player_textures: [72]rl.Texture = undefined;
     const which_player_info = @typeInfo(which_player);
     inline for (which_player_info.Enum.fields, &player_textures) |which_texture, *texture| {
@@ -18,14 +18,18 @@ pub fn init() TextureRepo {
         texture.* = rl.loadTexture("resources/textures/projectiles/" ++ which_texture.name ++ ".png");
     }
 
-    return TextureRepo{
+    return GameTextureRepo{
         .player_textures = player_textures,
         .projectile_textures = projectile_textures,
     };
 }
 
-pub fn deinit(self: TextureRepo) void {
+pub fn deinit(self: GameTextureRepo) void {
     inline for (self.player_textures) |texture| {
+        texture.unload();
+    }
+
+    inline for (self.projectile_textures) |texture| {
         texture.unload();
     }
 }
