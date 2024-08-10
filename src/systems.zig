@@ -3,6 +3,7 @@ const std = @import("std");
 const rl = @import("raylib");
 const ecez = @import("ecez");
 const zm = @import("zmath");
+const tracy = @import("ztracy");
 
 const physics = @import("physics_2d.zig");
 const components = @import("components.zig");
@@ -17,12 +18,15 @@ pub fn CreateDrawSystems(Storage: type) type {
         };
 
         pub const Rectangle = struct {
-            pub fn draw(
+            pub fn rectangleDraw(
                 pos: components.Position,
                 rectangle: components.RectangleCollider,
                 draw_rectangle_tag: components.DrawRectangleTag,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
                 _ = draw_rectangle_tag;
 
                 const draw_rectangle = rl.Rectangle{
@@ -37,24 +41,30 @@ pub fn CreateDrawSystems(Storage: type) type {
         };
 
         pub const Circle = struct {
-            pub fn draw(
+            pub fn circleDraw(
                 pos: components.Position,
                 circle: components.CircleCollider,
                 _: components.DrawCircleTag,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
                 rl.drawCircle(@intFromFloat(pos.vec[0]), @intFromFloat(pos.vec[1]), circle.radius, rl.Color.blue);
             }
         };
 
         fn StaticTextureOrderN(comptime order: components.Texture.DrawOrder) type {
             return struct {
-                pub fn draw(
+                pub fn staticTextureDraw(
                     entity: ecez.Entity,
                     pos: components.Position,
                     static_texture: components.Texture,
                     draw_context: Context,
                 ) void {
+                    const zone = tracy.ZoneN(@src(), @src().fn_name ++ " " ++ @tagName(order));
+                    defer zone.End();
+
                     if (static_texture.draw_order != order) return;
 
                     const rotation = draw_context.storage.getComponent(entity, components.Rotation) catch components.Rotation{ .value = 0 };
@@ -86,7 +96,7 @@ pub fn CreateDrawSystems(Storage: type) type {
                 draw_context: Context,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
-                StaticTextureOrderN(.o0).draw(entity, pos, static_texture, draw_context);
+                StaticTextureOrderN(.o0).staticTextureDraw(entity, pos, static_texture, draw_context);
             }
         };
 
@@ -98,7 +108,7 @@ pub fn CreateDrawSystems(Storage: type) type {
                 draw_context: Context,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
-                StaticTextureOrderN(.o1).draw(entity, pos, static_texture, draw_context);
+                StaticTextureOrderN(.o1).staticTextureDraw(entity, pos, static_texture, draw_context);
             }
         };
 
@@ -110,7 +120,7 @@ pub fn CreateDrawSystems(Storage: type) type {
                 draw_context: Context,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
-                StaticTextureOrderN(.o2).draw(entity, pos, static_texture, draw_context);
+                StaticTextureOrderN(.o2).staticTextureDraw(entity, pos, static_texture, draw_context);
             }
         };
 
@@ -122,7 +132,7 @@ pub fn CreateDrawSystems(Storage: type) type {
                 draw_context: Context,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
-                StaticTextureOrderN(.o3).draw(entity, pos, static_texture, draw_context);
+                StaticTextureOrderN(.o3).staticTextureDraw(entity, pos, static_texture, draw_context);
             }
         };
     };
@@ -153,6 +163,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 immovable_iter: *QueryImmovableRecColliders,
                 _: ecez.ExcludeEntityWith(.{ components.InactiveTag, components.Projectile }),
             ) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
                 while (immovable_iter.next()) |b| {
                     const maybe_collision = physics.Intersection.rectAndRectResolve(
                         a_col,
@@ -182,7 +195,7 @@ pub fn CreateUpdateSystems(Storage: type) type {
                     components.InactiveTag,
                 },
             ).Iter;
-            pub fn novableToMovableRecToRecCollisionResolve(
+            pub fn movableToMovableRecToRecCollisionResolve(
                 a_pos: *components.Position,
                 a_vel: *components.Velocity,
                 a_col: components.RectangleCollider,
@@ -190,6 +203,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 immovable_iter: *QueryMovableRecColliders,
                 _: ecez.ExcludeEntityWith(.{ components.InactiveTag, components.Projectile }),
             ) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
                 // skip previous colliders
                 immovable_iter.skip(invocation_count.number + 1);
 
@@ -241,6 +257,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 killable_iter_immovable: *QueryKillablesImMov,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
                 while (killable_iter_movable.next()) |killable| {
                     if (physics.Intersection.circleAndRect(circle, pos, killable.col, killable.pos)) {
                         if (killable.health.value <= 0) continue;
@@ -266,6 +285,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 edit_queue: *Storage.StorageEditQueue,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
                 if (health.value <= 0) {
                     edit_queue.queueSetComponent(entity, components.InactiveTag{}) catch @panic("registerDead: wtf");
                     edit_queue.queueSetComponent(entity, components.DiedThisFrameTag{}) catch @panic("registerDead: wtf");
@@ -284,6 +306,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 .{},
             ).Iter;
             pub fn updateCamera(pos: *components.Position, scale: components.Scale, camera: components.Camera, player_iter: *QueryPlayer) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
                 const player = player_iter.next() orelse @panic("no player panic");
                 const camera_offset = zm.f32x4((camera.width * 0.5 - player.rec.width * 0.5) / scale.x, (camera.height * 0.5 - player.rec.height * 0.5) / scale.y, 0, 0);
                 pos.vec = player.pos.vec - camera_offset;
@@ -296,6 +321,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 vel: *components.Velocity,
                 _: ecez.ExcludeEntityWith(.{ components.InactiveTag, components.ChildOf }),
             ) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
                 pos.vec += vel.vec * @as(zm.Vec, @splat(delta_time));
                 vel.vec = vel.vec * @as(zm.Vec, @splat(vel.drag));
             }
@@ -308,6 +336,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 update_context: Context,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
                 const parent_vel = update_context.storage.getComponent(child_of.parent, components.Velocity) catch @panic("inherentParentVelocity: wtf");
                 vel.* = parent_vel;
             }
@@ -318,6 +349,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 update_context: Context,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
                 const parent_pos = update_context.storage.getComponent(child_of.parent, components.Position) catch @panic("inherentParentPosition: wtf");
                 const offset = zm.f32x4(child_of.offset_x, child_of.offset_y, 0, 0);
                 pos.vec = parent_pos.vec + offset;
@@ -329,6 +363,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 update_context: Context,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
                 const parent_scale = update_context.storage.getComponent(child_of.parent, components.Scale) catch @panic("inherentParentScale: wtf");
                 scale.* = parent_scale;
             }
@@ -340,6 +377,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 edit_queue: *Storage.StorageEditQueue,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
                 const parent_tag = update_context.storage.getComponent(child_of.parent, components.InactiveTag) catch return;
                 edit_queue.queueSetComponent(entity, parent_tag) catch @panic("inherentInactiveFromParent: wtf");
             }
@@ -351,6 +391,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 update_context: Context,
                 edit_queue: *Storage.StorageEditQueue,
             ) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
                 _ = update_context.storage.getComponent(child_of.parent, components.InactiveTag) catch {
                     edit_queue.queueRemoveComponent(entity, components.InactiveTag) catch @panic("inherentActiveFromParent: wtf");
                 };
@@ -364,6 +407,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 orientation_texture: components.OrientationTexture,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
                 {
                     // early out if velocity is none
                     const speed_estimate = zm.lengthSq2(velocity.vec)[0];
@@ -403,6 +449,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 orientation_draw_order: components.OrientationBasedDrawOrder,
                 orientation_texture: components.OrientationTexture,
             ) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
                 const draw_order_index = texture.index - orientation_texture.start_texture_index;
                 texture.draw_order = orientation_draw_order.draw_orders[draw_order_index];
             }
@@ -415,6 +464,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 storage_edit: *Storage.StorageEditQueue,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
                 if (life_time.value <= 0) {
                     storage_edit.queueSetComponent(entity, components.InactiveTag{}) catch (@panic("oom"));
                 }
@@ -427,6 +479,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 fire_rate: *components.FireRate,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
                 if (fire_rate.cooldown_fire_rate > 0) {
                     fire_rate.cooldown_fire_rate -= 5;
                 }
@@ -449,6 +504,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 _: components.HostileTag,
                 player_iter: *QueryPlayer,
             ) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
                 const player = player_iter.next() orelse @panic("targetPlayer: wtf");
 
                 const move_dir = zm.normalize2(player.pos.vec - pos.vec);

@@ -10,6 +10,8 @@ const physics = @import("physics_2d.zig");
 const GameTextureRepo = @import("GameTextureRepo.zig");
 const MainTextureRepo = @import("MainTextureRepo.zig");
 
+const tracy = @import("ztracy");
+
 const arena_height = 3000;
 const arena_width = 3000;
 
@@ -95,6 +97,8 @@ pub fn main() anyerror!void {
     outer_loop: while (true) {
         switch (current_state) {
             .main_menu => {
+                const load_assets_zone = tracy.ZoneN(@src(), "main menu load assets and init");
+
                 var main_menu_animation = components.AnimTexture{
                     .current_frame = 0,
                     .frame_count = 0,
@@ -118,7 +122,11 @@ pub fn main() anyerror!void {
                 const main_menu_texture_repo = MainTextureRepo.init();
                 defer main_menu_texture_repo.deinit();
 
+                load_assets_zone.End();
+
                 while (true) {
+                    tracy.FrameMark();
+
                     // Start music
                     rl.updateMusicStream(music);
                     const time_played = rl.getMusicTimePlayed(music) / rl.getMusicTimeLength(music);
@@ -306,6 +314,8 @@ pub fn main() anyerror!void {
                 }
             },
             .game => {
+                const load_assets_zone = tracy.ZoneN(@src(), "game load assets and init");
+
                 //rl.updateMusicStream(music);
                 //const time_played_test = rl.getMusicTimePlayed(music) / rl.getMusicTimeLength(music);
                 //if (time_played_test > 1.0) rl.seekMusicStream(music, 27);
@@ -731,8 +741,12 @@ pub fn main() anyerror!void {
                 const farmer = try createFarmer(&storage, zm.f32x4(0, 0, 0, 0), player_scale);
                 _ = farmer; // autofix
 
+                load_assets_zone.End();
+
                 // TODO: pause
                 while (!rl.windowShouldClose()) {
+                    tracy.FrameMark();
+
                     // Play music
                     rl.updateMusicStream(music);
                     const time_played = rl.getMusicTimePlayed(music) / rl.getMusicTimeLength(music);
