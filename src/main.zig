@@ -28,6 +28,9 @@ const Scheduler = ecez.CreateScheduler(
             ecez.DependOn(UpdateSystems.MovableToImmovableRecToRecCollisionResolve, .{UpdateSystems.UpdateVelocity}),
             ecez.DependOn(UpdateSystems.MovableToMovableRecToRecCollisionResolve, .{UpdateSystems.MovableToImmovableRecToRecCollisionResolve}),
             ecez.DependOn(UpdateSystems.InherentFromParent, .{UpdateSystems.MovableToMovableRecToRecCollisionResolve}),
+            ecez.DependOn(UpdateSystems.ProjectileHitKillable, .{UpdateSystems.InherentFromParent}),
+            ecez.DependOn(UpdateSystems.RegisterDead, .{UpdateSystems.ProjectileHitKillable}),
+            ecez.DependOn(UpdateSystems.TargetPlayer, .{UpdateSystems.RegisterDead}),
             // run in parallel
             ecez.DependOn(UpdateSystems.UpdateCamera, .{UpdateSystems.InherentFromParent}),
             ecez.DependOn(UpdateSystems.OrientTexture, .{UpdateSystems.InherentFromParent}),
@@ -335,6 +338,7 @@ pub fn main() anyerror!void {
                         col: components.RectangleCollider,
                         rec_tag: components.DrawRectangleTag,
                         player_tag: components.PlayerTag,
+                        health: components.Health,
                     };
 
                     const player = try storage.createEntity(Player{
@@ -358,6 +362,10 @@ pub fn main() anyerror!void {
                         },
                         .rec_tag = components.DrawRectangleTag{},
                         .player_tag = components.PlayerTag{},
+                        .health = components.Health{
+                            .max = 100,
+                            .value = 100,
+                        },
                     });
 
                     const PlayerParts = struct {
@@ -804,6 +812,7 @@ pub fn main() anyerror!void {
     }
 }
 
+// TODO: Body parts can be generic for player, farmer and wife
 fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!ecez.Entity {
     const Farmer = struct {
         pos: components.Position,
@@ -812,6 +821,7 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
         col: components.RectangleCollider,
         rec_tag: components.DrawRectangleTag,
         hostile_tag: components.HostileTag,
+        health: components.Health,
     };
 
     const farmer = try storage.createEntity(Farmer{
@@ -827,6 +837,10 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
         },
         .rec_tag = components.DrawRectangleTag{},
         .hostile_tag = components.HostileTag{},
+        .health = components.Health{
+            .max = 50,
+            .value = 50,
+        },
     });
 
     const FarmerParts = struct {

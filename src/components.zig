@@ -22,6 +22,8 @@ pub const all = .{
     InactiveTag,
     ChildOf,
     HostileTag,
+    Projectile,
+    Health,
 };
 
 pub const Position = struct {
@@ -109,3 +111,12 @@ pub const ChildOf = struct {
 };
 
 pub const HostileTag = struct {};
+pub const Projectile = struct {
+    dmg: i32,
+    weight: f32, // knockback modifier
+};
+
+pub const Health = struct {
+    max: i32,
+    value: i32,
+};

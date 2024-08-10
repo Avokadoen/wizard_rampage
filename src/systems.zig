@@ -54,7 +54,6 @@ pub fn CreateDrawSystems(Storage: type) type {
                     pos: components.Position,
                     static_texture: components.Texture,
                     draw_context: Context,
-                    _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
                 ) void {
                     if (static_texture.draw_order != order) return;
 
@@ -85,9 +84,9 @@ pub fn CreateDrawSystems(Storage: type) type {
                 pos: components.Position,
                 static_texture: components.Texture,
                 draw_context: Context,
-                e: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
-                StaticTextureOrderN(.o0).draw(entity, pos, static_texture, draw_context, e);
+                StaticTextureOrderN(.o0).draw(entity, pos, static_texture, draw_context);
             }
         };
 
@@ -97,9 +96,9 @@ pub fn CreateDrawSystems(Storage: type) type {
                 pos: components.Position,
                 static_texture: components.Texture,
                 draw_context: Context,
-                e: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
-                StaticTextureOrderN(.o1).draw(entity, pos, static_texture, draw_context, e);
+                StaticTextureOrderN(.o1).draw(entity, pos, static_texture, draw_context);
             }
         };
 
@@ -109,9 +108,9 @@ pub fn CreateDrawSystems(Storage: type) type {
                 pos: components.Position,
                 static_texture: components.Texture,
                 draw_context: Context,
-                e: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
-                StaticTextureOrderN(.o2).draw(entity, pos, static_texture, draw_context, e);
+                StaticTextureOrderN(.o2).draw(entity, pos, static_texture, draw_context);
             }
         };
 
@@ -121,9 +120,9 @@ pub fn CreateDrawSystems(Storage: type) type {
                 pos: components.Position,
                 static_texture: components.Texture,
                 draw_context: Context,
-                e: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
-                StaticTextureOrderN(.o3).draw(entity, pos, static_texture, draw_context, e);
+                StaticTextureOrderN(.o3).draw(entity, pos, static_texture, draw_context);
             }
         };
     };
@@ -211,6 +210,68 @@ pub fn CreateUpdateSystems(Storage: type) type {
             }
         };
 
+        pub const ProjectileHitKillable = struct {
+            const QueryKillablesMov = Storage.Query(
+                struct {
+                    pos: components.Position,
+                    vel: *components.Velocity,
+                    col: components.RectangleCollider,
+                    health: *components.Health,
+                },
+                // exclude type
+                .{components.InactiveTag},
+            ).Iter;
+
+            const QueryKillablesImMov = Storage.Query(
+                struct {
+                    pos: components.Position,
+                    col: components.RectangleCollider,
+                    health: *components.Health,
+                },
+                // exclude type
+                .{ components.Velocity, components.InactiveTag },
+            ).Iter;
+
+            pub fn projectileHitKillable(
+                pos: components.Position,
+                vel: components.Velocity,
+                circle: components.CircleCollider,
+                proj: components.Projectile,
+                killable_iter_movable: *QueryKillablesMov,
+                killable_iter_immovable: *QueryKillablesImMov,
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
+                while (killable_iter_movable.next()) |killable| {
+                    if (physics.Intersection.circleAndRect(circle, pos, killable.col, killable.pos)) {
+                        if (killable.health.value <= 0) continue;
+
+                        killable.vel.vec += zm.normalize2(vel.vec) * @as(zm.Vec, @splat(proj.weight));
+                        killable.health.value -= proj.dmg;
+                    }
+                }
+
+                while (killable_iter_immovable.next()) |killable| {
+                    if (physics.Intersection.circleAndRect(circle, pos, killable.col, killable.pos)) {
+                        if (killable.health.value <= 0) continue;
+                        killable.health.value -= proj.dmg;
+                    }
+                }
+            }
+        };
+
+        pub const RegisterDead = struct {
+            pub fn registerDead(
+                entity: ecez.Entity,
+                health: components.Health,
+                edit_queue: *Storage.StorageEditQueue,
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
+                if (health.value <= 0) {
+                    edit_queue.queueSetComponent(entity, components.InactiveTag{}) catch @panic("registerDead: wtf");
+                }
+            }
+        };
+
         pub const UpdateCamera = struct {
             const QueryPlayer = Storage.Query(
                 struct {
@@ -240,20 +301,58 @@ pub fn CreateUpdateSystems(Storage: type) type {
         };
 
         pub const InherentFromParent = struct {
-            pub fn inherentParentVelocity(vel: *components.Velocity, child_of: components.ChildOf, update_context: Context) void {
-                const parent_vel = update_context.storage.getComponent(child_of.parent, components.Velocity) catch @panic("wtf");
+            pub fn inherentParentVelocity(
+                vel: *components.Velocity,
+                child_of: components.ChildOf,
+                update_context: Context,
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
+                const parent_vel = update_context.storage.getComponent(child_of.parent, components.Velocity) catch @panic("inherentParentVelocity: wtf");
                 vel.* = parent_vel;
             }
 
-            pub fn inherentParentPosition(pos: *components.Position, child_of: components.ChildOf, update_context: Context) void {
-                const parent_pos = update_context.storage.getComponent(child_of.parent, components.Position) catch @panic("wtf");
+            pub fn inherentParentPosition(
+                pos: *components.Position,
+                child_of: components.ChildOf,
+                update_context: Context,
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
+                const parent_pos = update_context.storage.getComponent(child_of.parent, components.Position) catch @panic("inherentParentPosition: wtf");
                 const offset = zm.f32x4(child_of.offset_x, child_of.offset_y, 0, 0);
                 pos.vec = parent_pos.vec + offset;
             }
 
-            pub fn inherentParentScale(scale: *components.Scale, child_of: components.ChildOf, update_context: Context) void {
-                const parent_scale = update_context.storage.getComponent(child_of.parent, components.Scale) catch @panic("wtf");
+            pub fn inherentParentScale(
+                scale: *components.Scale,
+                child_of: components.ChildOf,
+                update_context: Context,
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
+                const parent_scale = update_context.storage.getComponent(child_of.parent, components.Scale) catch @panic("inherentParentScale: wtf");
                 scale.* = parent_scale;
+            }
+
+            pub fn inherentInactiveFromParent(
+                entity: ecez.Entity,
+                child_of: components.ChildOf,
+                update_context: Context,
+                edit_queue: *Storage.StorageEditQueue,
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
+                const parent_tag = update_context.storage.getComponent(child_of.parent, components.InactiveTag) catch return;
+                edit_queue.queueSetComponent(entity, parent_tag) catch @panic("inherentInactiveFromParent: wtf");
+            }
+
+            pub fn inherentActiveFromParent(
+                entity: ecez.Entity,
+                _: components.InactiveTag,
+                child_of: components.ChildOf,
+                update_context: Context,
+                edit_queue: *Storage.StorageEditQueue,
+            ) void {
+                _ = update_context.storage.getComponent(child_of.parent, components.InactiveTag) catch {
+                    edit_queue.queueRemoveComponent(entity, components.InactiveTag) catch @panic("inherentActiveFromParent: wtf");
+                };
             }
         };
 
@@ -284,8 +383,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                     .{ 1, 0 },
                     .{ 0.5, -0.5 },
                 }, 0..) |direction_values, index| {
+                    const move_dir = zm.normalize2(velocity.vec);
                     const direction = zm.f32x4(direction_values[0], direction_values[1], 0, 0);
-                    const dist = zm.lengthSq2(velocity.vec - direction)[0];
+                    const dist = zm.lengthSq2(move_dir - direction)[0];
                     if (dist < smallest_dist) {
                         smallest_dist = dist;
                         smalled_index = index;
@@ -329,6 +429,31 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 if (fire_rate.cooldown_fire_rate > 0) {
                     fire_rate.cooldown_fire_rate -= 5;
                 }
+            }
+        };
+
+        pub const TargetPlayer = struct {
+            const QueryPlayer = Storage.Query(
+                struct {
+                    pos: components.Position,
+                    player_tag: components.PlayerTag,
+                },
+                // exclude type
+                .{},
+            ).Iter;
+
+            pub fn targetPlayer(
+                pos: components.Position,
+                vel: *components.Velocity,
+                _: components.HostileTag,
+                player_iter: *QueryPlayer,
+            ) void {
+                const player = player_iter.next() orelse @panic("targetPlayer: wtf");
+
+                const move_dir = zm.normalize2(player.pos.vec - pos.vec);
+
+                const move_vector = move_dir * @as(zm.Vec, @splat(100));
+                vel.vec = move_vector;
             }
         };
     };
