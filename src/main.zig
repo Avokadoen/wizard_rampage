@@ -26,7 +26,8 @@ const Scheduler = ecez.CreateScheduler(
             UpdateSystems.LifeTime,
             UpdateSystems.UpdateVelocity,
             ecez.DependOn(UpdateSystems.MovableToImmovableRecToRecCollisionResolve, .{UpdateSystems.UpdateVelocity}),
-            ecez.DependOn(UpdateSystems.InherentFromParent, .{UpdateSystems.MovableToImmovableRecToRecCollisionResolve}),
+            ecez.DependOn(UpdateSystems.MovableToMovableRecToRecCollisionResolve, .{UpdateSystems.MovableToImmovableRecToRecCollisionResolve}),
+            ecez.DependOn(UpdateSystems.InherentFromParent, .{UpdateSystems.MovableToMovableRecToRecCollisionResolve}),
             // run in parallel
             ecez.DependOn(UpdateSystems.UpdateCamera, .{UpdateSystems.InherentFromParent}),
             ecez.DependOn(UpdateSystems.OrientTexture, .{UpdateSystems.InherentFromParent}),
@@ -81,7 +82,7 @@ pub fn main() anyerror!void {
         main_menu,
         game,
     };
-    var current_state = LoopState.main_menu;
+    var current_state = LoopState.game;
 
     outer_loop: while (true) {
         switch (current_state) {
@@ -643,6 +644,9 @@ pub fn main() anyerror!void {
                     });
                 }
 
+                const farmer = try createFarmer(&storage, zm.f32x4(0, 0, 0, 0), player_scale);
+                _ = farmer; // autofix
+
                 // TODO: pause
                 while (!rl.windowShouldClose()) {
                     // Update
@@ -699,9 +703,10 @@ pub fn main() anyerror!void {
                             rl.clearBackground(rl.Color.ray_white);
 
                             const draw_context = DrawSystems.Context{
-                                .texture_repo = &[_][]const rl.Texture{
+                                .texture_repo = [_][]const rl.Texture{
                                     &texture_repo.player_textures,
                                     &texture_repo.projectile_textures,
+                                    &texture_repo.farmer_textures,
                                 },
                                 .storage = storage,
                             };
@@ -719,6 +724,187 @@ pub fn main() anyerror!void {
             },
         }
     }
+}
+
+fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!ecez.Entity {
+    const Farmer = struct {
+        pos: components.Position,
+        scale: components.Scale,
+        vel: components.Velocity,
+        col: components.RectangleCollider,
+        rec_tag: components.DrawRectangleTag,
+        hostile_tag: components.HostileTag,
+    };
+
+    const farmer = try storage.createEntity(Farmer{
+        .pos = components.Position{ .vec = pos },
+        .scale = components.Scale{ .value = scale },
+        .vel = components.Velocity{
+            .vec = zm.f32x4s(0),
+            .drag = 0.7,
+        },
+        .col = components.RectangleCollider{
+            .width = player_hit_box_width,
+            .height = player_hit_box_height,
+        },
+        .rec_tag = components.DrawRectangleTag{},
+        .hostile_tag = components.HostileTag{},
+    });
+
+    const FarmerParts = struct {
+        pos: components.Position,
+        scale: components.Scale,
+        vel: components.Velocity,
+        texture: components.Texture,
+        orientation_texture: components.OrientationTexture,
+        child_of: components.ChildOf,
+    };
+    // Cloak
+    _ = try storage.createEntity(FarmerParts{
+        .pos = components.Position{ .vec = zm.f32x4s(0) },
+        .scale = components.Scale{ .value = 1 },
+        .vel = components.Velocity{
+            .vec = zm.f32x4s(0),
+            .drag = 1,
+        },
+        .texture = components.Texture{
+            .type = @intFromEnum(GameTextureRepo.texture_type.farmer),
+            .index = @intFromEnum(GameTextureRepo.which_farmer.Farmer_Body0001),
+            .draw_order = .o0,
+        },
+        .orientation_texture = components.OrientationTexture{
+            .start_texture_index = @intFromEnum(GameTextureRepo.which_farmer.Farmer_Body0001),
+        },
+        .child_of = components.ChildOf{
+            .parent = farmer,
+            .offset_x = player_part_offset_x,
+            .offset_y = player_part_offset_y,
+        },
+    });
+    // Head
+    _ = try storage.createEntity(FarmerParts{
+        .pos = components.Position{ .vec = zm.f32x4s(0) },
+        .scale = components.Scale{ .value = 1 },
+        .vel = components.Velocity{
+            .vec = zm.f32x4s(0),
+            .drag = 1,
+        },
+        .texture = components.Texture{
+            .type = @intFromEnum(GameTextureRepo.texture_type.farmer),
+            .index = @intFromEnum(GameTextureRepo.which_farmer.Farmer_Head0001),
+            .draw_order = .o1,
+        },
+        .orientation_texture = components.OrientationTexture{
+            .start_texture_index = @intFromEnum(GameTextureRepo.which_farmer.Farmer_Head0001),
+        },
+        .child_of = components.ChildOf{
+            .parent = farmer,
+            .offset_x = player_part_offset_x,
+            .offset_y = player_part_offset_y,
+        },
+    });
+    // Hat
+    _ = try storage.createEntity(FarmerParts{
+        .pos = components.Position{ .vec = zm.f32x4s(0) },
+        .scale = components.Scale{ .value = 1 },
+        .vel = components.Velocity{
+            .vec = zm.f32x4s(0),
+            .drag = 0.94,
+        },
+        .texture = components.Texture{
+            .type = @intFromEnum(GameTextureRepo.texture_type.farmer),
+            .index = @intFromEnum(GameTextureRepo.which_farmer.Farmer_Hat0001),
+            .draw_order = .o2,
+        },
+        .orientation_texture = components.OrientationTexture{
+            .start_texture_index = @intFromEnum(GameTextureRepo.which_farmer.Farmer_Hat0001),
+        },
+        .child_of = components.ChildOf{
+            .parent = farmer,
+            .offset_x = player_part_offset_x,
+            .offset_y = player_part_offset_y,
+        },
+    });
+
+    const Hand = struct {
+        pos: components.Position,
+        scale: components.Scale,
+        vel: components.Velocity,
+        texture: components.Texture,
+        orientation_based_draw_order: components.OrientationBasedDrawOrder,
+        orientation_texture: components.OrientationTexture,
+        child_of: components.ChildOf,
+    };
+    // Left hand
+    _ = try storage.createEntity(Hand{
+        .pos = components.Position{ .vec = zm.f32x4s(0) },
+        .scale = components.Scale{ .value = 1 },
+        .vel = components.Velocity{
+            .vec = zm.f32x4s(0),
+            .drag = 1,
+        },
+        .texture = components.Texture{
+            .type = @intFromEnum(GameTextureRepo.texture_type.farmer),
+            .index = @intFromEnum(GameTextureRepo.which_farmer.Farmer_Hand_L0001),
+            .draw_order = .o3,
+        },
+        .orientation_based_draw_order = components.OrientationBasedDrawOrder{
+            .draw_orders = [8]components.Texture.DrawOrder{
+                .o1, // up
+                .o3, // up_left
+                .o3, // left
+                .o3, // left_down
+                .o1, // down
+                .o0, // down_right
+                .o0, // right
+                .o1, // up_right
+            },
+        },
+        .orientation_texture = components.OrientationTexture{
+            .start_texture_index = @intFromEnum(GameTextureRepo.which_farmer.Farmer_Hand_L0001),
+        },
+        .child_of = components.ChildOf{
+            .parent = farmer,
+            .offset_x = player_part_offset_x,
+            .offset_y = player_part_offset_y,
+        },
+    });
+    // Right hand
+    _ = try storage.createEntity(Hand{
+        .pos = components.Position{ .vec = zm.f32x4s(0) },
+        .scale = components.Scale{ .value = 1 },
+        .vel = components.Velocity{
+            .vec = zm.f32x4s(0),
+            .drag = 1,
+        },
+        .texture = components.Texture{
+            .type = @intFromEnum(GameTextureRepo.texture_type.farmer),
+            .index = @intFromEnum(GameTextureRepo.which_farmer.Farmer_Hand_R0001),
+            .draw_order = .o3,
+        },
+        .orientation_based_draw_order = components.OrientationBasedDrawOrder{
+            .draw_orders = [8]components.Texture.DrawOrder{
+                .o2, // up
+                .o1, // up_left
+                .o0, // left
+                .o1, // left_down
+                .o2, // down
+                .o3, // down_right
+                .o3, // right
+                .o3, // up_right
+            },
+        },
+        .orientation_texture = components.OrientationTexture{
+            .start_texture_index = @intFromEnum(GameTextureRepo.which_farmer.Farmer_Hand_R0001),
+        },
+        .child_of = components.ChildOf{
+            .parent = farmer,
+            .offset_x = player_part_offset_x,
+            .offset_y = player_part_offset_y,
+        },
+    });
+
+    return farmer;
 }
 
 test {

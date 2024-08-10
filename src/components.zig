@@ -21,6 +21,7 @@ pub const all = .{
     LifeTime,
     InactiveTag,
     ChildOf,
+    HostileTag,
 };
 
 pub const Position = struct {
@@ -105,3 +106,5 @@ pub const ChildOf = struct {
     offset_x: f32,
     offset_y: f32,
 };
+
+pub const HostileTag = struct {};

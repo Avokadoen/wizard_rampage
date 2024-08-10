@@ -89,7 +89,7 @@ fn fireProjectile(pos: components.Position, vel: zm.Vec, fire_rate: *components.
             },
             .texture = components.Texture{
                 .type = @intFromEnum(GameTextureRepo.texture_type.projectile),
-                .index = @intFromEnum(GameTextureRepo.which_projectile.Bolt0001),
+                .index = @intFromEnum(GameTextureRepo.which_projectile.Bolt_01),
                 .draw_order = .o3,
             },
             .tag = components.DrawCircleTag{},
