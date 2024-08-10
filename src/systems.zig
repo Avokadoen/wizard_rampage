@@ -12,7 +12,7 @@ const delta_time: f32 = 1.0 / 60.0;
 pub fn CreateDrawSystems(Storage: type) type {
     return struct {
         pub const Context = struct {
-            texture_repo: []const []const rl.Texture,
+            texture_repo: [3][]const rl.Texture,
             storage: Storage,
         };
 
@@ -140,6 +140,7 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 a_vel: *components.Velocity,
                 a_col: components.RectangleCollider,
                 immovable_iter: *QueryImmovableRecColliders,
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
                 while (immovable_iter.next()) |b| {
                     const maybe_collision = physics.Intersection.rectAndRectResolve(
@@ -157,6 +158,47 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 }
             }
         };
+
+        pub const MovableToMovableRecToRecCollisionResolve = struct {
+            const QueryMovableRecColliders = Storage.Query(
+                struct {
+                    pos: components.Position,
+                    vel: components.Velocity,
+                    col: components.RectangleCollider,
+                },
+                // exclude type
+                .{
+                    components.InactiveTag,
+                },
+            ).Iter;
+            pub fn movableToImmovableRecToRecCollisionResolve(
+                a_pos: *components.Position,
+                a_vel: *components.Velocity,
+                a_col: components.RectangleCollider,
+                invocation_count: ecez.InvocationCount,
+                immovable_iter: *QueryMovableRecColliders,
+                _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
+            ) void {
+                // skip previous colliders
+                immovable_iter.skip(invocation_count.number + 1);
+
+                while (immovable_iter.next()) |b| {
+                    const maybe_collision = physics.Intersection.rectAndRectResolve(
+                        a_col,
+                        a_pos.*,
+                        b.col,
+                        b.pos,
+                    );
+                    if (maybe_collision) |collision| {
+                        // TODO: reflect
+                        a_vel.vec += collision;
+
+                        a_pos.vec += collision;
+                    }
+                }
+            }
+        };
+
         pub const UpdateCamera = struct {
             const QueryPlayer = Storage.Query(
                 struct {
