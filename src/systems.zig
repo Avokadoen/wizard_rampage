@@ -258,12 +258,14 @@ pub fn CreateUpdateSystems(Storage: type) type {
             ).Iter;
 
             pub fn projectileHitKillable(
+                entity: ecez.Entity,
                 pos: components.Position,
                 vel: components.Velocity,
                 circle: components.CircleCollider,
                 proj: components.Projectile,
                 killable_iter_movable: *QueryKillablesMov,
                 killable_iter_immovable: *QueryKillablesImMov,
+                edit_queue: *Storage.StorageEditQueue,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
                 const zone = tracy.ZoneN(@src(), @src().fn_name);
@@ -275,6 +277,10 @@ pub fn CreateUpdateSystems(Storage: type) type {
 
                         killable.vel.vec += zm.normalize2(vel.vec) * @as(zm.Vec, @splat(proj.weight));
                         killable.health.value -= proj.dmg;
+
+                        edit_queue.queueSetComponent(entity, components.InactiveTag{}) catch @panic("oom");
+
+                        return;
                     }
                 }
 
@@ -282,6 +288,10 @@ pub fn CreateUpdateSystems(Storage: type) type {
                     if (physics.Intersection.circleAndRect(circle, pos, killable.col, killable.pos)) {
                         if (killable.health.value <= 0) continue;
                         killable.health.value -= proj.dmg;
+
+                        edit_queue.queueSetComponent(entity, components.InactiveTag{}) catch @panic("oom");
+
+                        return;
                     }
                 }
             }
