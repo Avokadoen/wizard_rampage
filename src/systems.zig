@@ -50,7 +50,13 @@ pub fn CreateDrawSystems(Storage: type) type {
                 const zone = tracy.ZoneN(@src(), @src().fn_name);
                 defer zone.End();
 
-                rl.drawCircle(@intFromFloat(pos.vec[0]), @intFromFloat(pos.vec[1]), circle.radius, rl.Color.blue);
+                const offset = zm.f32x4(@floatCast(circle.x), @floatCast(circle.y), 0, 0);
+                rl.drawCircle(
+                    @intFromFloat(pos.vec[0] + @as(f32, @floatCast(offset[0]))),
+                    @intFromFloat(pos.vec[1] + @as(f32, @floatCast(offset[1]))),
+                    circle.radius,
+                    rl.Color.blue,
+                );
             }
         };
 
@@ -271,8 +277,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 const zone = tracy.ZoneN(@src(), @src().fn_name);
                 defer zone.End();
 
+                const offset = zm.f32x4(@floatCast(circle.x), @floatCast(circle.y), 0, 0);
                 while (killable_iter_movable.next()) |killable| {
-                    if (physics.Intersection.circleAndRect(circle, pos, killable.col, killable.pos)) {
+                    if (physics.Intersection.circleAndRect(circle, components.Position{ .vec = pos.vec + offset }, killable.col, killable.pos)) {
                         if (killable.health.value <= 0) continue;
 
                         killable.vel.vec += zm.normalize2(vel.vec) * @as(zm.Vec, @splat(proj.weight));

@@ -161,6 +161,8 @@ test "rectAndRectResolve detect simple case" {
 
 test "circleAndRect detect simple case" {
     const circle = components.CircleCollider{
+        .x = 0,
+        .y = 0,
         .radius = 1,
     };
     const circle_pos = components.Position{
@@ -185,6 +187,8 @@ test "circleAndRect detect simple case" {
 
 test "circleAndCircleResolve detect simple case" {
     const a = components.CircleCollider{
+        .x = 0,
+        .y = 0,
         .radius = 1,
     };
     const a_pos = components.Position{
@@ -192,6 +196,8 @@ test "circleAndCircleResolve detect simple case" {
     };
 
     const b = components.CircleCollider{
+        .x = 0,
+        .y = 0,
         .radius = 1,
     };
     const b_pos = components.Position{
