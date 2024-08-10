@@ -779,6 +779,7 @@ pub fn main() anyerror!void {
                         {
                             const BloodSplatter = struct {
                                 pos: components.Position,
+                                scale: components.Scale,
                                 texture: components.Texture,
                                 lifetime: components.LifeTime,
                                 blood_splatter_tag: components.BloodSplatterGroundTag,
@@ -787,6 +788,7 @@ pub fn main() anyerror!void {
                             const InactiveBloodSplatterQuery = Storage.Query(struct {
                                 entity: ecez.Entity,
                                 pos: components.Position,
+                                scale: components.Scale,
                                 texture: components.Texture,
                                 lifetime: components.LifeTime,
                                 inactive_tag: components.InactiveTag,
@@ -803,13 +805,22 @@ pub fn main() anyerror!void {
 
                             const lifetime: f32 = 6;
                             while (died_this_frame_iter.next()) |dead_this_frame| {
+                                const scale = storage.getComponent(dead_this_frame.entity, components.Scale) catch components.Scale{ .x = 1, .y = 1 };
+                                const splatter_offset = zm.f32x4(-100 * scale.x, -100 * scale.y, 0, 0);
+
+                                const position = components.Position{
+                                    .vec = dead_this_frame.pos.vec + splatter_offset,
+                                };
+
                                 if (inactive_blood_iter.next()) |inactive_blood_splatter| {
                                     try storage.removeComponent(inactive_blood_splatter.entity, components.InactiveTag);
-                                    try storage.setComponent(inactive_blood_splatter.entity, dead_this_frame.pos);
+                                    try storage.setComponent(inactive_blood_splatter.entity, position);
+                                    try storage.setComponent(inactive_blood_splatter.entity, scale);
                                     try storage.setComponent(inactive_blood_splatter.entity, components.LifeTime{ .value = lifetime });
                                 } else {
                                     _ = try storage.createEntity(BloodSplatter{
-                                        .pos = dead_this_frame.pos,
+                                        .pos = position,
+                                        .scale = scale,
                                         .texture = components.Texture{
                                             .type = @intFromEnum(GameTextureRepo.texture_type.blood_splatter),
                                             .index = @intFromEnum(GameTextureRepo.which_bloodsplat.Blood_Splat),
