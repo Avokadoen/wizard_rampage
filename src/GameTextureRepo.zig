@@ -2,12 +2,13 @@ const rl = @import("raylib");
 
 const GameTextureRepo = @This();
 
-player: [72]rl.Texture,
-projectile: [15]rl.Texture,
-farmer: [48]rl.Texture,
-blood_splatter: [9]rl.Texture,
-country: [6]rl.Texture,
-inventory: [5]rl.Texture,
+player: [@typeInfo(which_player).Enum.fields.len]rl.Texture,
+projectile: [@typeInfo(which_projectile).Enum.fields.len]rl.Texture,
+farmer: [@typeInfo(which_farmer).Enum.fields.len]rl.Texture,
+blood_splatter: [@typeInfo(which_bloodsplat).Enum.fields.len]rl.Texture,
+country: [@typeInfo(which_country_side).Enum.fields.len]rl.Texture,
+inventory: [@typeInfo(which_inventory).Enum.fields.len]rl.Texture,
+decor: [@typeInfo(which_decor).Enum.fields.len]rl.Texture,
 
 pub fn init() GameTextureRepo {
     const player = loadTextureGroup(which_player, "resources/textures/player/");
@@ -16,6 +17,7 @@ pub fn init() GameTextureRepo {
     const blood_splatter = loadTextureGroup(which_bloodsplat, "resources/textures/effects/bloodsplat/");
     const country = loadTextureGroup(which_country_side, "resources/textures/country_side/");
     const inventory = loadTextureGroup(which_inventory, "resources/textures/inventory/");
+    const decor = loadTextureGroup(which_decor, "resources/textures/decor/");
 
     return GameTextureRepo{
         .player = player,
@@ -24,6 +26,7 @@ pub fn init() GameTextureRepo {
         .blood_splatter = blood_splatter,
         .country = country,
         .inventory = inventory,
+        .decor = decor,
     };
 }
 
@@ -44,6 +47,9 @@ pub fn deinit(self: GameTextureRepo) void {
         texture.unload();
     }
     inline for (self.inventory) |texture| {
+        texture.unload();
+    }
+    inline for (self.decor) |texture| {
         texture.unload();
     }
 }
@@ -235,4 +241,9 @@ pub const which_inventory = enum {
     Slot,
     Slot_Cursor,
     Gem_Bag,
+};
+
+pub const which_decor = enum {
+    Daisies,
+    Rocks,
 };
