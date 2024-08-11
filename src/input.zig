@@ -174,7 +174,7 @@ pub fn CreateInput(Storage: type) type {
                     projectile.life_time.* = components.LifeTime{
                         .value = 1.3,
                     };
-                    projectile.projectile.* = next_projectile.attrs;
+                    projectile.projectile.* = next_projectile.proj;
 
                     storage.removeComponent(projectile.entity, components.InactiveTag) catch unreachable;
                 } else {
@@ -203,7 +203,7 @@ pub fn CreateInput(Storage: type) type {
                         .life_time = components.LifeTime{
                             .value = 1.3,
                         },
-                        .projectile = next_projectile.attrs,
+                        .projectile = next_projectile.proj,
                     }) catch (@panic("rip projectiles"));
                 }
 
@@ -253,17 +253,53 @@ pub fn CreateInput(Storage: type) type {
     };
 }
 
-pub fn findNextStaffProjectile(staff: *components.Staff) ?components.Staff.ProjectileAttribs {
+pub fn nextStaffProjectileIndex(staff: components.Staff) ?u8 {
+    var slots_checked: u8 = 0;
+    var cursor = staff.slot_cursor;
+    while (staff.slots[cursor] != .projectile and slots_checked < staff.used_slots) {
+        slots_checked += 1;
+        cursor += 1;
+    }
+
+    // If we found our next projectile
+    if (staff.slots[cursor] == .projectile) {
+        return cursor;
+    }
+
+    return null;
+}
+
+const NextProjectile = struct {
+    type: components.Staff.ProjectileType,
+    proj: components.Projectile,
+};
+pub fn findNextStaffProjectile(staff: *components.Staff) ?NextProjectile {
+    var modifier_len: u8 = 0;
+    var modifiers: [components.Staff.max_slots - 1]components.Staff.Modifier = undefined;
     var slots_checked: u8 = 0;
     while (staff.slots[staff.slot_cursor] != .projectile and slots_checked < staff.used_slots) {
+        if (staff.slots[staff.slot_cursor] == .modifier) {
+            modifiers[modifier_len] = staff.slots[staff.slot_cursor].modifier;
+            modifier_len += 1;
+        }
+
         slots_checked += 1;
         staff.slot_cursor = @mod((staff.slot_cursor + 1), staff.used_slots);
     }
 
     // If we found our next projectile
     if (staff.slots[staff.slot_cursor] == .projectile) {
-        staff.slot_cursor = @mod((staff.slot_cursor + 1), staff.used_slots);
-        return staff.slots[staff.slot_cursor].projectile;
+        defer staff.slot_cursor = @mod((staff.slot_cursor + 1), staff.used_slots);
+        const proj = staff.slots[staff.slot_cursor].projectile;
+        return NextProjectile{
+            .type = proj.type,
+            .proj = components.Projectile{
+                .dmg = proj.attrs.dmg,
+                .weight = proj.attrs.weight,
+                .modifier_len = modifier_len,
+                .modifiers = modifiers,
+            },
+        };
     }
 
     return null;

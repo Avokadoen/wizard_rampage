@@ -114,23 +114,11 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 struct {
                     entity: ecez.Entity,
                     pos: components.Position,
-                    vel: *components.Velocity,
                     col: components.RectangleCollider,
                     health: *components.Health,
                 },
                 // exclude type
                 .{components.InactiveTag},
-            ).Iter;
-
-            const QueryKillablesImMov = Storage.Query(
-                struct {
-                    entity: ecez.Entity,
-                    pos: components.Position,
-                    col: components.RectangleCollider,
-                    health: *components.Health,
-                },
-                // exclude type
-                .{ components.Velocity, components.InactiveTag },
             ).Iter;
 
             pub fn projectileHitKillable(
@@ -140,7 +128,6 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 circle: components.CircleCollider,
                 proj: components.Projectile,
                 killable_iter_movable: *QueryKillablesMov,
-                killable_iter_immovable: *QueryKillablesImMov,
                 edit_queue: *Storage.StorageEditQueue,
                 context: Context,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
@@ -160,28 +147,25 @@ pub fn CreateUpdateSystems(Storage: type) type {
                             rl.playSound(on_dmg_sound);
                         }
 
-                        killable.vel.vec += zm.normalize2(vel.vec) * @as(zm.Vec, @splat(proj.weight));
-                        killable.health.value -= proj.dmg;
-
-                        edit_queue.queueSetComponent(entity, components.InactiveTag{}) catch @panic("oom");
-
-                        return;
-                    }
-                }
-
-                while (killable_iter_immovable.next()) |killable| {
-                    if (physics.Intersection.circleAndRect(circle, pos, killable.col, killable.pos)) {
-                        if (killable.health.value <= 0) continue;
-
-                        const maybe_vocals = context.storage.getComponent(killable.entity, components.Vocals) catch null;
-                        if (maybe_vocals) |vocals| {
-                            const on_dmg_index = context.rng.intRangeAtMost(u8, vocals.on_dmg_start, vocals.on_dmg_end);
-                            const on_dmg_sound = context.sound_repo[on_dmg_index];
-                            rl.playSound(on_dmg_sound);
+                        var extra_dmg: i32 = 0;
+                        var has_piercing: bool = false;
+                        for (proj.modifiers[0..proj.modifier_len]) |mod| {
+                            switch (mod) {
+                                .piercing => has_piercing = true,
+                                .dmg_amp => extra_dmg += 10,
+                            }
                         }
 
-                        killable.health.value -= proj.dmg;
-                        edit_queue.queueSetComponent(entity, components.InactiveTag{}) catch @panic("oom");
+                        const maybe_vel = context.storage.getComponent(killable.entity, *components.Velocity) catch null;
+                        if (maybe_vel) |kill_vel| {
+                            kill_vel.vec += zm.normalize2(vel.vec) * @as(zm.Vec, @splat(proj.weight));
+                        }
+
+                        killable.health.value -= proj.dmg + extra_dmg;
+
+                        if (!has_piercing) {
+                            edit_queue.queueSetComponent(entity, components.InactiveTag{}) catch @panic("oom");
+                        }
 
                         return;
                     }

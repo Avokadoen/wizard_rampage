@@ -580,22 +580,23 @@ pub fn main() anyerror!void {
 
                     var staff = components.Staff{
                         .slot_capacity = 8,
-                        .used_slots = 2,
+                        .used_slots = 4,
                         .slot_cursor = 0,
                         .slots = undefined,
                     };
 
                     staff.slots[0] = components.Staff.Slot{ .projectile = .{
                         .type = .bolt,
-                        .attrs = components.Projectile{
+                        .attrs = .{
                             .dmg = 15,
                             .weight = 300,
                         },
                     } };
-
-                    staff.slots[1] = components.Staff.Slot{ .projectile = .{
+                    staff.slots[1] = components.Staff.Slot{ .modifier = .dmg_amp };
+                    staff.slots[2] = components.Staff.Slot{ .modifier = .piercing };
+                    staff.slots[3] = components.Staff.Slot{ .projectile = .{
                         .type = .red_gem,
-                        .attrs = components.Projectile{
+                        .attrs = .{
                             .dmg = 30,
                             .weight = 3000,
                         },
@@ -1009,6 +1010,8 @@ pub fn main() anyerror!void {
                             const index_bag = @intFromEnum(GameTextureRepo.which_inventory.Gem_Bag);
                             const texture_bag = texture_repo.inventory[index_bag];
 
+                            const next_projectile = input.nextStaffProjectileIndex(staff.*) orelse 255;
+
                             for (0..staff.slot_capacity) |i| {
                                 const rect_texture = rl.Rectangle{
                                     .x = 0,
@@ -1019,9 +1022,10 @@ pub fn main() anyerror!void {
                                 const start_pos = (window_width / 2) - ((@as(f32, @floatFromInt(staff.slot_capacity)) * 75.0) / 2) + (@as(f32, @floatFromInt(texture_slot.width)) / 2);
                                 const pos = rl.Vector2{
                                     .x = start_pos + @as(f32, @floatFromInt(i)) * 75,
-                                    .y = window_height - 70,
+                                    .y = window_height - window_height * 0.1,
                                 };
-                                if (i == staff.slot_cursor) {
+
+                                if (i == next_projectile) {
                                     rl.drawTextureRec(texture_slot_cursor, rect_texture, pos, rl.Color.white);
                                 } else {
                                     rl.drawTextureRec(texture_slot, rect_texture, pos, rl.Color.white);
@@ -1030,15 +1034,16 @@ pub fn main() anyerror!void {
                                     .none => {},
                                     .projectile => |proj| {
                                         switch (proj.type) {
-                                            .bolt => {
-                                                rl.drawTextureRec(texture_yellow_gem, rect_texture, pos, rl.Color.white);
-                                            },
-                                            .red_gem => {
-                                                rl.drawTextureRec(texture_red_gem, rect_texture, pos, rl.Color.white);
-                                            },
+                                            .bolt => rl.drawTextureRec(texture_yellow_gem, rect_texture, pos, rl.Color.white),
+                                            .red_gem => rl.drawTextureRec(texture_red_gem, rect_texture, pos, rl.Color.white),
                                         }
                                     },
-                                    .modifier => {},
+                                    .modifier => |mod| {
+                                        switch (mod) {
+                                            .piercing => rl.drawTextureRec(texture_yellow_gem, rect_texture, pos, rl.Color.white),
+                                            .dmg_amp => rl.drawTextureRec(texture_red_gem, rect_texture, pos, rl.Color.white),
+                                        }
+                                    },
                                 }
                             }
 

@@ -127,17 +127,21 @@ pub const Staff = struct {
     };
     pub const ProjectileAttribs = struct {
         type: ProjectileType,
-        attrs: Projectile,
+        attrs: struct {
+            dmg: i32,
+            weight: f32,
+        },
     };
     pub const Modifier = enum {
         piercing,
+        dmg_amp,
     };
     pub const Slot = union(enum) {
         none: void,
         projectile: ProjectileAttribs,
         modifier: Modifier,
     };
-    pub const max_slots = 64;
+    pub const max_slots = 32;
 
     slot_capacity: u8,
     used_slots: u8,
@@ -148,6 +152,9 @@ pub const Staff = struct {
 pub const Projectile = struct {
     dmg: i32,
     weight: f32, // knockback modifier
+
+    modifier_len: u8,
+    modifiers: [Staff.max_slots - 1]Staff.Modifier,
 };
 
 pub const Health = struct {
