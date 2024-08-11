@@ -9,7 +9,6 @@ const components = @import("components.zig");
 const physics = @import("physics_2d.zig");
 const GameTextureRepo = @import("GameTextureRepo.zig");
 const MainTextureRepo = @import("MainTextureRepo.zig");
-
 const GameSoundRepo = @import("GameSoundRepo.zig");
 
 const tracy = @import("ztracy");
@@ -908,48 +907,50 @@ pub fn main() anyerror!void {
                                 }
                             }
 
-                            {
-                                const zone = tracy.ZoneN(@src(), "Debug draw rectangle");
-                                defer zone.End();
+                            if (@import("builtin").mode == .Debug) {
+                                {
+                                    const zone = tracy.ZoneN(@src(), "Debug draw rectangle");
+                                    defer zone.End();
 
-                                const RectangleDrawQuery = Storage.Query(struct {
-                                    pos: components.Position,
-                                    col: components.RectangleCollider,
-                                    _: components.DrawRectangleTag,
-                                }, .{components.InactiveTag});
-                                var rect_iter = RectangleDrawQuery.submit(&storage);
-                                while (rect_iter.next()) |rect| {
-                                    const draw_rectangle = rl.Rectangle{
-                                        .x = rect.pos.vec[0],
-                                        .y = rect.pos.vec[1],
-                                        .width = rect.col.width,
-                                        .height = rect.col.height,
-                                    };
+                                    const RectangleDrawQuery = Storage.Query(struct {
+                                        pos: components.Position,
+                                        col: components.RectangleCollider,
+                                        _: components.DrawRectangleTag,
+                                    }, .{components.InactiveTag});
+                                    var rect_iter = RectangleDrawQuery.submit(&storage);
+                                    while (rect_iter.next()) |rect| {
+                                        const draw_rectangle = rl.Rectangle{
+                                            .x = rect.pos.vec[0],
+                                            .y = rect.pos.vec[1],
+                                            .width = rect.col.width,
+                                            .height = rect.col.height,
+                                        };
 
-                                    rl.drawRectanglePro(draw_rectangle, rl.Vector2.init(0, 0), 0, rl.Color.red);
+                                        rl.drawRectanglePro(draw_rectangle, rl.Vector2.init(0, 0), 0, rl.Color.red);
+                                    }
                                 }
-                            }
 
-                            {
-                                const zone = tracy.ZoneN(@src(), "Debug draw circle");
-                                defer zone.End();
+                                {
+                                    const zone = tracy.ZoneN(@src(), "Debug draw circle");
+                                    defer zone.End();
 
-                                const CircleDrawQuery = Storage.Query(struct {
-                                    pos: components.Position,
-                                    col: components.CircleCollider,
-                                    _: components.DrawCircleTag,
-                                }, .{components.InactiveTag});
-                                var circle_iter = CircleDrawQuery.submit(&storage);
+                                    const CircleDrawQuery = Storage.Query(struct {
+                                        pos: components.Position,
+                                        col: components.CircleCollider,
+                                        _: components.DrawCircleTag,
+                                    }, .{components.InactiveTag});
+                                    var circle_iter = CircleDrawQuery.submit(&storage);
 
-                                while (circle_iter.next()) |circle| {
-                                    const offset = zm.f32x4(@floatCast(circle.col.x), @floatCast(circle.col.y), 0, 0);
+                                    while (circle_iter.next()) |circle| {
+                                        const offset = zm.f32x4(@floatCast(circle.col.x), @floatCast(circle.col.y), 0, 0);
 
-                                    rl.drawCircle(
-                                        @intFromFloat(circle.pos.vec[0] + @as(f32, @floatCast(offset[0]))),
-                                        @intFromFloat(circle.pos.vec[1] + @as(f32, @floatCast(offset[1]))),
-                                        circle.col.radius,
-                                        rl.Color.blue,
-                                    );
+                                        rl.drawCircle(
+                                            @intFromFloat(circle.pos.vec[0] + @as(f32, @floatCast(offset[0]))),
+                                            @intFromFloat(circle.pos.vec[1] + @as(f32, @floatCast(offset[1]))),
+                                            circle.col.radius,
+                                            rl.Color.blue,
+                                        );
+                                    }
                                 }
                             }
                         }
