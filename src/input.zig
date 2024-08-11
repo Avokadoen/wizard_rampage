@@ -94,7 +94,7 @@ fn fireProjectile(pos: components.Position, vel: zm.Vec, fire_rate: *components.
         const cs = @cos(rotation);
         const sn = @sin(rotation);
 
-        const proj_offset = zm.normalize2(vel) * @as(zm.Vec, @splat(50));
+        const proj_offset = zm.normalize2(vel) * @as(zm.Vec, @splat(15));
 
         _ = storage.createEntity(Projectile{
             .pos = components.Position{ .vec = pos.vec + proj_offset },
