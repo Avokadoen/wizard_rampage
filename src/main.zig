@@ -802,13 +802,21 @@ pub fn main() anyerror!void {
                     }
                 }
 
-                const farmer = try createFarmer(&storage, zm.f32x4(0, 0, 0, 0), player_scale);
-                _ = farmer; // autofix
-
                 load_assets_zone.End();
-
+                const max_farmers: u16 = 1000;
+                var nr_farmers: u16 = 0;
+                const spawn_timer: u64 = 10;
+                var spawn_cooldown: u64 = 0;
                 // TODO: pause
                 while (!rl.windowShouldClose()) {
+                    spawn_cooldown += 1;
+
+                    if ((max_farmers > nr_farmers) and spawn_cooldown >= spawn_timer) {
+                        const farmer_pos = random_point_on_circle(arena_height / 3, rl.Vector2{ .x = arena_height / 2, .y = arena_width / 2 }, random);
+                        _ = try createFarmer(&storage, zm.f32x4(farmer_pos.x, farmer_pos.y, 0, 0), player_scale);
+                        nr_farmers += 1;
+                        spawn_cooldown = 0;
+                    }
                     tracy.FrameMark();
 
                     // Play music
