@@ -839,6 +839,9 @@ pub fn main() anyerror!void {
                 var nr_farmers: u16 = 0;
                 const spawn_timer: u64 = 10;
                 var spawn_cooldown: u64 = 0;
+
+                var farmer_kill_count: u64 = 0;
+
                 // TODO: pause
                 while (!rl.windowShouldClose()) {
                     tracy.FrameMark();
@@ -877,6 +880,7 @@ pub fn main() anyerror!void {
                                 .storage = storage,
                                 .sound_repo = &sound_repo.effects,
                                 .rng = random,
+                                .farmer_kill_count = &farmer_kill_count,
                             };
                             scheduler.dispatchEvent(&storage, .game_update, update_context);
                             scheduler.waitEvent(.game_update);
@@ -1202,7 +1206,7 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
         vel: components.Velocity,
         col: components.RectangleCollider,
         rec_tag: components.DrawRectangleTag,
-        hostile_tag: components.HostileTag,
+        hostile_tag: components.FarmerHostileTag,
         health: components.Health,
         vocals: components.Vocals,
     };
@@ -1219,7 +1223,7 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
             .height = player_hit_box_height,
         },
         .rec_tag = components.DrawRectangleTag{},
-        .hostile_tag = components.HostileTag{},
+        .hostile_tag = components.FarmerHostileTag{},
         .health = components.Health{
             .max = 50,
             .value = 50,
