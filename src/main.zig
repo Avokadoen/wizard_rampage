@@ -966,7 +966,7 @@ pub fn main() anyerror!void {
                                 }
                             }
 
-                            if (@import("builtin").mode == .Debug) {
+                            if (@import("builtin").mode == .Debug and false) {
                                 {
                                     const zone = tracy.ZoneN(@src(), "Debug draw rectangle");
                                     defer zone.End();
