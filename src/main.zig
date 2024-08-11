@@ -830,50 +830,60 @@ pub fn main() anyerror!void {
                 }
 
                 load_assets_zone.End();
+
+                var in_inventory = false;
+
                 const max_farmers: u16 = 1000;
                 var nr_farmers: u16 = 0;
                 const spawn_timer: u64 = 10;
                 var spawn_cooldown: u64 = 0;
                 // TODO: pause
                 while (!rl.windowShouldClose()) {
-                    spawn_cooldown += 1;
-
-                    if ((max_farmers > nr_farmers) and spawn_cooldown >= spawn_timer) {
-                        const farmer_pos = random_point_on_circle(arena_height / 3, rl.Vector2{ .x = arena_height / 2, .y = arena_width / 2 }, random);
-                        _ = try createFarmer(&storage, zm.f32x4(farmer_pos.x, farmer_pos.y, 0, 0), player_scale);
-                        nr_farmers += 1;
-                        spawn_cooldown = 0;
-                    }
                     tracy.FrameMark();
 
                     // Play music
                     rl.updateMusicStream(music);
                     const time_played = rl.getMusicTimePlayed(music) / rl.getMusicTimeLength(music);
                     if (time_played > 1.0) rl.seekMusicStream(music, 27);
-                    // Update
-                    {
-                        // Input handling
-                        {
-                            inline for (Input.key_down_actions) |input_action| {
-                                if (rl.isKeyDown(input_action.key)) {
-                                    input_action.callback(&storage, player_entity, player_staff_entity);
-                                }
-                            }
+
+                    if (rl.isKeyPressed(rl.KeyboardKey.key_tab)) {
+                        in_inventory = !in_inventory;
+                    }
+                    if (!in_inventory) {
+                        spawn_cooldown += 1;
+
+                        if ((max_farmers > nr_farmers) and spawn_cooldown >= spawn_timer) {
+                            const farmer_pos = random_point_on_circle(arena_height / 3, rl.Vector2{ .x = arena_height / 2, .y = arena_width / 2 }, random);
+                            _ = try createFarmer(&storage, zm.f32x4(farmer_pos.x, farmer_pos.y, 0, 0), player_scale);
+                            nr_farmers += 1;
+                            spawn_cooldown = 0;
                         }
 
-                        // system update dispatch
-                        const update_context = UpdateSystems.Context{
-                            .storage = storage,
-                            .sound_repo = &sound_repo.effects,
-                            .rng = random,
-                        };
-                        scheduler.dispatchEvent(&storage, .game_update, update_context);
-                        scheduler.waitEvent(.game_update);
+                        // Update
+                        {
+                            // Input handling
+                            {
+                                inline for (Input.key_down_actions) |input_action| {
+                                    if (rl.isKeyDown(input_action.key)) {
+                                        input_action.callback(&storage, player_entity, player_staff_entity);
+                                    }
+                                }
+                            }
 
-                        try storage.flushStorageQueue(); // flush any edits which occured in dispatch game_update
+                            // system update dispatch
+                            const update_context = UpdateSystems.Context{
+                                .storage = storage,
+                                .sound_repo = &sound_repo.effects,
+                                .rng = random,
+                            };
+                            scheduler.dispatchEvent(&storage, .game_update, update_context);
+                            scheduler.waitEvent(.game_update);
 
-                        // Spawn blood splatter
-                        try spawnBloodSplatter(allocator, &storage, sound_repo, random);
+                            try storage.flushStorageQueue(); // flush any edits which occured in dispatch game_update
+
+                            // Spawn blood splatter
+                            try spawnBloodSplatter(allocator, &storage, sound_repo, random);
+                        }
                     }
 
                     {
@@ -996,6 +1006,9 @@ pub fn main() anyerror!void {
                             const index_yellow_gem = @intFromEnum(GameTextureRepo.which_inventory.Yellow_Gem);
                             const texture_yellow_gem = texture_repo.inventory[index_yellow_gem];
 
+                            const index_bag = @intFromEnum(GameTextureRepo.which_inventory.Gem_Bag);
+                            const texture_bag = texture_repo.inventory[index_bag];
+
                             for (0..staff.slot_capacity) |i| {
                                 const rect_texture = rl.Rectangle{
                                     .x = 0,
@@ -1009,9 +1022,9 @@ pub fn main() anyerror!void {
                                     .y = window_height - 70,
                                 };
                                 if (i == staff.slot_cursor) {
-                                    rl.drawTextureRec(texture_slot_cursor, rect_texture, pos, rl.Color.brown);
+                                    rl.drawTextureRec(texture_slot_cursor, rect_texture, pos, rl.Color.white);
                                 } else {
-                                    rl.drawTextureRec(texture_slot, rect_texture, pos, rl.Color.brown);
+                                    rl.drawTextureRec(texture_slot, rect_texture, pos, rl.Color.white);
                                 }
                                 switch (staff.slots[i]) {
                                     .none => {},
@@ -1027,6 +1040,30 @@ pub fn main() anyerror!void {
                                     },
                                     .modifier => {},
                                 }
+                            }
+
+                            if (in_inventory) {
+                                const rect_source = rl.Rectangle{
+                                    .x = 0,
+                                    .y = 0,
+                                    .height = @floatFromInt(texture_bag.height),
+                                    .width = @floatFromInt(texture_bag.width),
+                                };
+                                const start_pos = (window_width / 2) - window_height / 4;
+                                const rect_dest = rl.Rectangle{
+                                    .x = start_pos,
+                                    .y = window_height / 3,
+                                    .height = window_height / 2,
+                                    .width = window_height / 2,
+                                };
+                                rl.drawTexturePro(
+                                    texture_bag,
+                                    rect_source,
+                                    rect_dest,
+                                    rl.Vector2{ .x = 0, .y = 0 },
+                                    0.0,
+                                    rl.Color.white,
+                                );
                             }
                         }
                     }
