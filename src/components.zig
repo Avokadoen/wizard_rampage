@@ -137,7 +137,7 @@ pub const Staff = struct {
         projectile: ProjectileAttribs,
         modifier: Modifier,
     };
-    const max_slots = 64;
+    pub const max_slots = 64;
 
     slot_capacity: u8,
     used_slots: u8,

@@ -7,6 +7,7 @@ projectile: [15]rl.Texture,
 farmer: [48]rl.Texture,
 blood_splatter: [9]rl.Texture,
 country: [6]rl.Texture,
+inventory: [4]rl.Texture,
 
 pub fn init() GameTextureRepo {
     const player = loadTextureGroup(which_player, "resources/textures/player/");
@@ -14,6 +15,7 @@ pub fn init() GameTextureRepo {
     const farmer = loadTextureGroup(which_farmer, "resources/textures/farmer/");
     const blood_splatter = loadTextureGroup(which_bloodsplat, "resources/textures/effects/bloodsplat/");
     const country = loadTextureGroup(which_country_side, "resources/textures/country_side/");
+    const inventory = loadTextureGroup(which_inventory, "resources/textures/inventory/");
 
     return GameTextureRepo{
         .player = player,
@@ -21,6 +23,7 @@ pub fn init() GameTextureRepo {
         .farmer = farmer,
         .blood_splatter = blood_splatter,
         .country = country,
+        .inventory = inventory,
     };
 }
 
@@ -35,6 +38,9 @@ pub fn deinit(self: GameTextureRepo) void {
         texture.unload();
     }
     inline for (self.blood_splatter) |texture| {
+        texture.unload();
+    }
+    inline for (self.country) |texture| {
         texture.unload();
     }
     inline for (self.country) |texture| {
@@ -59,6 +65,7 @@ pub const texture_type = enum {
     farmer,
     blood_splatter,
     country,
+    inventory,
 };
 
 pub const which_player = enum {
@@ -220,4 +227,11 @@ pub const which_country_side = enum {
     Grass,
     Mushroom,
     Tree,
+};
+
+pub const which_inventory = enum {
+    Yellow_Gem,
+    Red_Gem,
+    Slot,
+    Slot_Cursor,
 };

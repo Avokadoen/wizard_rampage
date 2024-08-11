@@ -903,7 +903,7 @@ pub fn main() anyerror!void {
                             camera.begin();
                             defer camera.end();
 
-                            rl.clearBackground(rl.Color.ray_white);
+                            rl.clearBackground(rl.Color.dark_brown);
 
                             {
                                 const zone = tracy.ZoneN(@src(), "Texture draw");
@@ -915,6 +915,7 @@ pub fn main() anyerror!void {
                                     &texture_repo.farmer,
                                     &texture_repo.blood_splatter,
                                     &texture_repo.country,
+                                    &texture_repo.inventory,
                                 };
 
                                 const TextureDrawQuery = Storage.Query(struct {
@@ -982,6 +983,51 @@ pub fn main() anyerror!void {
 
                         {
                             // UI can go here
+                            const staff = storage.getComponent(player_staff_entity, *components.Staff) catch unreachable;
+                            const index_slot = @intFromEnum(GameTextureRepo.which_inventory.Slot);
+                            const texture_slot = texture_repo.inventory[index_slot];
+
+                            const index_slot_cursor = @intFromEnum(GameTextureRepo.which_inventory.Slot_Cursor);
+                            const texture_slot_cursor = texture_repo.inventory[index_slot_cursor];
+
+                            const index_red_gem = @intFromEnum(GameTextureRepo.which_inventory.Red_Gem);
+                            const texture_red_gem = texture_repo.inventory[index_red_gem];
+
+                            const index_yellow_gem = @intFromEnum(GameTextureRepo.which_inventory.Yellow_Gem);
+                            const texture_yellow_gem = texture_repo.inventory[index_yellow_gem];
+
+                            for (0..staff.slot_capacity) |i| {
+                                const rect_texture = rl.Rectangle{
+                                    .x = 0,
+                                    .y = 0,
+                                    .height = @floatFromInt(texture_slot.height),
+                                    .width = @floatFromInt(texture_slot.width),
+                                };
+                                const start_pos = (window_width / 2) - ((@as(f32, @floatFromInt(staff.slot_capacity)) * 75.0) / 2) + (@as(f32, @floatFromInt(texture_slot.width)) / 2);
+                                const pos = rl.Vector2{
+                                    .x = start_pos + @as(f32, @floatFromInt(i)) * 75,
+                                    .y = window_height - 70,
+                                };
+                                if (i == staff.slot_cursor) {
+                                    rl.drawTextureRec(texture_slot_cursor, rect_texture, pos, rl.Color.brown);
+                                } else {
+                                    rl.drawTextureRec(texture_slot, rect_texture, pos, rl.Color.brown);
+                                }
+                                switch (staff.slots[i]) {
+                                    .none => {},
+                                    .projectile => |proj| {
+                                        switch (proj.type) {
+                                            .bolt => {
+                                                rl.drawTextureRec(texture_yellow_gem, rect_texture, pos, rl.Color.white);
+                                            },
+                                            .red_gem => {
+                                                rl.drawTextureRec(texture_red_gem, rect_texture, pos, rl.Color.white);
+                                            },
+                                        }
+                                    },
+                                    .modifier => {},
+                                }
+                            }
                         }
                     }
                 }
