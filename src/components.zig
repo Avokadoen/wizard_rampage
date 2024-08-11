@@ -27,6 +27,7 @@ pub const all = .{
     DiedThisFrameTag,
     BloodSplatterGroundTag,
     BloodGoreGroundTag,
+    Vocals,
 };
 
 pub const Position = struct {
@@ -130,3 +131,11 @@ pub const Health = struct {
 pub const DiedThisFrameTag = struct {};
 pub const BloodSplatterGroundTag = struct {};
 pub const BloodGoreGroundTag = struct {};
+
+pub const Vocals = struct {
+    // on_attack: u8,
+    on_death_start: u8,
+    on_death_end: u8,
+    on_dmg_start: u8,
+    on_dmg_end: u8,
+};

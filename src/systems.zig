@@ -148,6 +148,8 @@ pub fn CreateUpdateSystems(Storage: type) type {
     return struct {
         pub const Context = struct {
             storage: Storage,
+            sound_repo: []const rl.Sound,
+            rng: std.Random,
         };
 
         pub const MovableToImmovableRecToRecCollisionResolve = struct {
@@ -244,6 +246,7 @@ pub fn CreateUpdateSystems(Storage: type) type {
         pub const ProjectileHitKillable = struct {
             const QueryKillablesMov = Storage.Query(
                 struct {
+                    entity: ecez.Entity,
                     pos: components.Position,
                     vel: *components.Velocity,
                     col: components.RectangleCollider,
@@ -255,6 +258,7 @@ pub fn CreateUpdateSystems(Storage: type) type {
 
             const QueryKillablesImMov = Storage.Query(
                 struct {
+                    entity: ecez.Entity,
                     pos: components.Position,
                     col: components.RectangleCollider,
                     health: *components.Health,
@@ -272,6 +276,7 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 killable_iter_movable: *QueryKillablesMov,
                 killable_iter_immovable: *QueryKillablesImMov,
                 edit_queue: *Storage.StorageEditQueue,
+                context: Context,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
                 const zone = tracy.ZoneN(@src(), @src().fn_name);
@@ -281,6 +286,13 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 while (killable_iter_movable.next()) |killable| {
                     if (physics.Intersection.circleAndRect(circle, components.Position{ .vec = pos.vec + offset }, killable.col, killable.pos)) {
                         if (killable.health.value <= 0) continue;
+
+                        const maybe_vocals = context.storage.getComponent(killable.entity, components.Vocals) catch null;
+                        if (maybe_vocals) |vocals| {
+                            const on_dmg_index = context.rng.intRangeAtMost(u8, vocals.on_dmg_start, vocals.on_dmg_end);
+                            const on_dmg_sound = context.sound_repo[on_dmg_index];
+                            rl.playSound(on_dmg_sound);
+                        }
 
                         killable.vel.vec += zm.normalize2(vel.vec) * @as(zm.Vec, @splat(proj.weight));
                         killable.health.value -= proj.dmg;
@@ -294,8 +306,15 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 while (killable_iter_immovable.next()) |killable| {
                     if (physics.Intersection.circleAndRect(circle, pos, killable.col, killable.pos)) {
                         if (killable.health.value <= 0) continue;
-                        killable.health.value -= proj.dmg;
 
+                        const maybe_vocals = context.storage.getComponent(killable.entity, components.Vocals) catch null;
+                        if (maybe_vocals) |vocals| {
+                            const on_dmg_index = context.rng.intRangeAtMost(u8, vocals.on_dmg_start, vocals.on_dmg_end);
+                            const on_dmg_sound = context.sound_repo[on_dmg_index];
+                            rl.playSound(on_dmg_sound);
+                        }
+
+                        killable.health.value -= proj.dmg;
                         edit_queue.queueSetComponent(entity, components.InactiveTag{}) catch @panic("oom");
 
                         return;
@@ -309,12 +328,20 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 entity: ecez.Entity,
                 health: components.Health,
                 edit_queue: *Storage.StorageEditQueue,
+                context: Context,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
                 const zone = tracy.ZoneN(@src(), @src().fn_name);
                 defer zone.End();
 
                 if (health.value <= 0) {
+                    const maybe_vocals = context.storage.getComponent(entity, components.Vocals) catch null;
+                    if (maybe_vocals) |vocals| {
+                        const on_death_index = context.rng.intRangeAtMost(u8, vocals.on_death_start, vocals.on_death_end);
+                        const on_death_sound = context.sound_repo[on_death_index];
+                        rl.playSound(on_death_sound);
+                    }
+
                     edit_queue.queueSetComponent(entity, components.InactiveTag{}) catch @panic("registerDead: wtf");
                     edit_queue.queueSetComponent(entity, components.DiedThisFrameTag{}) catch @panic("registerDead: wtf");
                 }

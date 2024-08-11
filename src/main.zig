@@ -10,6 +10,8 @@ const physics = @import("physics_2d.zig");
 const GameTextureRepo = @import("GameTextureRepo.zig");
 const MainTextureRepo = @import("MainTextureRepo.zig");
 
+const GameSoundRepo = @import("GameSoundRepo.zig");
+
 const tracy = @import("ztracy");
 
 const arena_height = 3000;
@@ -318,7 +320,8 @@ pub fn main() anyerror!void {
             },
             .game => {
                 const micro_ts = std.time.microTimestamp();
-                var random = std.rand.DefaultPrng.init(@as(*const u64, @ptrCast(&micro_ts)).*);
+                var prng = std.rand.DefaultPrng.init(@as(*const u64, @ptrCast(&micro_ts)).*);
+                const random = prng.random();
 
                 //create grass and dirt
                 const random_point_on_circle = struct {
@@ -336,6 +339,9 @@ pub fn main() anyerror!void {
 
                 const texture_repo = GameTextureRepo.init();
                 defer texture_repo.deinit();
+
+                const sound_repo = GameSoundRepo.init();
+                defer sound_repo.deinit();
 
                 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
                 defer _ = gpa.deinit();
@@ -364,6 +370,7 @@ pub fn main() anyerror!void {
                         rec_tag: components.DrawRectangleTag,
                         player_tag: components.PlayerTag,
                         health: components.Health,
+                        vocals: components.Vocals,
                     };
 
                     const player = try storage.createEntity(Player{
@@ -390,6 +397,12 @@ pub fn main() anyerror!void {
                         .health = components.Health{
                             .max = 100,
                             .value = 100,
+                        },
+                        .vocals = components.Vocals{
+                            .on_death_start = @intFromEnum(GameSoundRepo.which_effects.Kill),
+                            .on_death_end = @intFromEnum(GameSoundRepo.which_effects.Kill),
+                            .on_dmg_start = @intFromEnum(GameSoundRepo.which_effects.Player_Damage_01),
+                            .on_dmg_end = @intFromEnum(GameSoundRepo.which_effects.Player_Damage_03),
                         },
                     });
 
@@ -760,7 +773,7 @@ pub fn main() anyerror!void {
                         .y = window_width / 2,
                     };
                     for (0..@intFromFloat(window_width / 3)) |i| {
-                        const pos_dirt = random_point_on_circle(i * 3, center, random.random());
+                        const pos_dirt = random_point_on_circle(i * 3, center, random);
                         _ = try storage.createEntity(GroundClutter{
                             .pos = components.Position{ .vec = zm.f32x4(
                                 pos_dirt.x,
@@ -780,7 +793,7 @@ pub fn main() anyerror!void {
                         });
                     }
                     for (0..@intFromFloat(window_width / 2)) |i| {
-                        const pos_grass = random_point_on_circle(i * 2, center, random.random());
+                        const pos_grass = random_point_on_circle(i * 2, center, random);
 
                         _ = try storage.createEntity(GroundClutter{
                             .pos = components.Position{ .vec = zm.f32x4(
@@ -832,6 +845,8 @@ pub fn main() anyerror!void {
                         // system update dispatch
                         const update_context = UpdateSystems.Context{
                             .storage = storage,
+                            .sound_repo = &sound_repo.effects,
+                            .rng = random,
                         };
                         scheduler.dispatchEvent(&storage, .game_update, update_context);
                         scheduler.waitEvent(.game_update);
@@ -839,7 +854,7 @@ pub fn main() anyerror!void {
                         try storage.flushStorageQueue(); // flush any edits which occured in dispatch game_update
 
                         // Spawn blood splatter
-                        try spawnBloodSplatter(allocator, &storage);
+                        try spawnBloodSplatter(allocator, &storage, sound_repo, random);
                     }
 
                     {
@@ -910,6 +925,7 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
         rec_tag: components.DrawRectangleTag,
         hostile_tag: components.HostileTag,
         health: components.Health,
+        vocals: components.Vocals,
     };
 
     const farmer = try storage.createEntity(Farmer{
@@ -928,6 +944,12 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
         .health = components.Health{
             .max = 50,
             .value = 50,
+        },
+        .vocals = components.Vocals{
+            .on_death_start = @intFromEnum(GameSoundRepo.which_effects.Kill),
+            .on_death_end = @intFromEnum(GameSoundRepo.which_effects.Kill),
+            .on_dmg_start = @intFromEnum(GameSoundRepo.which_effects.Player_Damage_01),
+            .on_dmg_end = @intFromEnum(GameSoundRepo.which_effects.Player_Damage_03),
         },
     });
 
@@ -1087,7 +1109,12 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
     return farmer;
 }
 
-pub fn spawnBloodSplatter(allocator: std.mem.Allocator, storage: *Storage) !void {
+pub fn spawnBloodSplatter(
+    allocator: std.mem.Allocator,
+    storage: *Storage,
+    sound_repo: GameSoundRepo,
+    rng: std.Random,
+) !void {
     const zone = tracy.ZoneN(@src(), @src().fn_name);
     defer zone.End();
 
@@ -1187,11 +1214,9 @@ pub fn spawnBloodSplatter(allocator: std.mem.Allocator, storage: *Storage) !void
         };
 
         const gore_scale = components.Scale{ .x = scale.x * 2, .y = scale.y * 2 }; // gore should be larger than blood
-
         const gore_pos = components.Position{
             .vec = position.vec + zm.f32x4(-50, -40, 0, 0),
         };
-
         if (inactive_gore_iter.next()) |inactive_gore| {
             try storage.queueRemoveComponent(inactive_gore.entity, components.InactiveTag);
             inactive_gore.pos.* = gore_pos;
@@ -1199,6 +1224,9 @@ pub fn spawnBloodSplatter(allocator: std.mem.Allocator, storage: *Storage) !void
             // inactive_gore.anim.* = anim;
             inactive_gore.lifetime.* = lifetime_comp;
         } else {
+            const splatter_index = rng.intRangeAtMost(u8, @intFromEnum(GameSoundRepo.which_effects.Splatter_01), @intFromEnum(GameSoundRepo.which_effects.Splatter_03));
+            rl.playSound(sound_repo.effects[splatter_index]);
+
             try deferred_gore_splatter_entities.append(GoreSplatter{
                 .pos = gore_pos,
                 .rot = components.Rotation{ .value = 0 },
