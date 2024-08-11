@@ -103,6 +103,7 @@ pub fn CreateInput(Storage: type) type {
                 vel: components.Velocity,
                 collider: components.CircleCollider,
                 texture: components.Texture,
+                anim: components.AnimTexture,
                 tag: components.DrawCircleTag,
                 life_time: components.LifeTime,
                 projectile: components.Projectile,
@@ -135,6 +136,13 @@ pub fn CreateInput(Storage: type) type {
                         .type = @intFromEnum(GameTextureRepo.texture_type.projectile),
                         .index = @intFromEnum(GameTextureRepo.which_projectile.Bolt_01),
                         .draw_order = .o3,
+                    },
+                    .anim = components.AnimTexture{
+                        .start_frame = @intFromEnum(GameTextureRepo.which_projectile.Bolt_01),
+                        .current_frame = 0,
+                        .frame_count = @intFromEnum(GameTextureRepo.which_projectile.Bolt_05) - @intFromEnum(GameTextureRepo.which_projectile.Bolt_01),
+                        .frames_per_frame = 4,
+                        .frames_drawn_current_frame = 0,
                     },
                     .tag = components.DrawCircleTag{},
                     .life_time = components.LifeTime{
