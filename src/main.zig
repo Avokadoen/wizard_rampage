@@ -306,9 +306,9 @@ pub fn main() anyerror!void {
                 }
             },
             .game => {
-                //rl.updateMusicStream(music);
-                //const time_played_test = rl.getMusicTimePlayed(music) / rl.getMusicTimeLength(music);
-                //if (time_played_test > 1.0) rl.seekMusicStream(music, 27);
+                const micro_ts = std.time.microTimestamp();
+                var random = std.rand.DefaultPrng.init(@as(*const u64, @ptrCast(&micro_ts)).*);
+
                 const texture_repo = GameTextureRepo.init();
                 defer texture_repo.deinit();
 
@@ -648,10 +648,7 @@ pub fn main() anyerror!void {
                                 .index = @intFromEnum(GameTextureRepo.country_side.Fence_Horizontal),
                             },
                         });
-                        // North with door
-                        if (hor_fence_width * 13 == i) {
-                            continue;
-                        }
+                        // North
                         _ = try storage.createEntity(LevelBoundary{
                             .pos = components.Position{ .vec = zm.f32x4(
                                 @floatFromInt(i),
@@ -720,6 +717,69 @@ pub fn main() anyerror!void {
                                 .draw_order = .o2,
                                 .type = @intFromEnum(GameTextureRepo.texture_type.country),
                                 .index = @intFromEnum(GameTextureRepo.country_side.Fence_Vertical),
+                            },
+                        });
+                    }
+                }
+                {
+                    //create grass and dirt
+                    const random_point_on_circle = struct {
+                        fn randomPointOnCircle(radius: usize, pos: rl.Vector2, rand: std.Random) rl.Vector2 {
+                            const rand_value = rand.float(f32);
+                            const angle: f32 = rand_value * std.math.tau;
+                            const x = @as(f32, @floatFromInt(radius)) * @cos(angle);
+                            const y = @as(f32, @floatFromInt(radius)) * @sin(angle);
+
+                            return rl.Vector2{ .x = x + pos.x, .y = y + pos.y };
+                        }
+                    }.randomPointOnCircle;
+                    const GroundClutter = struct {
+                        pos: components.Position,
+                        scale: components.Scale,
+                        texture: components.Texture,
+                    };
+                    const center = rl.Vector2{
+                        .x = window_height / 2,
+                        .y = window_width / 2,
+                    };
+                    for (0..@intFromFloat(window_width / 3)) |i| {
+                        const pos_dirt = random_point_on_circle(i * 3, center, random.random());
+                        _ = try storage.createEntity(GroundClutter{
+                            .pos = components.Position{ .vec = zm.f32x4(
+                                pos_dirt.x,
+                                pos_dirt.y,
+                                0,
+                                0,
+                            ) },
+                            .scale = components.Scale{
+                                .x = 5,
+                                .y = 5,
+                            },
+                            .texture = components.Texture{
+                                .draw_order = .o0,
+                                .type = @intFromEnum(GameTextureRepo.texture_type.country),
+                                .index = @intFromEnum(GameTextureRepo.country_side.Dirt),
+                            },
+                        });
+                    }
+                    for (0..@intFromFloat(window_width / 2)) |i| {
+                        const pos_grass = random_point_on_circle(i * 2, center, random.random());
+
+                        _ = try storage.createEntity(GroundClutter{
+                            .pos = components.Position{ .vec = zm.f32x4(
+                                pos_grass.x,
+                                pos_grass.y,
+                                0,
+                                0,
+                            ) },
+                            .scale = components.Scale{
+                                .x = 1,
+                                .y = 1,
+                            },
+                            .texture = components.Texture{
+                                .draw_order = .o0,
+                                .type = @intFromEnum(GameTextureRepo.texture_type.country),
+                                .index = @intFromEnum(GameTextureRepo.country_side.Grass),
                             },
                         });
                     }
