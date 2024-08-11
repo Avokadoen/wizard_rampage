@@ -316,18 +316,6 @@ pub fn main() anyerror!void {
                 var prng = std.rand.DefaultPrng.init(@as(*const u64, @ptrCast(&micro_ts)).*);
                 const random = prng.random();
 
-                //create grass and dirt
-                const random_point_on_circle = struct {
-                    fn randomPointOnCircle(radius: usize, pos: rl.Vector2, rand: std.Random) rl.Vector2 {
-                        const rand_value = rand.float(f32);
-                        const angle: f32 = rand_value * std.math.tau;
-                        const x = @as(f32, @floatFromInt(radius)) * @cos(angle);
-                        const y = @as(f32, @floatFromInt(radius)) * @sin(angle);
-
-                        return rl.Vector2{ .x = x + pos.x, .y = y + pos.y };
-                    }
-                }.randomPointOnCircle;
-
                 const load_assets_zone = tracy.ZoneN(@src(), "game load assets and init");
 
                 const texture_repo = GameTextureRepo.init();
@@ -788,22 +776,19 @@ pub fn main() anyerror!void {
                         scale: components.Scale,
                         texture: components.Texture,
                     };
-                    const center = rl.Vector2{
-                        .x = window_height / 2,
-                        .y = window_width / 2,
-                    };
-                    for (0..@intFromFloat(window_width / 3)) |i| {
-                        const pos_dirt = random_point_on_circle(i * 3, center, random);
+                    for (0..150) |_| {
+                        const pos_x = -arena_width * 0.5 + random.float(f32) * arena_width * 1.5;
+                        const pos_y = -arena_height * 0.5 + random.float(f32) * arena_height * 1.5;
                         _ = try storage.createEntity(GroundClutter{
                             .pos = components.Position{ .vec = zm.f32x4(
-                                pos_dirt.x,
-                                pos_dirt.y,
+                                pos_x,
+                                pos_y,
                                 0,
                                 0,
                             ) },
                             .scale = components.Scale{
-                                .x = 5,
-                                .y = 5,
+                                .x = 4 + random.float(f32) * 2,
+                                .y = 4 + random.float(f32) * 2,
                             },
                             .texture = components.Texture{
                                 .draw_order = .o0,
@@ -812,19 +797,20 @@ pub fn main() anyerror!void {
                             },
                         });
                     }
-                    for (0..@intFromFloat(window_width / 2)) |i| {
-                        const pos_grass = random_point_on_circle(i * 2, center, random);
+                    for (0..200) |_| {
+                        const pos_x = -arena_width * 0.5 + random.float(f32) * arena_width * 1.5;
+                        const pos_y = -arena_height * 0.5 + random.float(f32) * arena_height * 1.5;
 
                         _ = try storage.createEntity(GroundClutter{
                             .pos = components.Position{ .vec = zm.f32x4(
-                                pos_grass.x,
-                                pos_grass.y,
+                                pos_x,
+                                pos_y,
                                 0,
                                 0,
                             ) },
                             .scale = components.Scale{
-                                .x = 1,
-                                .y = 1,
+                                .x = 1 + random.float(f32),
+                                .y = 1 + random.float(f32),
                             },
                             .texture = components.Texture{
                                 .draw_order = .o0,
@@ -845,8 +831,8 @@ pub fn main() anyerror!void {
                                 0,
                             ) },
                             .scale = components.Scale{
-                                .x = 1,
-                                .y = 1,
+                                .x = 0.1 + random.float(f32),
+                                .y = 0.1 + random.float(f32),
                             },
                             .texture = components.Texture{
                                 .draw_order = .o0,
@@ -889,7 +875,7 @@ pub fn main() anyerror!void {
                         spawn_cooldown += 1;
 
                         if ((max_farmers > nr_farmers) and spawn_cooldown >= farmer_spawn_timer) {
-                            const farmer_pos = random_point_on_circle(arena_height / 3, rl.Vector2{ .x = arena_height / 2, .y = arena_width / 2 }, random);
+                            const farmer_pos = randomPointOnCircle(arena_height / 3, rl.Vector2{ .x = arena_height / 2, .y = arena_width / 2 }, random);
                             _ = try createFarmer(&storage, zm.f32x4(farmer_pos.x, farmer_pos.y, 0, 0), player_scale);
                             nr_farmers += 1;
                             spawn_cooldown = 0;
@@ -897,7 +883,7 @@ pub fn main() anyerror!void {
 
                         if (farmer_kill_count >= farmers_to_kill_before_wife_spawns and the_wife_spawned == false) {
                             the_wife_spawned = true;
-                            const farmer_pos = random_point_on_circle(arena_height / 3, rl.Vector2{ .x = arena_height / 2, .y = arena_width / 2 }, random);
+                            const farmer_pos = randomPointOnCircle(arena_height / 3, rl.Vector2{ .x = arena_height / 2, .y = arena_width / 2 }, random);
                             _ = try createTheFarmersWife(&storage, zm.f32x4(farmer_pos.x, farmer_pos.y, 0, 0), player_scale);
                         }
 
@@ -1790,6 +1776,15 @@ pub fn staticTextureDraw(
     const center = rl.Vector2{ .x = 0, .y = 0 };
 
     rl.drawTexturePro(texture, rect_texture, rect_render_target, center, rotation.value, rl.Color.white);
+}
+
+fn randomPointOnCircle(radius: usize, pos: rl.Vector2, rand: std.Random) rl.Vector2 {
+    const rand_value = rand.float(f32);
+    const angle: f32 = rand_value * std.math.tau;
+    const x = @as(f32, @floatFromInt(radius)) * @cos(angle);
+    const y = @as(f32, @floatFromInt(radius)) * @sin(angle);
+
+    return rl.Vector2{ .x = x + pos.x, .y = y + pos.y };
 }
 
 test {
