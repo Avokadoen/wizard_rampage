@@ -575,7 +575,23 @@ pub fn main() anyerror!void {
                         orientation_texture: components.OrientationTexture,
                         fire_rate: components.FireRate,
                         child_of: components.ChildOf,
+                        staff: components.Staff,
                     };
+
+                    var staff = components.Staff{
+                        .slot_capacity = 8,
+                        .used_slots = 1,
+                        .slot_cursor = 0,
+                        .slots = undefined,
+                    };
+
+                    staff.slots[0] = components.Staff.Slot{ .projectile = .{
+                        .bolt = components.Projectile{
+                            .dmg = 15,
+                            .weight = 300,
+                        },
+                    } };
+
                     break :create_player_staff_blk try storage.createEntity(Staff{
                         .pos = components.Position{ .vec = zm.f32x4s(0) },
                         .scale = components.Scale{
@@ -615,6 +631,7 @@ pub fn main() anyerror!void {
                             .offset_x = player_part_offset_x,
                             .offset_y = player_part_offset_y,
                         },
+                        .staff = staff,
                     });
                 };
 

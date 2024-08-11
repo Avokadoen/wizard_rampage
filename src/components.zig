@@ -22,7 +22,7 @@ pub const all = .{
     InactiveTag,
     ChildOf,
     HostileTag,
-    Wand,
+    Staff,
     Projectile,
     Health,
     DiedThisFrameTag,
@@ -120,21 +120,23 @@ pub const ChildOf = struct {
 
 pub const HostileTag = struct {};
 
-pub const Wand = struct {
-    const ProjectileType = union(enum) {
+pub const Staff = struct {
+    pub const ProjectileType = union(enum) {
         bolt: Projectile,
         red_gem: Projectile,
     };
-    const Modifier = enum {
+    pub const Modifier = enum {
         piercing,
     };
-    const Slot = union(enum) {
+    pub const Slot = union(enum) {
         none: void,
         projectile: ProjectileType,
         modifier: Modifier,
     };
-    const max_slots = 8;
+    const max_slots = 64;
 
+    slot_capacity: u8,
+    used_slots: u8,
     slot_cursor: u8,
     slots: [max_slots]Slot,
 };
