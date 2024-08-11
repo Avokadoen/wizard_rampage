@@ -22,6 +22,7 @@ pub const all = .{
     InactiveTag,
     ChildOf,
     HostileTag,
+    Wand,
     Projectile,
     Health,
     DiedThisFrameTag,
@@ -118,6 +119,26 @@ pub const ChildOf = struct {
 };
 
 pub const HostileTag = struct {};
+
+pub const Wand = struct {
+    const ProjectileType = union(enum) {
+        bolt: Projectile,
+        red_gem: Projectile,
+    };
+    const Modifier = enum {
+        piercing,
+    };
+    const Slot = union(enum) {
+        none: void,
+        projectile: ProjectileType,
+        modifier: Modifier,
+    };
+    const max_slots = 8;
+
+    slot_cursor: u8,
+    slots: [max_slots]Slot,
+};
+
 pub const Projectile = struct {
     dmg: i32,
     weight: f32, // knockback modifier

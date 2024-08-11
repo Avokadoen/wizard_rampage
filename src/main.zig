@@ -46,6 +46,8 @@ const Scheduler = ecez.CreateScheduler(
     },
 );
 
+const Input = input.CreateInput(Storage);
+
 // Some hard-coded values for now! :D
 const player_scale: f32 = 0.4;
 const player_hit_box_width = @as(f32, @floatFromInt(65)) * player_scale;
@@ -826,12 +828,9 @@ pub fn main() anyerror!void {
                     {
                         // Input handling
                         {
-                            const player_pos_ptr = try storage.getComponent(player_entity, *components.Position);
-                            const player_vec_ptr = try storage.getComponent(player_entity, *components.Velocity);
-                            const player_fire_rate = try storage.getComponent(player_staff_entity, *components.FireRate);
-                            inline for (input.key_down_actions) |input_action| {
+                            inline for (Input.key_down_actions) |input_action| {
                                 if (rl.isKeyDown(input_action.key)) {
-                                    input_action.callback(player_pos_ptr, player_vec_ptr, player_fire_rate, &storage);
+                                    input_action.callback(&storage, player_entity, player_staff_entity);
                                 }
                             }
                         }
