@@ -1124,17 +1124,22 @@ pub fn spawnBloodSplatter(allocator: std.mem.Allocator, storage: *Storage) !void
         const lifetime_comp = components.LifeTime{
             .value = @as(f32, @floatFromInt(anim.frame_count)) * @as(f32, @floatFromInt(anim.frames_per_frame)) / 60.0,
         };
+
         const gore_scale = components.Scale{ .x = scale.x * 2, .y = scale.y * 2 }; // gore should be larger than blood
+
+        const gore_pos = components.Position{
+            .vec = position.vec + zm.f32x4(-50, -40, 0, 0),
+        };
 
         if (inactive_gore_iter.next()) |inactive_gore| {
             try storage.queueRemoveComponent(inactive_gore.entity, components.InactiveTag);
-            inactive_gore.pos.* = position;
+            inactive_gore.pos.* = gore_pos;
             inactive_gore.scale.* = gore_scale;
             // inactive_gore.anim.* = anim;
             inactive_gore.lifetime.* = lifetime_comp;
         } else {
             try deferred_gore_splatter_entities.append(GoreSplatter{
-                .pos = position,
+                .pos = gore_pos,
                 .rot = components.Rotation{ .value = 0 },
                 .scale = gore_scale,
                 .texture = components.Texture{
