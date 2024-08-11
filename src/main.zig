@@ -1445,8 +1445,8 @@ fn createTheFarmersWife(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfM
             .drag = 0.85,
         },
         .col = components.RectangleCollider{
-            .width = player_hit_box_width,
-            .height = player_hit_box_height,
+            .width = player_hit_box_width * 1.5,
+            .height = player_hit_box_height * 1.5,
         },
         .rec_tag = components.DrawRectangleTag{},
         .hostile_tag = components.HostileTag{},
