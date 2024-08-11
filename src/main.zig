@@ -83,8 +83,9 @@ pub fn main() anyerror!void {
     const LoopState = enum {
         main_menu,
         game,
+        victory_screen,
     };
-    var current_state = LoopState.game;
+    var current_state = LoopState.main_menu;
 
     outer_loop: while (true) {
         switch (current_state) {
@@ -1069,6 +1070,117 @@ pub fn main() anyerror!void {
                     }
                 }
                 break;
+            },
+            .victory_screen => {
+                const load_assets_zone = tracy.ZoneN(@src(), "main menu load assets and init");
+                const image = rl.loadImage("resources/textures/victory_screen/Victory_Screen.png");
+                defer rl.unloadImage(image);
+                const victory_texture = rl.loadTextureFromImage(image);
+                defer rl.unloadTexture(victory_texture);
+
+                load_assets_zone.End();
+                const main_menu_texture_repo = MainTextureRepo.init();
+                defer main_menu_texture_repo.deinit();
+                while (true) {
+                    tracy.FrameMark();
+
+                    // Start music
+                    rl.updateMusicStream(music);
+                    const time_played = rl.getMusicTimePlayed(music) / rl.getMusicTimeLength(music);
+                    if (time_played > 1.0) rl.seekMusicStream(music, 27);
+                    // Start draw
+                    rl.beginDrawing();
+                    defer rl.endDrawing();
+
+                    const rect_render_target = rl.Rectangle{
+                        .x = 0,
+                        .y = 0,
+                        .height = window_height,
+                        .width = window_width,
+                    };
+                    const center = rl.Vector2{ .x = 0, .y = 0 };
+
+                    // Draw background
+                    {
+                        {
+                            const rect_texture = rl.Rectangle{
+                                .x = 0,
+                                .y = 0,
+                                .height = @floatFromInt(victory_texture.height),
+                                .width = @floatFromInt(victory_texture.width),
+                            };
+
+                            rl.drawTexturePro(victory_texture, rect_texture, rect_render_target, center, 0, rl.Color.white);
+                        }
+                    }
+                    // Draw buttons
+                    const buttons = enum {
+                        none,
+                        exit,
+                    };
+                    const button_hovered = button_draw_blk: {
+                        var hovered = buttons.none;
+
+                        const normalized_mouse_pos = get_mouse_pos_blk: {
+                            const mouse_pos = rl.getMousePosition();
+
+                            break :get_mouse_pos_blk rl.Vector2{
+                                .x = mouse_pos.x / window_width,
+                                .y = mouse_pos.y / window_height,
+                            };
+                        };
+
+                        // common for all buttons
+                        const normalized_button_x_min = 280.0 / 640.0;
+                        const normalized_button_x_max = 410.0 / 640.0;
+
+                        // Exit
+                        {
+                            const normalized_exit_y_min = 293.0 / 360.0;
+                            const normalized_exit_y_max = 342.0 / 360.0;
+
+                            const exit_texture_enum = check_cursor_intersect_blk: {
+                                const button_bounds = rl.Rectangle{
+                                    .x = normalized_button_x_min,
+                                    .y = normalized_exit_y_min,
+                                    .width = normalized_button_x_max - normalized_button_x_min,
+                                    .height = normalized_exit_y_max - normalized_exit_y_min,
+                                };
+                                if (rl.checkCollisionPointRec(normalized_mouse_pos, button_bounds)) {
+                                    hovered = .exit;
+
+                                    break :check_cursor_intersect_blk MainTextureRepo.which_button.Exit_Active;
+                                }
+
+                                break :check_cursor_intersect_blk MainTextureRepo.which_button.Exit_Idle;
+                            };
+
+                            const start_btn_text = main_menu_texture_repo.button[@intFromEnum(exit_texture_enum)];
+                            const start_btn_rect = rl.Rectangle{
+                                .x = 0,
+                                .y = 0,
+                                .height = @floatFromInt(start_btn_text.height),
+                                .width = @floatFromInt(start_btn_text.width),
+                            };
+
+                            start_btn_text.drawPro(start_btn_rect, rect_render_target, center, 0, rl.Color.white);
+                        }
+
+                        break :button_draw_blk hovered;
+                    };
+
+                    // Update
+                    {
+                        if (rl.isMouseButtonPressed(.mouse_button_left)) {
+                            switch (button_hovered) {
+                                .none => {},
+                                .exit => {
+                                    break :outer_loop;
+                                },
+                            }
+                        }
+                    }
+                }
             },
         }
     }
