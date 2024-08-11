@@ -55,6 +55,9 @@ pub fn deinit(self: GameTextureRepo) void {
     inline for (self.decor) |texture| {
         texture.unload();
     }
+    inline for (self.wife) |texture| {
+        texture.unload();
+    }
 }
 
 fn loadTextureGroup(comptime TextureEnum: type, comptime texture_group_path: []const u8) [@typeInfo(TextureEnum).Enum.fields.len]rl.Texture {
@@ -75,6 +78,7 @@ pub const texture_type = enum {
     blood_splatter,
     country,
     inventory,
+    decor,
     wife,
 };
 

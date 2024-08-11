@@ -833,6 +833,28 @@ pub fn main() anyerror!void {
                             },
                         });
                     }
+                    for (0..150) |_| {
+                        const pos_x = random.float(f32) * arena_width * 1.5;
+                        const pos_y = random.float(f32) * arena_height * 1.5;
+                        const texture = if (random.boolean()) @intFromEnum(GameTextureRepo.which_decor.Daisies) else @intFromEnum(GameTextureRepo.which_decor.Rocks);
+                        _ = try storage.createEntity(GroundClutter{
+                            .pos = components.Position{ .vec = zm.f32x4(
+                                pos_x,
+                                pos_y,
+                                0,
+                                0,
+                            ) },
+                            .scale = components.Scale{
+                                .x = 1,
+                                .y = 1,
+                            },
+                            .texture = components.Texture{
+                                .draw_order = .o0,
+                                .type = @intFromEnum(GameTextureRepo.texture_type.decor),
+                                .index = texture,
+                            },
+                        });
+                    }
                 }
 
                 load_assets_zone.End();
@@ -948,6 +970,7 @@ pub fn main() anyerror!void {
                                     &texture_repo.blood_splatter,
                                     &texture_repo.country,
                                     &texture_repo.inventory,
+                                    &texture_repo.decor,
                                     &texture_repo.wife,
                                 };
 
