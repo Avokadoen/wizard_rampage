@@ -874,6 +874,33 @@ pub fn main() anyerror!void {
                             rl.clearBackground(rl.Color.ray_white);
 
                             {
+                                const zone = tracy.ZoneN(@src(), "Texture draw");
+                                defer zone.End();
+
+                                const simple_texture_repo = &[_][]const rl.Texture{
+                                    &texture_repo.player,
+                                    &texture_repo.projectile,
+                                    &texture_repo.farmer,
+                                    &texture_repo.blood_splatter,
+                                    &texture_repo.country,
+                                };
+
+                                const TextureDrawQuery = Storage.Query(struct {
+                                    entity: ecez.Entity,
+                                    pos: components.Position,
+                                    texture: components.Texture,
+                                }, .{components.InactiveTag});
+
+                                inline for (@typeInfo(components.Texture.DrawOrder).Enum.fields) |order| {
+                                    var texture_iter = TextureDrawQuery.submit(&storage);
+
+                                    while (texture_iter.next()) |texture| {
+                                        staticTextureDraw(@enumFromInt(order.value), texture.entity, texture.pos, texture.texture, simple_texture_repo, storage);
+                                    }
+                                }
+                            }
+
+                            {
                                 const zone = tracy.ZoneN(@src(), "Debug draw rectangle");
                                 defer zone.End();
 
@@ -915,33 +942,6 @@ pub fn main() anyerror!void {
                                         circle.col.radius,
                                         rl.Color.blue,
                                     );
-                                }
-                            }
-
-                            {
-                                const zone = tracy.ZoneN(@src(), "Texture draw");
-                                defer zone.End();
-
-                                const simple_texture_repo = &[_][]const rl.Texture{
-                                    &texture_repo.player,
-                                    &texture_repo.projectile,
-                                    &texture_repo.farmer,
-                                    &texture_repo.blood_splatter,
-                                    &texture_repo.country,
-                                };
-
-                                const TextureDrawQuery = Storage.Query(struct {
-                                    entity: ecez.Entity,
-                                    pos: components.Position,
-                                    texture: components.Texture,
-                                }, .{components.InactiveTag});
-
-                                inline for (@typeInfo(components.Texture.DrawOrder).Enum.fields) |order| {
-                                    var texture_iter = TextureDrawQuery.submit(&storage);
-
-                                    while (texture_iter.next()) |texture| {
-                                        staticTextureDraw(@enumFromInt(order.value), texture.entity, texture.pos, texture.texture, simple_texture_repo, storage);
-                                    }
                                 }
                             }
                         }
