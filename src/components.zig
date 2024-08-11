@@ -121,16 +121,20 @@ pub const ChildOf = struct {
 pub const HostileTag = struct {};
 
 pub const Staff = struct {
-    pub const ProjectileType = union(enum) {
-        bolt: Projectile,
-        red_gem: Projectile,
+    pub const ProjectileType = enum {
+        bolt,
+        red_gem,
+    };
+    pub const ProjectileAttribs = struct {
+        type: ProjectileType,
+        attrs: Projectile,
     };
     pub const Modifier = enum {
         piercing,
     };
     pub const Slot = union(enum) {
         none: void,
-        projectile: ProjectileType,
+        projectile: ProjectileAttribs,
         modifier: Modifier,
     };
     const max_slots = 64;

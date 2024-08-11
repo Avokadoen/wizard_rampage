@@ -112,6 +112,19 @@ pub fn CreateInput(Storage: type) type {
             const fire_rate = storage.getComponent(staff_entity, *components.FireRate) catch unreachable;
             if (fire_rate.cooldown_fire_rate == 0) {
                 const pos = storage.getComponent(player_entity, components.Position) catch unreachable;
+                const staff_comp_ptr = storage.getComponent(staff_entity, *components.Staff) catch unreachable;
+                const next_projectile = findNextStaffProjectile(staff_comp_ptr) orelse return;
+
+                const start_frame, const frame_count = switch (next_projectile.type) {
+                    .bolt => .{
+                        @intFromEnum(GameTextureRepo.which_projectile.Bolt_01),
+                        @intFromEnum(GameTextureRepo.which_projectile.Bolt_05) - @intFromEnum(GameTextureRepo.which_projectile.Bolt_01),
+                    },
+                    .red_gem => .{
+                        @intFromEnum(GameTextureRepo.which_projectile.Red_Gem_01),
+                        @intFromEnum(GameTextureRepo.which_projectile.Red_Gem_10) - @intFromEnum(GameTextureRepo.which_projectile.Red_Gem_01),
+                    },
+                };
 
                 const norm_vel = zm.normalize2(vel);
                 const rotation = std.math.atan2(norm_vel[1], norm_vel[0]);
@@ -134,13 +147,13 @@ pub fn CreateInput(Storage: type) type {
                     },
                     .texture = components.Texture{
                         .type = @intFromEnum(GameTextureRepo.texture_type.projectile),
-                        .index = @intFromEnum(GameTextureRepo.which_projectile.Bolt_01),
+                        .index = start_frame,
                         .draw_order = .o3,
                     },
                     .anim = components.AnimTexture{
-                        .start_frame = @intFromEnum(GameTextureRepo.which_projectile.Bolt_01),
+                        .start_frame = start_frame,
                         .current_frame = 0,
-                        .frame_count = @intFromEnum(GameTextureRepo.which_projectile.Bolt_05) - @intFromEnum(GameTextureRepo.which_projectile.Bolt_01),
+                        .frame_count = frame_count,
                         .frames_per_frame = 4,
                         .frames_drawn_current_frame = 0,
                     },
@@ -148,10 +161,7 @@ pub fn CreateInput(Storage: type) type {
                     .life_time = components.LifeTime{
                         .value = 1.3,
                     },
-                    .projectile = components.Projectile{
-                        .dmg = 15,
-                        .weight = 500,
-                    },
+                    .projectile = next_projectile.attrs,
                 }) catch (@panic("rip projectiles"));
                 fire_rate.cooldown_fire_rate = fire_rate.base_fire_rate;
             }
@@ -197,4 +207,20 @@ pub fn CreateInput(Storage: type) type {
             },
         };
     };
+}
+
+pub fn findNextStaffProjectile(staff: *components.Staff) ?components.Staff.ProjectileAttribs {
+    var slots_checked: u8 = 0;
+    while (staff.slots[staff.slot_cursor] != .projectile and slots_checked < staff.used_slots) {
+        slots_checked += 1;
+        staff.slot_cursor = @mod((staff.slot_cursor + 1), staff.used_slots);
+    }
+
+    // If we found our next projectile
+    if (staff.slots[staff.slot_cursor] == .projectile) {
+        staff.slot_cursor = @mod((staff.slot_cursor + 1), staff.used_slots);
+        return staff.slots[staff.slot_cursor].projectile;
+    }
+
+    return null;
 }

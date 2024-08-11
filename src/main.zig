@@ -580,15 +580,24 @@ pub fn main() anyerror!void {
 
                     var staff = components.Staff{
                         .slot_capacity = 8,
-                        .used_slots = 1,
+                        .used_slots = 2,
                         .slot_cursor = 0,
                         .slots = undefined,
                     };
 
                     staff.slots[0] = components.Staff.Slot{ .projectile = .{
-                        .bolt = components.Projectile{
+                        .type = .bolt,
+                        .attrs = components.Projectile{
                             .dmg = 15,
                             .weight = 300,
+                        },
+                    } };
+
+                    staff.slots[1] = components.Staff.Slot{ .projectile = .{
+                        .type = .red_gem,
+                        .attrs = components.Projectile{
+                            .dmg = 30,
+                            .weight = 3000,
                         },
                     } };
 
