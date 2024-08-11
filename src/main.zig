@@ -661,8 +661,8 @@ pub fn main() anyerror!void {
                     break :create_camera_blk storage.createEntity(Camera{
                         .pos = components.Position{ .vec = zm.f32x4s(0) },
                         .scale = components.Scale{
-                            .x = 1,
-                            .y = 1,
+                            .x = 2,
+                            .y = 2,
                         },
                         .camera = components.Camera{
                             .width = window_width,
