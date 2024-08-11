@@ -9,6 +9,7 @@ blood_splatter: [@typeInfo(which_bloodsplat).Enum.fields.len]rl.Texture,
 country: [@typeInfo(which_country_side).Enum.fields.len]rl.Texture,
 inventory: [@typeInfo(which_inventory).Enum.fields.len]rl.Texture,
 decor: [@typeInfo(which_decor).Enum.fields.len]rl.Texture,
+wife: [@typeInfo(which_wife).Enum.fields.len]rl.Texture,
 
 pub fn init() GameTextureRepo {
     const player = loadTextureGroup(which_player, "resources/textures/player/");
@@ -18,6 +19,7 @@ pub fn init() GameTextureRepo {
     const country = loadTextureGroup(which_country_side, "resources/textures/country_side/");
     const inventory = loadTextureGroup(which_inventory, "resources/textures/inventory/");
     const decor = loadTextureGroup(which_decor, "resources/textures/decor/");
+    const wife = loadTextureGroup(which_wife, "resources/textures/boss_wife/");
 
     return GameTextureRepo{
         .player = player,
@@ -27,6 +29,7 @@ pub fn init() GameTextureRepo {
         .country = country,
         .inventory = inventory,
         .decor = decor,
+        .wife = wife,
     };
 }
 
@@ -72,6 +75,7 @@ pub const texture_type = enum {
     blood_splatter,
     country,
     inventory,
+    wife,
 };
 
 pub const which_player = enum {
@@ -246,4 +250,39 @@ pub const which_inventory = enum {
 pub const which_decor = enum {
     Daisies,
     Rocks,
+};
+
+pub const which_wife = enum {
+    Wife_Idle_Body0001,
+    Wife_Idle_Body0002,
+    Wife_Idle_Body0003,
+    Wife_Idle_Body0004,
+    Wife_Idle_Body0005,
+    Wife_Idle_Body0006,
+    Wife_Idle_Body0007,
+    Wife_Idle_Body0008,
+    Wife_Idle_Hand_L0001,
+    Wife_Idle_Hand_L0002,
+    Wife_Idle_Hand_L0003,
+    Wife_Idle_Hand_L0004,
+    Wife_Idle_Hand_L0005,
+    Wife_Idle_Hand_L0006,
+    Wife_Idle_Hand_L0007,
+    Wife_Idle_Hand_L0008,
+    Wife_Idle_Hand_R0001,
+    Wife_Idle_Hand_R0002,
+    Wife_Idle_Hand_R0003,
+    Wife_Idle_Hand_R0004,
+    Wife_Idle_Hand_R0005,
+    Wife_Idle_Hand_R0006,
+    Wife_Idle_Hand_R0007,
+    Wife_Idle_Hand_R0008,
+    Wife_Idle_Head0001,
+    Wife_Idle_Head0002,
+    Wife_Idle_Head0003,
+    Wife_Idle_Head0004,
+    Wife_Idle_Head0005,
+    Wife_Idle_Head0006,
+    Wife_Idle_Head0007,
+    Wife_Idle_Head0008,
 };

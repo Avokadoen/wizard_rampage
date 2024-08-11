@@ -17,6 +17,7 @@ pub fn CreateUpdateSystems(Storage: type) type {
             sound_repo: []const rl.Sound,
             rng: std.Random,
             farmer_kill_count: *u64,
+            the_wife_kill_count: *u64,
         };
 
         pub const MovableToImmovableRecToRecCollisionResolve = struct {
@@ -193,9 +194,14 @@ pub fn CreateUpdateSystems(Storage: type) type {
                         rl.playSound(on_death_sound);
                     }
 
-                    const maybe_farmer = context.storage.getComponent(entity, components.FarmerHostileTag) catch null;
+                    const maybe_farmer = context.storage.getComponent(entity, components.FarmerTag) catch null;
                     if (maybe_farmer) |_| {
                         context.farmer_kill_count.* += 1;
+                    }
+
+                    const maybe_wife = context.storage.getComponent(entity, components.FarmersWifeTag) catch null;
+                    if (maybe_wife) |_| {
+                        context.the_wife_kill_count.* += 1;
                     }
 
                     edit_queue.queueSetComponent(entity, components.InactiveTag{}) catch @panic("registerDead: wtf");
@@ -430,7 +436,7 @@ pub fn CreateUpdateSystems(Storage: type) type {
             pub fn targetPlayer(
                 pos: components.Position,
                 vel: *components.Velocity,
-                _: components.FarmerHostileTag,
+                _: components.HostileTag,
                 player_iter: *QueryPlayer,
             ) void {
                 const zone = tracy.ZoneN(@src(), @src().fn_name);

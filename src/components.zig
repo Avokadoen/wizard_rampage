@@ -21,7 +21,9 @@ pub const all = .{
     LifeTime,
     InactiveTag,
     ChildOf,
-    FarmerHostileTag,
+    HostileTag,
+    FarmerTag,
+    FarmersWifeTag,
     Staff,
     Projectile,
     Health,
@@ -118,7 +120,9 @@ pub const ChildOf = struct {
     offset_y: f32,
 };
 
-pub const FarmerHostileTag = struct {};
+pub const HostileTag = struct {};
+pub const FarmerTag = struct {};
+pub const FarmersWifeTag = struct {};
 
 pub const Staff = struct {
     pub const ProjectileType = enum {

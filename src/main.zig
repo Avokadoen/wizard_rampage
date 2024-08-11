@@ -55,6 +55,10 @@ const player_hit_box_height = @as(f32, @floatFromInt(70)) * player_scale;
 const player_part_offset_x = -player_hit_box_width * 1.4;
 const player_part_offset_y = -player_hit_box_height * 1.6;
 
+const max_farmers: u16 = 400;
+const farmer_spawn_timer: u64 = 10;
+const farmers_to_kill_before_wife_spawns = 100;
+
 pub fn main() anyerror!void {
     // Initialize window
     const window_width, const window_height = window_init: {
@@ -835,16 +839,21 @@ pub fn main() anyerror!void {
 
                 var in_inventory = false;
 
-                const max_farmers: u16 = 1000;
                 var nr_farmers: u16 = 0;
-                const spawn_timer: u64 = 10;
                 var spawn_cooldown: u64 = 0;
 
+                var the_wife_spawned: bool = false;
                 var farmer_kill_count: u64 = 0;
+                var the_wife_kill_count: u64 = 0;
 
                 // TODO: pause
                 while (!rl.windowShouldClose()) {
                     tracy.FrameMark();
+
+                    if (the_wife_kill_count >= 1) {
+                        current_state = .victory_screen;
+                        continue :outer_loop;
+                    }
 
                     // Play music
                     rl.updateMusicStream(music);
@@ -857,11 +866,17 @@ pub fn main() anyerror!void {
                     if (!in_inventory) {
                         spawn_cooldown += 1;
 
-                        if ((max_farmers > nr_farmers) and spawn_cooldown >= spawn_timer) {
+                        if ((max_farmers > nr_farmers) and spawn_cooldown >= farmer_spawn_timer) {
                             const farmer_pos = random_point_on_circle(arena_height / 3, rl.Vector2{ .x = arena_height / 2, .y = arena_width / 2 }, random);
                             _ = try createFarmer(&storage, zm.f32x4(farmer_pos.x, farmer_pos.y, 0, 0), player_scale);
                             nr_farmers += 1;
                             spawn_cooldown = 0;
+                        }
+
+                        if (farmer_kill_count >= farmers_to_kill_before_wife_spawns and the_wife_spawned == false) {
+                            the_wife_spawned = true;
+                            const farmer_pos = random_point_on_circle(arena_height / 3, rl.Vector2{ .x = arena_height / 2, .y = arena_width / 2 }, random);
+                            _ = try createTheFarmersWife(&storage, zm.f32x4(farmer_pos.x, farmer_pos.y, 0, 0), player_scale);
                         }
 
                         // Update
@@ -881,6 +896,7 @@ pub fn main() anyerror!void {
                                 .sound_repo = &sound_repo.effects,
                                 .rng = random,
                                 .farmer_kill_count = &farmer_kill_count,
+                                .the_wife_kill_count = &the_wife_kill_count,
                             };
                             scheduler.dispatchEvent(&storage, .game_update, update_context);
                             scheduler.waitEvent(.game_update);
@@ -932,6 +948,7 @@ pub fn main() anyerror!void {
                                     &texture_repo.blood_splatter,
                                     &texture_repo.country,
                                     &texture_repo.inventory,
+                                    &texture_repo.wife,
                                 };
 
                                 const TextureDrawQuery = Storage.Query(struct {
@@ -1206,7 +1223,8 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
         vel: components.Velocity,
         col: components.RectangleCollider,
         rec_tag: components.DrawRectangleTag,
-        hostile_tag: components.FarmerHostileTag,
+        hostile_tag: components.HostileTag,
+        farmer_tag: components.FarmerTag,
         health: components.Health,
         vocals: components.Vocals,
     };
@@ -1223,7 +1241,8 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
             .height = player_hit_box_height,
         },
         .rec_tag = components.DrawRectangleTag{},
-        .hostile_tag = components.FarmerHostileTag{},
+        .hostile_tag = components.HostileTag{},
+        .farmer_tag = components.FarmerTag{},
         .health = components.Health{
             .max = 50,
             .value = 50,
@@ -1390,6 +1409,183 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
     });
 
     return farmer;
+}
+
+// TODO: Body parts can be generic for player, farmer and wife
+fn createTheFarmersWife(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!ecez.Entity {
+    const zone = tracy.ZoneN(@src(), @src().fn_name);
+    defer zone.End();
+
+    const Wife = struct {
+        pos: components.Position,
+        scale: components.Scale,
+        vel: components.Velocity,
+        col: components.RectangleCollider,
+        rec_tag: components.DrawRectangleTag,
+        hostile_tag: components.HostileTag,
+        wife_tag: components.FarmersWifeTag,
+        health: components.Health,
+        vocals: components.Vocals,
+    };
+
+    const the_wife = try storage.createEntity(Wife{
+        .pos = components.Position{ .vec = pos },
+        .scale = components.Scale{ .x = scale, .y = scale },
+        .vel = components.Velocity{
+            .vec = zm.f32x4s(0),
+            .drag = 0.85,
+        },
+        .col = components.RectangleCollider{
+            .width = player_hit_box_width,
+            .height = player_hit_box_height,
+        },
+        .rec_tag = components.DrawRectangleTag{},
+        .hostile_tag = components.HostileTag{},
+        .wife_tag = components.FarmersWifeTag{},
+        .health = components.Health{
+            .max = 500,
+            .value = 500,
+        },
+        .vocals = components.Vocals{
+            .on_death_start = @intFromEnum(GameSoundRepo.which_effects.Kill),
+            .on_death_end = @intFromEnum(GameSoundRepo.which_effects.Kill),
+            .on_dmg_start = @intFromEnum(GameSoundRepo.which_effects.Player_Damage_01),
+            .on_dmg_end = @intFromEnum(GameSoundRepo.which_effects.Player_Damage_03),
+        },
+    });
+
+    const WifeParts = struct {
+        pos: components.Position,
+        scale: components.Scale,
+        vel: components.Velocity,
+        texture: components.Texture,
+        orientation_texture: components.OrientationTexture,
+        child_of: components.ChildOf,
+    };
+    // Chest
+    _ = try storage.createEntity(WifeParts{
+        .pos = components.Position{ .vec = zm.f32x4s(0) },
+        .scale = components.Scale{ .x = 1, .y = 1 },
+        .vel = components.Velocity{
+            .vec = zm.f32x4s(0),
+            .drag = 1,
+        },
+        .texture = components.Texture{
+            .type = @intFromEnum(GameTextureRepo.texture_type.wife),
+            .index = @intFromEnum(GameTextureRepo.which_wife.Wife_Idle_Body0001),
+            .draw_order = .o0,
+        },
+        .orientation_texture = components.OrientationTexture{
+            .start_texture_index = @intFromEnum(GameTextureRepo.which_wife.Wife_Idle_Body0001),
+        },
+        .child_of = components.ChildOf{
+            .parent = the_wife,
+            .offset_x = player_part_offset_x,
+            .offset_y = player_part_offset_y,
+        },
+    });
+    // Head
+    _ = try storage.createEntity(WifeParts{
+        .pos = components.Position{ .vec = zm.f32x4s(0) },
+        .scale = components.Scale{ .x = 1, .y = 1 },
+        .vel = components.Velocity{
+            .vec = zm.f32x4s(0),
+            .drag = 1,
+        },
+        .texture = components.Texture{
+            .type = @intFromEnum(GameTextureRepo.texture_type.wife),
+            .index = @intFromEnum(GameTextureRepo.which_wife.Wife_Idle_Head0001),
+            .draw_order = .o1,
+        },
+        .orientation_texture = components.OrientationTexture{
+            .start_texture_index = @intFromEnum(GameTextureRepo.which_wife.Wife_Idle_Head0001),
+        },
+        .child_of = components.ChildOf{
+            .parent = the_wife,
+            .offset_x = player_part_offset_x,
+            .offset_y = player_part_offset_y,
+        },
+    });
+
+    const Hand = struct {
+        pos: components.Position,
+        scale: components.Scale,
+        vel: components.Velocity,
+        texture: components.Texture,
+        orientation_based_draw_order: components.OrientationBasedDrawOrder,
+        orientation_texture: components.OrientationTexture,
+        child_of: components.ChildOf,
+    };
+    // Left hand
+    _ = try storage.createEntity(Hand{
+        .pos = components.Position{ .vec = zm.f32x4s(0) },
+        .scale = components.Scale{ .x = 1, .y = 1 },
+        .vel = components.Velocity{
+            .vec = zm.f32x4s(0),
+            .drag = 1,
+        },
+        .texture = components.Texture{
+            .type = @intFromEnum(GameTextureRepo.texture_type.wife),
+            .index = @intFromEnum(GameTextureRepo.which_wife.Wife_Idle_Hand_L0001),
+            .draw_order = .o3,
+        },
+        .orientation_based_draw_order = components.OrientationBasedDrawOrder{
+            .draw_orders = [8]components.Texture.DrawOrder{
+                .o1, // up
+                .o3, // up_left
+                .o3, // left
+                .o3, // left_down
+                .o1, // down
+                .o0, // down_right
+                .o0, // right
+                .o1, // up_right
+            },
+        },
+        .orientation_texture = components.OrientationTexture{
+            .start_texture_index = @intFromEnum(GameTextureRepo.which_wife.Wife_Idle_Hand_L0001),
+        },
+        .child_of = components.ChildOf{
+            .parent = the_wife,
+            .offset_x = player_part_offset_x,
+            .offset_y = player_part_offset_y,
+        },
+    });
+    // Right hand
+    _ = try storage.createEntity(Hand{
+        .pos = components.Position{ .vec = zm.f32x4s(0) },
+        .scale = components.Scale{ .x = 1, .y = 1 },
+        .vel = components.Velocity{
+            .vec = zm.f32x4s(0),
+            .drag = 1,
+        },
+        .texture = components.Texture{
+            .type = @intFromEnum(GameTextureRepo.texture_type.wife),
+            .index = @intFromEnum(GameTextureRepo.which_wife.Wife_Idle_Hand_R0001),
+            .draw_order = .o3,
+        },
+        .orientation_based_draw_order = components.OrientationBasedDrawOrder{
+            .draw_orders = [8]components.Texture.DrawOrder{
+                .o2, // up
+                .o1, // up_left
+                .o0, // left
+                .o1, // left_down
+                .o2, // down
+                .o3, // down_right
+                .o3, // right
+                .o3, // up_right
+            },
+        },
+        .orientation_texture = components.OrientationTexture{
+            .start_texture_index = @intFromEnum(GameTextureRepo.which_wife.Wife_Idle_Hand_R0001),
+        },
+        .child_of = components.ChildOf{
+            .parent = the_wife,
+            .offset_x = player_part_offset_x,
+            .offset_y = player_part_offset_y,
+        },
+    });
+
+    return the_wife;
 }
 
 pub fn spawnBloodSplatter(
