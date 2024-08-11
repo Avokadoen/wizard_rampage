@@ -2,7 +2,7 @@
 
 This was my, @Eivindaj and @JayJayDev's gamejam from 09.08.24-11.08.24
 
-We wanted to make something inspired by binding of isaac. The game is build with the [zig programming language (v0.13.0)](https://ziglang.org/),
+We wanted to make something inspired by binding of isaac. The game is built with the [zig programming language (v0.13.0)](https://ziglang.org/),
 [raylib](https://www.raylib.com/) using [raylib-zig](https://github.com/Not-Nik/raylib-zig) as our bindings for zig.
 
 It also uses my ecs library [ecez](https://github.com/Avokadoen/ecez) for the game logic. 
@@ -26,7 +26,7 @@ tab to open a inventory that does nothing
 
 ## Inventory and spells 
 
-wizard is equipped with the only staff in the game which is slotted with two spells where on of the spells is using a piering and added damage modifier (this was supposed to be customizable in the inventory :') ).
+wizard is equipped with the only staff in the game which is slotted with two spells where one of the spells is using a piercing and added damage modifier (this was supposed to be customizable in the inventory :') ).
 
 ## Win condition 
 
