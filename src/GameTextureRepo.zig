@@ -7,7 +7,7 @@ projectile: [15]rl.Texture,
 farmer: [48]rl.Texture,
 blood_splatter: [9]rl.Texture,
 country: [6]rl.Texture,
-inventory: [4]rl.Texture,
+inventory: [5]rl.Texture,
 
 pub fn init() GameTextureRepo {
     const player = loadTextureGroup(which_player, "resources/textures/player/");
@@ -43,7 +43,7 @@ pub fn deinit(self: GameTextureRepo) void {
     inline for (self.country) |texture| {
         texture.unload();
     }
-    inline for (self.country) |texture| {
+    inline for (self.inventory) |texture| {
         texture.unload();
     }
 }
@@ -234,4 +234,5 @@ pub const which_inventory = enum {
     Red_Gem,
     Slot,
     Slot_Cursor,
+    Gem_Bag,
 };

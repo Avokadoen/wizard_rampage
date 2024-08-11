@@ -1006,6 +1006,9 @@ pub fn main() anyerror!void {
                             const index_yellow_gem = @intFromEnum(GameTextureRepo.which_inventory.Yellow_Gem);
                             const texture_yellow_gem = texture_repo.inventory[index_yellow_gem];
 
+                            const index_bag = @intFromEnum(GameTextureRepo.which_inventory.Gem_Bag);
+                            const texture_bag = texture_repo.inventory[index_bag];
+
                             for (0..staff.slot_capacity) |i| {
                                 const rect_texture = rl.Rectangle{
                                     .x = 0,
@@ -1019,9 +1022,9 @@ pub fn main() anyerror!void {
                                     .y = window_height - 70,
                                 };
                                 if (i == staff.slot_cursor) {
-                                    rl.drawTextureRec(texture_slot_cursor, rect_texture, pos, rl.Color.brown);
+                                    rl.drawTextureRec(texture_slot_cursor, rect_texture, pos, rl.Color.white);
                                 } else {
-                                    rl.drawTextureRec(texture_slot, rect_texture, pos, rl.Color.brown);
+                                    rl.drawTextureRec(texture_slot, rect_texture, pos, rl.Color.white);
                                 }
                                 switch (staff.slots[i]) {
                                     .none => {},
@@ -1037,6 +1040,30 @@ pub fn main() anyerror!void {
                                     },
                                     .modifier => {},
                                 }
+                            }
+
+                            if (in_inventory) {
+                                const rect_source = rl.Rectangle{
+                                    .x = 0,
+                                    .y = 0,
+                                    .height = @floatFromInt(texture_bag.height),
+                                    .width = @floatFromInt(texture_bag.width),
+                                };
+                                const start_pos = (window_width / 2) - window_height / 4;
+                                const rect_dest = rl.Rectangle{
+                                    .x = start_pos,
+                                    .y = window_height / 3,
+                                    .height = window_height / 2,
+                                    .width = window_height / 2,
+                                };
+                                rl.drawTexturePro(
+                                    texture_bag,
+                                    rect_source,
+                                    rect_dest,
+                                    rl.Vector2{ .x = 0, .y = 0 },
+                                    0.0,
+                                    rl.Color.white,
+                                );
                             }
                         }
                     }
