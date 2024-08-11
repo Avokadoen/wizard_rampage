@@ -109,6 +109,19 @@ pub fn CreateInput(Storage: type) type {
                 projectile: components.Projectile,
             };
 
+            const ProjectileQuery = Storage.Query(struct {
+                entity: ecez.Entity,
+                pos: *components.Position,
+                rot: *components.Rotation,
+                vel: *components.Velocity,
+                collider: *components.CircleCollider,
+                texture: *components.Texture,
+                anim: *components.AnimTexture,
+                life_time: *components.LifeTime,
+                _: components.InactiveTag,
+                projectile: *components.Projectile,
+            }, .{});
+
             const fire_rate = storage.getComponent(staff_entity, *components.FireRate) catch unreachable;
             if (fire_rate.cooldown_fire_rate == 0) {
                 const pos = storage.getComponent(player_entity, components.Position) catch unreachable;
@@ -136,33 +149,64 @@ pub fn CreateInput(Storage: type) type {
 
                 const proj_offset = zm.normalize2(vel) * @as(zm.Vec, @splat(15));
 
-                _ = storage.createEntity(Projectile{
-                    .pos = components.Position{ .vec = pos.vec + proj_offset },
-                    .rot = components.Rotation{ .value = 0 },
-                    .vel = components.Velocity{ .vec = vel, .drag = 0.98 },
-                    .collider = components.CircleCollider{
+                var projectile_iter = ProjectileQuery.submit(storage);
+                if (projectile_iter.next()) |projectile| {
+                    projectile.pos.* = components.Position{ .vec = pos.vec + proj_offset };
+                    projectile.rot.* = components.Rotation{ .value = 0 };
+                    projectile.vel.* = components.Velocity{ .vec = vel, .drag = 0.98 };
+                    projectile.collider.* = components.CircleCollider{
                         .x = @floatCast(collider_offset_x * cs - collider_offset_y * sn),
                         .y = @floatCast(collider_offset_x * sn + collider_offset_y * cs),
                         .radius = 10,
-                    },
-                    .texture = components.Texture{
+                    };
+                    projectile.texture.* = components.Texture{
                         .type = @intFromEnum(GameTextureRepo.texture_type.projectile),
                         .index = start_frame,
                         .draw_order = .o3,
-                    },
-                    .anim = components.AnimTexture{
+                    };
+                    projectile.anim.* = components.AnimTexture{
                         .start_frame = start_frame,
                         .current_frame = 0,
                         .frame_count = frame_count,
                         .frames_per_frame = 4,
                         .frames_drawn_current_frame = 0,
-                    },
-                    .tag = components.DrawCircleTag{},
-                    .life_time = components.LifeTime{
+                    };
+                    projectile.life_time.* = components.LifeTime{
                         .value = 1.3,
-                    },
-                    .projectile = next_projectile.attrs,
-                }) catch (@panic("rip projectiles"));
+                    };
+                    projectile.projectile.* = next_projectile.attrs;
+
+                    storage.removeComponent(projectile.entity, components.InactiveTag) catch unreachable;
+                } else {
+                    _ = storage.createEntity(Projectile{
+                        .pos = components.Position{ .vec = pos.vec + proj_offset },
+                        .rot = components.Rotation{ .value = 0 },
+                        .vel = components.Velocity{ .vec = vel, .drag = 0.98 },
+                        .collider = components.CircleCollider{
+                            .x = @floatCast(collider_offset_x * cs - collider_offset_y * sn),
+                            .y = @floatCast(collider_offset_x * sn + collider_offset_y * cs),
+                            .radius = 10,
+                        },
+                        .texture = components.Texture{
+                            .type = @intFromEnum(GameTextureRepo.texture_type.projectile),
+                            .index = start_frame,
+                            .draw_order = .o3,
+                        },
+                        .anim = components.AnimTexture{
+                            .start_frame = start_frame,
+                            .current_frame = 0,
+                            .frame_count = frame_count,
+                            .frames_per_frame = 4,
+                            .frames_drawn_current_frame = 0,
+                        },
+                        .tag = components.DrawCircleTag{},
+                        .life_time = components.LifeTime{
+                            .value = 1.3,
+                        },
+                        .projectile = next_projectile.attrs,
+                    }) catch (@panic("rip projectiles"));
+                }
+
                 fire_rate.cooldown_fire_rate = fire_rate.base_fire_rate;
             }
         }
