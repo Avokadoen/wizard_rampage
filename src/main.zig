@@ -44,19 +44,6 @@ const Scheduler = ecez.CreateScheduler(
             ecez.DependOn(UpdateSystems.OrientationBasedDrawOrder, .{UpdateSystems.OrientTexture}),
             // flush in game loop
         }, UpdateSystems.Context),
-        ecez.Event(
-            "game_draw",
-            .{
-                // !! ALL SYSTEMS MUST BE DEPEND ON PREVIOUS FOR DRAW !!
-                DrawSystems.Rectangle,
-                ecez.DependOn(DrawSystems.StaticTextureOrder0, .{DrawSystems.Rectangle}),
-                ecez.DependOn(DrawSystems.StaticTextureOrder1, .{DrawSystems.StaticTextureOrder0}),
-                ecez.DependOn(DrawSystems.StaticTextureOrder2, .{DrawSystems.StaticTextureOrder1}),
-                ecez.DependOn(DrawSystems.StaticTextureOrder3, .{DrawSystems.StaticTextureOrder2}),
-                ecez.DependOn(DrawSystems.Circle, .{DrawSystems.StaticTextureOrder3}),
-            },
-            DrawSystems.Context,
-        ),
     },
 );
 
@@ -886,19 +873,77 @@ pub fn main() anyerror!void {
 
                             rl.clearBackground(rl.Color.ray_white);
 
-                            const draw_context = DrawSystems.Context{
-                                .texture_repo = &[_][]const rl.Texture{
+                            {
+                                const zone = tracy.ZoneN(@src(), "Debug draw rectangle");
+                                defer zone.End();
+
+                                const RectangleDrawQuery = Storage.Query(struct {
+                                    pos: components.Position,
+                                    col: components.RectangleCollider,
+                                    _: components.DrawRectangleTag,
+                                }, .{components.InactiveTag});
+                                var rect_iter = RectangleDrawQuery.submit(&storage);
+                                while (rect_iter.next()) |rect| {
+                                    const draw_rectangle = rl.Rectangle{
+                                        .x = rect.pos.vec[0],
+                                        .y = rect.pos.vec[1],
+                                        .width = rect.col.width,
+                                        .height = rect.col.height,
+                                    };
+
+                                    rl.drawRectanglePro(draw_rectangle, rl.Vector2.init(0, 0), 0, rl.Color.red);
+                                }
+                            }
+
+                            {
+                                const zone = tracy.ZoneN(@src(), "Debug draw circle");
+                                defer zone.End();
+
+                                const CircleDrawQuery = Storage.Query(struct {
+                                    pos: components.Position,
+                                    col: components.CircleCollider,
+                                    _: components.DrawCircleTag,
+                                }, .{components.InactiveTag});
+                                var circle_iter = CircleDrawQuery.submit(&storage);
+
+                                while (circle_iter.next()) |circle| {
+                                    const offset = zm.f32x4(@floatCast(circle.col.x), @floatCast(circle.col.y), 0, 0);
+
+                                    rl.drawCircle(
+                                        @intFromFloat(circle.pos.vec[0] + @as(f32, @floatCast(offset[0]))),
+                                        @intFromFloat(circle.pos.vec[1] + @as(f32, @floatCast(offset[1]))),
+                                        circle.col.radius,
+                                        rl.Color.blue,
+                                    );
+                                }
+                            }
+
+                            {
+                                const zone = tracy.ZoneN(@src(), "Texture draw");
+                                defer zone.End();
+
+                                const simple_texture_repo = &[_][]const rl.Texture{
                                     &texture_repo.player,
                                     &texture_repo.projectile,
                                     &texture_repo.farmer,
                                     &texture_repo.blood_splatter,
                                     &texture_repo.country,
-                                },
-                                .storage = storage,
-                            };
-                            scheduler.dispatchEvent(&storage, .game_draw, draw_context);
-                            scheduler.waitEvent(.game_draw);
-                            // player_sprite.drawEx(rl.Vector2{ .x = debug_player_rect.x, .y = debug_player_rect.y }, 0, player_scale, rl.Color.white);
+                                };
+
+                                const TextureDrawQuery = Storage.Query(struct {
+                                    entity: ecez.Entity,
+                                    pos: components.Position,
+                                    texture: components.Texture,
+                                }, .{components.InactiveTag});
+
+                                inline for (@typeInfo(components.Texture.DrawOrder).Enum.fields) |order| {
+                                    var texture_iter = TextureDrawQuery.submit(&storage);
+
+                                    while (texture_iter.next()) |texture| {
+                                        staticTextureDraw(@enumFromInt(order.value), texture.entity, texture.pos, texture.texture, simple_texture_repo, storage);
+                                    }
+                                }
+                            }
                         }
 
                         {
@@ -1254,6 +1299,40 @@ pub fn spawnBloodSplatter(
     for (deferred_gore_splatter_entities.items) |gore_splatter| {
         _ = try storage.createEntity(gore_splatter);
     }
+}
+
+pub fn staticTextureDraw(
+    comptime order: components.Texture.DrawOrder,
+    entity: ecez.Entity,
+    pos: components.Position,
+    static_texture: components.Texture,
+    texture_repo: []const []const rl.Texture,
+    storage: Storage,
+) void {
+    const zone = tracy.ZoneN(@src(), @src().fn_name ++ " " ++ @tagName(order));
+    defer zone.End();
+
+    if (static_texture.draw_order != order) return;
+
+    const rotation = storage.getComponent(entity, components.Rotation) catch components.Rotation{ .value = 0 };
+    const scale = storage.getComponent(entity, components.Scale) catch components.Scale{ .x = 1, .y = 1 };
+    const texture = texture_repo[static_texture.type][static_texture.index];
+
+    const rect_texture = rl.Rectangle{
+        .x = 0,
+        .y = 0,
+        .height = @floatFromInt(texture.height),
+        .width = @floatFromInt(texture.width),
+    };
+    const rect_render_target = rl.Rectangle{
+        .x = pos.vec[0],
+        .y = pos.vec[1],
+        .height = @as(f32, @floatFromInt(texture.height)) * scale.x,
+        .width = @as(f32, @floatFromInt(texture.width)) * scale.y,
+    };
+    const center = rl.Vector2{ .x = 0, .y = 0 };
+
+    rl.drawTexturePro(texture, rect_texture, rect_render_target, center, rotation.value, rl.Color.white);
 }
 
 test {
