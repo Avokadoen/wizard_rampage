@@ -838,6 +838,9 @@ pub fn main() anyerror!void {
 
 // TODO: Body parts can be generic for player, farmer and wife
 fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!ecez.Entity {
+    const zone = tracy.ZoneN(@src(), @src().fn_name);
+    defer zone.End();
+
     const Farmer = struct {
         pos: components.Position,
         scale: components.Scale,
@@ -1024,6 +1027,9 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
 }
 
 pub fn spawnBloodSplatter(allocator: std.mem.Allocator, storage: *Storage) !void {
+    const zone = tracy.ZoneN(@src(), @src().fn_name);
+    defer zone.End();
+
     const GoreSplatter = struct {
         pos: components.Position,
         rot: components.Rotation,

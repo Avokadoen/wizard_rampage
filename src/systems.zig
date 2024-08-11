@@ -489,6 +489,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 anim: *components.AnimTexture,
                 _: ecez.ExcludeEntityWith(.{components.OrientationTexture}),
             ) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
                 if (anim.frames_drawn_current_frame >= anim.frames_per_frame) {
                     anim.frames_drawn_current_frame = 0;
                     anim.current_frame = @mod((anim.current_frame + 1), anim.frame_count);
