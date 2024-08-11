@@ -2,42 +2,42 @@ const rl = @import("raylib");
 
 const GameTextureRepo = @This();
 
-player_textures: [72]rl.Texture,
-projectile_textures: [15]rl.Texture,
-farmer_textures: [48]rl.Texture,
-blood_splatter_textures: [9]rl.Texture,
-country_textures: [6]rl.Texture,
+player: [72]rl.Texture,
+projectile: [15]rl.Texture,
+farmer: [48]rl.Texture,
+blood_splatter: [9]rl.Texture,
+country: [6]rl.Texture,
 
 pub fn init() GameTextureRepo {
-    const player_textures = loadTextureGroup(which_player, "resources/textures/player/");
-    const projectile_textures = loadTextureGroup(which_projectile, "resources/textures/projectiles/");
-    const farmer_textures = loadTextureGroup(which_farmer, "resources/textures/farmer/");
-    const blood_splatter_textures = loadTextureGroup(which_bloodsplat, "resources/textures/effects/bloodsplat/");
-    const country_textures = loadTextureGroup(which_country_side, "resources/textures/country_side/");
+    const player = loadTextureGroup(which_player, "resources/textures/player/");
+    const projectile = loadTextureGroup(which_projectile, "resources/textures/projectiles/");
+    const farmer = loadTextureGroup(which_farmer, "resources/textures/farmer/");
+    const blood_splatter = loadTextureGroup(which_bloodsplat, "resources/textures/effects/bloodsplat/");
+    const country = loadTextureGroup(which_country_side, "resources/textures/country_side/");
 
     return GameTextureRepo{
-        .player_textures = player_textures,
-        .projectile_textures = projectile_textures,
-        .farmer_textures = farmer_textures,
-        .blood_splatter_textures = blood_splatter_textures,
-        .country_textures = country_textures,
+        .player = player,
+        .projectile = projectile,
+        .farmer = farmer,
+        .blood_splatter = blood_splatter,
+        .country = country,
     };
 }
 
 pub fn deinit(self: GameTextureRepo) void {
-    inline for (self.player_textures) |texture| {
+    inline for (self.player) |texture| {
         texture.unload();
     }
-    inline for (self.projectile_textures) |texture| {
+    inline for (self.projectile) |texture| {
         texture.unload();
     }
-    inline for (self.farmer_textures) |texture| {
+    inline for (self.farmer) |texture| {
         texture.unload();
     }
-    inline for (self.blood_splatter_textures) |texture| {
+    inline for (self.blood_splatter) |texture| {
         texture.unload();
     }
-    inline for (self.country_textures) |texture| {
+    inline for (self.country) |texture| {
         texture.unload();
     }
 }
@@ -45,12 +45,12 @@ pub fn deinit(self: GameTextureRepo) void {
 fn loadTextureGroup(comptime TextureEnum: type, comptime texture_group_path: []const u8) [@typeInfo(TextureEnum).Enum.fields.len]rl.Texture {
     const enum_fields = @typeInfo(TextureEnum).Enum.fields;
 
-    var blood_splatter_textures: [enum_fields.len]rl.Texture = undefined;
-    inline for (enum_fields, &blood_splatter_textures) |which_texture, *texture| {
+    var textures: [enum_fields.len]rl.Texture = undefined;
+    inline for (enum_fields, &textures) |which_texture, *texture| {
         texture.* = rl.loadTexture(texture_group_path ++ which_texture.name ++ ".png");
     }
 
-    return blood_splatter_textures;
+    return textures;
 }
 
 pub const texture_type = enum {

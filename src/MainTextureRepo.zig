@@ -2,22 +2,22 @@ const rl = @import("raylib");
 
 const GameTextureRepo = @This();
 
-button_textures: [6]rl.Texture,
+button: [6]rl.Texture,
 
 pub fn init() GameTextureRepo {
-    var button_textures: [6]rl.Texture = undefined;
+    var button: [6]rl.Texture = undefined;
     const which_button_info = @typeInfo(which_button);
-    inline for (which_button_info.Enum.fields, &button_textures) |which_texture, *texture| {
+    inline for (which_button_info.Enum.fields, &button) |which_texture, *texture| {
         texture.* = rl.loadTexture("resources/textures/main_menu/buttons/" ++ which_texture.name ++ ".png");
     }
 
     return GameTextureRepo{
-        .button_textures = button_textures,
+        .button = button,
     };
 }
 
 pub fn deinit(self: GameTextureRepo) void {
-    inline for (self.button_textures) |texture| {
+    inline for (self.button) |texture| {
         texture.unload();
     }
 }

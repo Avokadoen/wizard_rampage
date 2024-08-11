@@ -218,7 +218,7 @@ pub fn main() anyerror!void {
                                 break :check_cursor_intersect_blk MainTextureRepo.which_button.Start_Idle;
                             };
 
-                            const start_btn_text = main_menu_texture_repo.button_textures[@intFromEnum(start_texture_enum)];
+                            const start_btn_text = main_menu_texture_repo.button[@intFromEnum(start_texture_enum)];
                             const start_btn_rect = rl.Rectangle{
                                 .x = 0,
                                 .y = 0,
@@ -250,7 +250,7 @@ pub fn main() anyerror!void {
                                 break :check_cursor_intersect_blk MainTextureRepo.which_button.Options_Idle;
                             };
 
-                            const start_btn_text = main_menu_texture_repo.button_textures[@intFromEnum(options_texture_enum)];
+                            const start_btn_text = main_menu_texture_repo.button[@intFromEnum(options_texture_enum)];
                             const start_btn_rect = rl.Rectangle{
                                 .x = 0,
                                 .y = 0,
@@ -282,7 +282,7 @@ pub fn main() anyerror!void {
                                 break :check_cursor_intersect_blk MainTextureRepo.which_button.Exit_Idle;
                             };
 
-                            const start_btn_text = main_menu_texture_repo.button_textures[@intFromEnum(exit_texture_enum)];
+                            const start_btn_text = main_menu_texture_repo.button[@intFromEnum(exit_texture_enum)];
                             const start_btn_rect = rl.Rectangle{
                                 .x = 0,
                                 .y = 0,
@@ -636,7 +636,7 @@ pub fn main() anyerror!void {
                         texture: components.Texture,
                     };
 
-                    const horizontal_fence = texture_repo.country_textures[@intFromEnum(GameTextureRepo.which_country_side.Fence_Horizontal)];
+                    const horizontal_fence = texture_repo.country[@intFromEnum(GameTextureRepo.which_country_side.Fence_Horizontal)];
                     const hor_fence_height: u32 = @intCast(horizontal_fence.height);
                     const hor_fence_width: u32 = @intCast(horizontal_fence.width);
                     var i: u32 = 0;
@@ -689,7 +689,7 @@ pub fn main() anyerror!void {
                             },
                         });
                     }
-                    const vertical_fence = texture_repo.country_textures[@intFromEnum(GameTextureRepo.which_country_side.Fence_Vertical)];
+                    const vertical_fence = texture_repo.country[@intFromEnum(GameTextureRepo.which_country_side.Fence_Vertical)];
                     const vert_fence_height: u32 = @intCast(vertical_fence.height);
                     const vert_fence_width: u32 = @intCast(vertical_fence.width);
                     i = 0;
@@ -812,11 +812,11 @@ pub fn main() anyerror!void {
 
                             const draw_context = DrawSystems.Context{
                                 .texture_repo = &[_][]const rl.Texture{
-                                    &texture_repo.player_textures,
-                                    &texture_repo.projectile_textures,
-                                    &texture_repo.farmer_textures,
-                                    &texture_repo.blood_splatter_textures,
-                                    &texture_repo.country_textures,
+                                    &texture_repo.player,
+                                    &texture_repo.projectile,
+                                    &texture_repo.farmer,
+                                    &texture_repo.blood_splatter,
+                                    &texture_repo.country,
                                 },
                                 .storage = storage,
                             };
