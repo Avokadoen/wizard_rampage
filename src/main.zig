@@ -10,6 +10,8 @@ const physics = @import("physics_2d.zig");
 const GameTextureRepo = @import("GameTextureRepo.zig");
 const MainTextureRepo = @import("MainTextureRepo.zig");
 
+const tracy = @import("ztracy");
+
 const arena_height = 3000;
 const arena_width = 3000;
 
@@ -25,7 +27,8 @@ const Scheduler = ecez.CreateScheduler(
             UpdateSystems.FireRate,
             UpdateSystems.LifeTime,
             UpdateSystems.UpdateVelocity,
-            ecez.DependOn(UpdateSystems.MovableToImmovableRecToRecCollisionResolve, .{UpdateSystems.UpdateVelocity}),
+            ecez.DependOn(UpdateSystems.RotateAfterVelocity, .{UpdateSystems.UpdateVelocity}),
+            ecez.DependOn(UpdateSystems.MovableToImmovableRecToRecCollisionResolve, .{UpdateSystems.RotateAfterVelocity}),
             ecez.DependOn(UpdateSystems.MovableToMovableRecToRecCollisionResolve, .{UpdateSystems.MovableToImmovableRecToRecCollisionResolve}),
             ecez.DependOn(UpdateSystems.InherentFromParent, .{UpdateSystems.MovableToMovableRecToRecCollisionResolve}),
             ecez.DependOn(UpdateSystems.ProjectileHitKillable, .{UpdateSystems.InherentFromParent}),
@@ -34,6 +37,7 @@ const Scheduler = ecez.CreateScheduler(
             // run in parallel
             ecez.DependOn(UpdateSystems.UpdateCamera, .{UpdateSystems.InherentFromParent}),
             ecez.DependOn(UpdateSystems.OrientTexture, .{UpdateSystems.InherentFromParent}),
+            ecez.DependOn(UpdateSystems.AnimateTexture, .{UpdateSystems.InherentFromParent}),
             // end run in parallel
             ecez.DependOn(UpdateSystems.OrientationBasedDrawOrder, .{UpdateSystems.OrientTexture}),
             // flush in game loop
@@ -95,7 +99,10 @@ pub fn main() anyerror!void {
     outer_loop: while (true) {
         switch (current_state) {
             .main_menu => {
+                const load_assets_zone = tracy.ZoneN(@src(), "main menu load assets and init");
+
                 var main_menu_animation = components.AnimTexture{
+                    .start_frame = 0,
                     .current_frame = 0,
                     .frame_count = 0,
                     .frames_per_frame = 8,
@@ -118,7 +125,11 @@ pub fn main() anyerror!void {
                 const main_menu_texture_repo = MainTextureRepo.init();
                 defer main_menu_texture_repo.deinit();
 
+                load_assets_zone.End();
+
                 while (true) {
+                    tracy.FrameMark();
+
                     // Start music
                     rl.updateMusicStream(music);
                     const time_played = rl.getMusicTimePlayed(music) / rl.getMusicTimeLength(music);
@@ -207,7 +218,7 @@ pub fn main() anyerror!void {
                                 break :check_cursor_intersect_blk MainTextureRepo.which_button.Start_Idle;
                             };
 
-                            const start_btn_text = main_menu_texture_repo.button_textures[@intFromEnum(start_texture_enum)];
+                            const start_btn_text = main_menu_texture_repo.button[@intFromEnum(start_texture_enum)];
                             const start_btn_rect = rl.Rectangle{
                                 .x = 0,
                                 .y = 0,
@@ -239,7 +250,7 @@ pub fn main() anyerror!void {
                                 break :check_cursor_intersect_blk MainTextureRepo.which_button.Options_Idle;
                             };
 
-                            const start_btn_text = main_menu_texture_repo.button_textures[@intFromEnum(options_texture_enum)];
+                            const start_btn_text = main_menu_texture_repo.button[@intFromEnum(options_texture_enum)];
                             const start_btn_rect = rl.Rectangle{
                                 .x = 0,
                                 .y = 0,
@@ -271,7 +282,7 @@ pub fn main() anyerror!void {
                                 break :check_cursor_intersect_blk MainTextureRepo.which_button.Exit_Idle;
                             };
 
-                            const start_btn_text = main_menu_texture_repo.button_textures[@intFromEnum(exit_texture_enum)];
+                            const start_btn_text = main_menu_texture_repo.button[@intFromEnum(exit_texture_enum)];
                             const start_btn_rect = rl.Rectangle{
                                 .x = 0,
                                 .y = 0,
@@ -308,6 +319,20 @@ pub fn main() anyerror!void {
             .game => {
                 const micro_ts = std.time.microTimestamp();
                 var random = std.rand.DefaultPrng.init(@as(*const u64, @ptrCast(&micro_ts)).*);
+
+                //create grass and dirt
+                const random_point_on_circle = struct {
+                    fn randomPointOnCircle(radius: usize, pos: rl.Vector2, rand: std.Random) rl.Vector2 {
+                        const rand_value = rand.float(f32);
+                        const angle: f32 = rand_value * std.math.tau;
+                        const x = @as(f32, @floatFromInt(radius)) * @cos(angle);
+                        const y = @as(f32, @floatFromInt(radius)) * @sin(angle);
+
+                        return rl.Vector2{ .x = x + pos.x, .y = y + pos.y };
+                    }
+                }.randomPointOnCircle;
+
+                const load_assets_zone = tracy.ZoneN(@src(), "game load assets and init");
 
                 const texture_repo = GameTextureRepo.init();
                 defer texture_repo.deinit();
@@ -622,8 +647,10 @@ pub fn main() anyerror!void {
                         collider: components.RectangleCollider,
                         texture: components.Texture,
                     };
-                    const hor_fence_height: u32 = @intCast(texture_repo.country_textures[@intFromEnum(GameTextureRepo.country_side.Fence_Horizontal)].height);
-                    const hor_fence_width: u32 = @intCast(texture_repo.country_textures[@intFromEnum(GameTextureRepo.country_side.Fence_Horizontal)].width);
+
+                    const horizontal_fence = texture_repo.country[@intFromEnum(GameTextureRepo.which_country_side.Fence_Horizontal)];
+                    const hor_fence_height: u32 = @intCast(horizontal_fence.height);
+                    const hor_fence_width: u32 = @intCast(horizontal_fence.width);
                     var i: u32 = 0;
                     while (i < arena_width) : (i += hor_fence_width) {
                         // // South
@@ -645,7 +672,7 @@ pub fn main() anyerror!void {
                             .texture = components.Texture{
                                 .draw_order = .o2,
                                 .type = @intFromEnum(GameTextureRepo.texture_type.country),
-                                .index = @intFromEnum(GameTextureRepo.country_side.Fence_Horizontal),
+                                .index = @intFromEnum(GameTextureRepo.which_country_side.Fence_Horizontal),
                             },
                         });
                         // North
@@ -667,12 +694,13 @@ pub fn main() anyerror!void {
                             .texture = components.Texture{
                                 .draw_order = .o2,
                                 .type = @intFromEnum(GameTextureRepo.texture_type.country),
-                                .index = @intFromEnum(GameTextureRepo.country_side.Fence_Horizontal),
+                                .index = @intFromEnum(GameTextureRepo.which_country_side.Fence_Horizontal),
                             },
                         });
                     }
-                    const vert_fence_height: u32 = @intCast(texture_repo.country_textures[@intFromEnum(GameTextureRepo.country_side.Fence_Vertical)].height);
-                    const vert_fence_width: u32 = @intCast(texture_repo.country_textures[@intFromEnum(GameTextureRepo.country_side.Fence_Vertical)].width);
+                    const vertical_fence = texture_repo.country[@intFromEnum(GameTextureRepo.which_country_side.Fence_Vertical)];
+                    const vert_fence_height: u32 = @intCast(vertical_fence.height);
+                    const vert_fence_width: u32 = @intCast(vertical_fence.width);
                     i = 0;
                     while (i < arena_width - vert_fence_height) : (i += vert_fence_height) {
                         // West
@@ -694,7 +722,7 @@ pub fn main() anyerror!void {
                             .texture = components.Texture{
                                 .draw_order = .o2,
                                 .type = @intFromEnum(GameTextureRepo.texture_type.country),
-                                .index = @intFromEnum(GameTextureRepo.country_side.Fence_Vertical),
+                                .index = @intFromEnum(GameTextureRepo.which_country_side.Fence_Vertical),
                             },
                         });
                         // East
@@ -716,23 +744,12 @@ pub fn main() anyerror!void {
                             .texture = components.Texture{
                                 .draw_order = .o2,
                                 .type = @intFromEnum(GameTextureRepo.texture_type.country),
-                                .index = @intFromEnum(GameTextureRepo.country_side.Fence_Vertical),
+                                .index = @intFromEnum(GameTextureRepo.which_country_side.Fence_Vertical),
                             },
                         });
                     }
                 }
                 {
-                    //create grass and dirt
-                    const random_point_on_circle = struct {
-                        fn randomPointOnCircle(radius: usize, pos: rl.Vector2, rand: std.Random) rl.Vector2 {
-                            const rand_value = rand.float(f32);
-                            const angle: f32 = rand_value * std.math.tau;
-                            const x = @as(f32, @floatFromInt(radius)) * @cos(angle);
-                            const y = @as(f32, @floatFromInt(radius)) * @sin(angle);
-
-                            return rl.Vector2{ .x = x + pos.x, .y = y + pos.y };
-                        }
-                    }.randomPointOnCircle;
                     const GroundClutter = struct {
                         pos: components.Position,
                         scale: components.Scale,
@@ -758,7 +775,7 @@ pub fn main() anyerror!void {
                             .texture = components.Texture{
                                 .draw_order = .o0,
                                 .type = @intFromEnum(GameTextureRepo.texture_type.country),
-                                .index = @intFromEnum(GameTextureRepo.country_side.Dirt),
+                                .index = @intFromEnum(GameTextureRepo.which_country_side.Dirt),
                             },
                         });
                     }
@@ -779,7 +796,7 @@ pub fn main() anyerror!void {
                             .texture = components.Texture{
                                 .draw_order = .o0,
                                 .type = @intFromEnum(GameTextureRepo.texture_type.country),
-                                .index = @intFromEnum(GameTextureRepo.country_side.Grass),
+                                .index = @intFromEnum(GameTextureRepo.which_country_side.Grass),
                             },
                         });
                     }
@@ -788,8 +805,12 @@ pub fn main() anyerror!void {
                 const farmer = try createFarmer(&storage, zm.f32x4(0, 0, 0, 0), player_scale);
                 _ = farmer; // autofix
 
+                load_assets_zone.End();
+
                 // TODO: pause
                 while (!rl.windowShouldClose()) {
+                    tracy.FrameMark();
+
                     // Play music
                     rl.updateMusicStream(music);
                     const time_played = rl.getMusicTimePlayed(music) / rl.getMusicTimeLength(music);
@@ -816,6 +837,9 @@ pub fn main() anyerror!void {
                         scheduler.waitEvent(.game_update);
 
                         try storage.flushStorageQueue(); // flush any edits which occured in dispatch game_update
+
+                        // Spawn blood splatter
+                        try spawnBloodSplatter(allocator, &storage);
                     }
 
                     {
@@ -849,10 +873,11 @@ pub fn main() anyerror!void {
 
                             const draw_context = DrawSystems.Context{
                                 .texture_repo = &[_][]const rl.Texture{
-                                    &texture_repo.player_textures,
-                                    &texture_repo.projectile_textures,
-                                    &texture_repo.farmer_textures,
-                                    &texture_repo.country_textures,
+                                    &texture_repo.player,
+                                    &texture_repo.projectile,
+                                    &texture_repo.farmer,
+                                    &texture_repo.blood_splatter,
+                                    &texture_repo.country,
                                 },
                                 .storage = storage,
                             };
@@ -874,6 +899,9 @@ pub fn main() anyerror!void {
 
 // TODO: Body parts can be generic for player, farmer and wife
 fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!ecez.Entity {
+    const zone = tracy.ZoneN(@src(), @src().fn_name);
+    defer zone.End();
+
     const Farmer = struct {
         pos: components.Position,
         scale: components.Scale,
@@ -1057,6 +1085,147 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
     });
 
     return farmer;
+}
+
+pub fn spawnBloodSplatter(allocator: std.mem.Allocator, storage: *Storage) !void {
+    const zone = tracy.ZoneN(@src(), @src().fn_name);
+    defer zone.End();
+
+    const GoreSplatter = struct {
+        pos: components.Position,
+        rot: components.Rotation,
+        scale: components.Scale,
+        texture: components.Texture,
+        anim: components.AnimTexture,
+        lifetime: components.LifeTime,
+        blood_gore_tag: components.BloodGoreGroundTag,
+    };
+    const InactiveGoreSplatterQuery = Storage.Query(struct {
+        entity: ecez.Entity,
+        pos: *components.Position,
+        rot: *components.Rotation,
+        scale: *components.Scale,
+        texture: *components.Texture,
+        anim: *components.AnimTexture,
+        lifetime: *components.LifeTime,
+        inactive_tag: components.InactiveTag,
+        blood_gore_tag: components.BloodGoreGroundTag,
+    }, .{});
+    var inactive_gore_iter = InactiveGoreSplatterQuery.submit(storage);
+
+    const BloodSplatter = struct {
+        pos: components.Position,
+        scale: components.Scale,
+        texture: components.Texture,
+        lifetime: components.LifeTime,
+        blood_splatter_tag: components.BloodSplatterGroundTag,
+    };
+    const InactiveBloodSplatterQuery = Storage.Query(struct {
+        entity: ecez.Entity,
+        pos: *components.Position,
+        scale: *components.Scale,
+        texture: *components.Texture,
+        lifetime: *components.LifeTime,
+        inactive_tag: components.InactiveTag,
+        blood_splatter_tag: components.BloodSplatterGroundTag,
+    }, .{});
+    var inactive_blood_iter = InactiveBloodSplatterQuery.submit(storage);
+
+    const DiedThisFrameQuery = Storage.Query(struct {
+        entity: ecez.Entity,
+        pos: components.Position,
+        died: components.DiedThisFrameTag,
+    }, .{});
+    var died_this_frame_iter = DiedThisFrameQuery.submit(storage);
+
+    // WORKAROUND:
+    // If we dont defer creation of blood splatter and gore, then we do UB in ecez.
+    // This can be somewhat improved with https://github.com/Avokadoen/ecez/issues/184
+    // and potentially with https://github.com/Avokadoen/ecez/issues/183
+    var deferred_blood_splatter_entities = std.ArrayList(BloodSplatter).init(allocator);
+    defer deferred_blood_splatter_entities.deinit();
+    var deferred_gore_splatter_entities = std.ArrayList(GoreSplatter).init(allocator);
+    defer deferred_gore_splatter_entities.deinit();
+
+    while (died_this_frame_iter.next()) |dead_this_frame| {
+        const scale = storage.getComponent(dead_this_frame.entity, components.Scale) catch components.Scale{ .x = 1, .y = 1 };
+        const splatter_offset = zm.f32x4(-100 * scale.x, -100 * scale.y, 0, 0);
+
+        const position = components.Position{
+            .vec = dead_this_frame.pos.vec + splatter_offset,
+        };
+
+        const blood_splatterlifetime: f32 = 6;
+        if (inactive_blood_iter.next()) |inactive_blood_splatter| {
+            try storage.queueRemoveComponent(inactive_blood_splatter.entity, components.InactiveTag);
+            inactive_blood_splatter.pos.* = position;
+            inactive_blood_splatter.scale.* = scale;
+            inactive_blood_splatter.lifetime.* = components.LifeTime{ .value = blood_splatterlifetime };
+        } else {
+            try deferred_blood_splatter_entities.append(BloodSplatter{
+                .pos = position,
+                .scale = scale,
+                .texture = components.Texture{
+                    .type = @intFromEnum(GameTextureRepo.texture_type.blood_splatter),
+                    .index = @intFromEnum(GameTextureRepo.which_bloodsplat.Blood_Splat),
+                    .draw_order = .o0,
+                },
+                .blood_splatter_tag = .{},
+                .lifetime = components.LifeTime{ .value = blood_splatterlifetime },
+            });
+        }
+
+        const anim = components.AnimTexture{
+            .start_frame = @intFromEnum(GameTextureRepo.which_bloodsplat.Blood_Splat0001),
+            .current_frame = 0,
+            .frame_count = 8,
+            .frames_per_frame = 4,
+            .frames_drawn_current_frame = 0,
+        };
+        const lifetime_comp = components.LifeTime{
+            .value = @as(f32, @floatFromInt(anim.frame_count)) * @as(f32, @floatFromInt(anim.frames_per_frame)) / 60.0,
+        };
+
+        const gore_scale = components.Scale{ .x = scale.x * 2, .y = scale.y * 2 }; // gore should be larger than blood
+
+        const gore_pos = components.Position{
+            .vec = position.vec + zm.f32x4(-50, -40, 0, 0),
+        };
+
+        if (inactive_gore_iter.next()) |inactive_gore| {
+            try storage.queueRemoveComponent(inactive_gore.entity, components.InactiveTag);
+            inactive_gore.pos.* = gore_pos;
+            inactive_gore.scale.* = gore_scale;
+            // inactive_gore.anim.* = anim;
+            inactive_gore.lifetime.* = lifetime_comp;
+        } else {
+            try deferred_gore_splatter_entities.append(GoreSplatter{
+                .pos = gore_pos,
+                .rot = components.Rotation{ .value = 0 },
+                .scale = gore_scale,
+                .texture = components.Texture{
+                    .type = @intFromEnum(GameTextureRepo.texture_type.blood_splatter),
+                    .index = @intFromEnum(GameTextureRepo.which_bloodsplat.Blood_Splat0001),
+                    .draw_order = .o1,
+                },
+                .anim = anim,
+                .lifetime = lifetime_comp,
+                .blood_gore_tag = .{},
+            });
+        }
+
+        try storage.queueRemoveComponent(dead_this_frame.entity, components.DiedThisFrameTag);
+    }
+
+    try storage.flushStorageQueue();
+
+    // NOTE: splatter has no guaretee to be of same length (lifetime is not the same between)
+    for (deferred_blood_splatter_entities.items) |blood_splatter| {
+        _ = try storage.createEntity(blood_splatter);
+    }
+    for (deferred_gore_splatter_entities.items) |gore_splatter| {
+        _ = try storage.createEntity(gore_splatter);
+    }
 }
 
 test {

@@ -1,7 +1,10 @@
+const std = @import("std");
+
 const rl = @import("raylib");
-const components = @import("components.zig");
 const ecez = @import("ecez");
 const zm = @import("zmath");
+
+const components = @import("components.zig");
 const GameTextureRepo = @import("GameTextureRepo.zig");
 
 const delta_time: f32 = 1.0 / 60.0;
@@ -74,6 +77,7 @@ fn shootLeft(pos: *components.Position, vel: *components.Velocity, fire_rate: *c
 fn fireProjectile(pos: components.Position, vel: zm.Vec, fire_rate: *components.FireRate, storage: anytype) void {
     const Projectile = struct {
         pos: components.Position,
+        rot: components.Rotation,
         vel: components.Velocity,
         collider: components.CircleCollider,
         texture: components.Texture,
@@ -82,13 +86,24 @@ fn fireProjectile(pos: components.Position, vel: zm.Vec, fire_rate: *components.
         projectile: components.Projectile,
     };
     if (fire_rate.cooldown_fire_rate == 0) {
-        const proj_offset = zm.normalize2(vel) * @as(zm.Vec, @splat(50));
+        const norm_vel = zm.normalize2(vel);
+        const rotation = std.math.atan2(norm_vel[1], norm_vel[0]);
+        const collider_offset_x: f32 = 50;
+        const collider_offset_y: f32 = 33;
+
+        const cs = @cos(rotation);
+        const sn = @sin(rotation);
+
+        const proj_offset = zm.normalize2(vel) * @as(zm.Vec, @splat(15));
 
         _ = storage.createEntity(Projectile{
             .pos = components.Position{ .vec = pos.vec + proj_offset },
+            .rot = components.Rotation{ .value = 0 },
             .vel = components.Velocity{ .vec = vel, .drag = 0.98 },
             .collider = components.CircleCollider{
-                .radius = 30,
+                .x = @floatCast(collider_offset_x * cs - collider_offset_y * sn),
+                .y = @floatCast(collider_offset_x * sn + collider_offset_y * cs),
+                .radius = 10,
             },
             .texture = components.Texture{
                 .type = @intFromEnum(GameTextureRepo.texture_type.projectile),
@@ -101,7 +116,7 @@ fn fireProjectile(pos: components.Position, vel: zm.Vec, fire_rate: *components.
             },
             .projectile = components.Projectile{
                 .dmg = 15,
-                .weight = 300,
+                .weight = 500,
             },
         }) catch (@panic("rip projectiles"));
         fire_rate.cooldown_fire_rate = fire_rate.base_fire_rate;

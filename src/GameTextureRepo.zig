@@ -2,62 +2,62 @@ const rl = @import("raylib");
 
 const GameTextureRepo = @This();
 
-player_textures: [72]rl.Texture,
-projectile_textures: [15]rl.Texture,
-farmer_textures: [48]rl.Texture,
-country_textures: [6]rl.Texture,
+player: [72]rl.Texture,
+projectile: [15]rl.Texture,
+farmer: [48]rl.Texture,
+blood_splatter: [9]rl.Texture,
+country: [6]rl.Texture,
 
 pub fn init() GameTextureRepo {
-    var player_textures: [72]rl.Texture = undefined;
-    const which_player_info = @typeInfo(which_player);
-    inline for (which_player_info.Enum.fields, &player_textures) |which_texture, *texture| {
-        texture.* = rl.loadTexture("resources/textures/player/" ++ which_texture.name ++ ".png");
-    }
-
-    var projectile_textures: [15]rl.Texture = undefined;
-    const which_projectile_info = @typeInfo(which_projectile);
-    inline for (which_projectile_info.Enum.fields, &projectile_textures) |which_texture, *texture| {
-        texture.* = rl.loadTexture("resources/textures/projectiles/" ++ which_texture.name ++ ".png");
-    }
-
-    var farmer_textures: [48]rl.Texture = undefined;
-    const which_farmer_info = @typeInfo(which_farmer);
-    inline for (which_farmer_info.Enum.fields, &farmer_textures) |which_texture, *texture| {
-        texture.* = rl.loadTexture("resources/textures/farmer/" ++ which_texture.name ++ ".png");
-    }
-
-    var country_textures: [6]rl.Texture = undefined;
-    const country_info = @typeInfo(country_side);
-    inline for (country_info.Enum.fields, &country_textures) |country_texture, *texture| {
-        texture.* = rl.loadTexture("resources/textures/country_side/" ++ country_texture.name ++ ".png");
-    }
+    const player = loadTextureGroup(which_player, "resources/textures/player/");
+    const projectile = loadTextureGroup(which_projectile, "resources/textures/projectiles/");
+    const farmer = loadTextureGroup(which_farmer, "resources/textures/farmer/");
+    const blood_splatter = loadTextureGroup(which_bloodsplat, "resources/textures/effects/bloodsplat/");
+    const country = loadTextureGroup(which_country_side, "resources/textures/country_side/");
 
     return GameTextureRepo{
-        .player_textures = player_textures,
-        .projectile_textures = projectile_textures,
-        .farmer_textures = farmer_textures,
-        .country_textures = country_textures,
+        .player = player,
+        .projectile = projectile,
+        .farmer = farmer,
+        .blood_splatter = blood_splatter,
+        .country = country,
     };
 }
 
 pub fn deinit(self: GameTextureRepo) void {
-    inline for (self.player_textures) |texture| {
+    inline for (self.player) |texture| {
         texture.unload();
+    }
+    inline for (self.projectile) |texture| {
+        texture.unload();
+    }
+    inline for (self.farmer) |texture| {
+        texture.unload();
+    }
+    inline for (self.blood_splatter) |texture| {
+        texture.unload();
+    }
+    inline for (self.country) |texture| {
+        texture.unload();
+    }
+}
+
+fn loadTextureGroup(comptime TextureEnum: type, comptime texture_group_path: []const u8) [@typeInfo(TextureEnum).Enum.fields.len]rl.Texture {
+    const enum_fields = @typeInfo(TextureEnum).Enum.fields;
+
+    var textures: [enum_fields.len]rl.Texture = undefined;
+    inline for (enum_fields, &textures) |which_texture, *texture| {
+        texture.* = rl.loadTexture(texture_group_path ++ which_texture.name ++ ".png");
     }
 
-    inline for (self.projectile_textures) |texture| {
-        texture.unload();
-    }
-
-    inline for (self.farmer_textures) |texture| {
-        texture.unload();
-    }
+    return textures;
 }
 
 pub const texture_type = enum {
     player,
     projectile,
     farmer,
+    blood_splatter,
     country,
 };
 
@@ -202,7 +202,18 @@ pub const which_farmer = enum {
     Farmer_Pitchfork0007,
     Farmer_Pitchfork0008,
 };
-pub const country_side = enum {
+pub const which_bloodsplat = enum {
+    Blood_Splat,
+    Blood_Splat0001,
+    Blood_Splat0002,
+    Blood_Splat0003,
+    Blood_Splat0004,
+    Blood_Splat0005,
+    Blood_Splat0006,
+    Blood_Splat0007,
+    Blood_Splat0008,
+};
+pub const which_country_side = enum {
     Dirt,
     Fence_Horizontal,
     Fence_Vertical,

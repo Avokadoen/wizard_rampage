@@ -24,6 +24,9 @@ pub const all = .{
     HostileTag,
     Projectile,
     Health,
+    DiedThisFrameTag,
+    BloodSplatterGroundTag,
+    BloodGoreGroundTag,
 };
 
 pub const Position = struct {
@@ -44,12 +47,14 @@ pub const Velocity = struct {
     drag: f32,
 };
 
-pub const RectangleCollider = struct {
+pub const RectangleCollider = packed struct {
     width: f32,
     height: f32,
 };
 
-pub const CircleCollider = struct {
+pub const CircleCollider = packed struct {
+    x: f16,
+    y: f16,
     radius: f32,
 };
 
@@ -62,7 +67,7 @@ pub const DrawRectangleTag = struct {};
 pub const DrawCircleTag = struct {};
 
 pub const Texture = struct {
-    pub const DrawOrder = enum {
+    pub const DrawOrder = enum(u8) {
         o0,
         o1,
         o2,
@@ -83,6 +88,7 @@ pub const OrientationTexture = packed struct {
 };
 
 pub const AnimTexture = struct {
+    start_frame: u8,
     current_frame: u8,
     frame_count: u8,
     frames_per_frame: u8,
@@ -120,3 +126,7 @@ pub const Health = struct {
     max: i32,
     value: i32,
 };
+
+pub const DiedThisFrameTag = struct {};
+pub const BloodSplatterGroundTag = struct {};
+pub const BloodGoreGroundTag = struct {};
