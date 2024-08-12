@@ -48,6 +48,6 @@ Killing the farmers wife will give you the victory screen, good job, you monster
 
 # AI assets
 
-All assets listed here are made by AI, and not us. 
+Assets listed here are made by AI, and not us. 
  
  - resources\music\Gameplay_Loop.wav
