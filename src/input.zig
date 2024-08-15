@@ -256,9 +256,9 @@ pub fn CreateInput(Storage: type) type {
 pub fn nextStaffProjectileIndex(staff: components.Staff) ?u8 {
     var slots_checked: u8 = 0;
     var cursor = staff.slot_cursor;
-    while (staff.slots[cursor] != .projectile and slots_checked < staff.used_slots) {
+    while (staff.slots[cursor] != .projectile and slots_checked < staff.slot_capacity) {
         slots_checked += 1;
-        cursor += 1;
+        cursor = @mod((cursor + 1), staff.slot_capacity);
     }
 
     // If we found our next projectile
@@ -277,20 +277,20 @@ pub fn findNextStaffProjectile(staff: *components.Staff) ?NextProjectile {
     var modifier_len: u8 = 0;
     var modifiers: [components.Staff.max_slots - 1]components.Staff.Modifier = undefined;
     var slots_checked: u8 = 0;
-    while (staff.slots[staff.slot_cursor] != .projectile and slots_checked < staff.used_slots) {
+    while (staff.slots[staff.slot_cursor] != .projectile and slots_checked < staff.slot_capacity) {
         if (staff.slots[staff.slot_cursor] == .modifier) {
             modifiers[modifier_len] = staff.slots[staff.slot_cursor].modifier;
             modifier_len += 1;
         }
 
         slots_checked += 1;
-        staff.slot_cursor = @mod((staff.slot_cursor + 1), staff.used_slots);
+        staff.slot_cursor = @mod((staff.slot_cursor + 1), staff.slot_capacity);
     }
 
     // If we found our next projectile
     if (staff.slots[staff.slot_cursor] == .projectile) {
-        defer staff.slot_cursor = @mod((staff.slot_cursor + 1), staff.used_slots);
         const proj = staff.slots[staff.slot_cursor].projectile;
+        staff.slot_cursor = @mod((staff.slot_cursor + 1), staff.slot_capacity);
         return NextProjectile{
             .type = proj.type,
             .proj = components.Projectile{
