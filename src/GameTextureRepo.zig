@@ -244,7 +244,9 @@ pub const which_country_side = enum {
 };
 
 pub const which_inventory = enum {
+    Damage_Amp_Modifier,
     Yellow_Gem,
+    Piercing_Modifier,
     Red_Gem,
     Slot,
     Slot_Cursor,

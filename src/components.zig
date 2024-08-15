@@ -25,11 +25,15 @@ pub const all = .{
     FarmerTag,
     FarmersWifeTag,
     Staff,
+    OldSlot,
     Projectile,
+    InventoryItem,
+    Inventory,
     Health,
     DiedThisFrameTag,
     BloodSplatterGroundTag,
     BloodGoreGroundTag,
+    AttachToCursor,
     Vocals,
 };
 
@@ -161,6 +165,31 @@ pub const Projectile = struct {
     modifiers: [Staff.max_slots - 1]Staff.Modifier,
 };
 
+pub const OldSlot = struct {
+    pub const Type = union(enum) {
+        staff_index: u32,
+        inventory_pos: Position,
+    };
+
+    type: Type,
+};
+
+pub const Inventory = struct {
+    pub const max_items = 32;
+
+    items_len: u32,
+    items: [max_items]ecez.Entity,
+};
+
+pub const InventoryItem = struct {
+    pub const Item = union(enum) {
+        projectile: Staff.ProjectileAttribs,
+        modifier: Staff.Modifier,
+    };
+
+    item: Item,
+};
+
 pub const Health = struct {
     max: i32,
     value: i32,
@@ -169,6 +198,10 @@ pub const Health = struct {
 pub const DiedThisFrameTag = struct {};
 pub const BloodSplatterGroundTag = struct {};
 pub const BloodGoreGroundTag = struct {};
+pub const AttachToCursor = struct {
+    offset_x: f32,
+    offset_y: f32,
+};
 
 pub const Vocals = struct {
     // on_attack: u8,

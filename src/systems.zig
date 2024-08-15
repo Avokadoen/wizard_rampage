@@ -18,6 +18,7 @@ pub fn CreateUpdateSystems(Storage: type) type {
             rng: std.Random,
             farmer_kill_count: *u64,
             the_wife_kill_count: *u64,
+            cursor_position: rl.Vector2,
         };
 
         pub const MovableToImmovableRecToRecCollisionResolve = struct {

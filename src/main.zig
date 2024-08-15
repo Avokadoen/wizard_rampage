@@ -843,6 +843,19 @@ pub fn main() anyerror!void {
                     }
                 }
 
+                // Setup inventory
+                const inventory_entity = create_inventory_blk: {
+                    const Inventory = struct {
+                        inv: components.Inventory,
+                    };
+
+                    break :create_inventory_blk try storage.createEntity(Inventory{ .inv = components.Inventory{
+                        .items_len = 0,
+                        .items = undefined,
+                    } });
+                };
+                _ = inventory_entity;
+
                 load_assets_zone.End();
 
                 var in_inventory = false;
@@ -857,6 +870,8 @@ pub fn main() anyerror!void {
                 // TODO: pause
                 while (!rl.windowShouldClose()) {
                     tracy.FrameMark();
+
+                    const mouse_pos = rl.getMousePosition();
 
                     if (the_wife_kill_count >= 1) {
                         current_state = .victory_screen;
@@ -905,6 +920,7 @@ pub fn main() anyerror!void {
                                 .rng = random,
                                 .farmer_kill_count = &farmer_kill_count,
                                 .the_wife_kill_count = &the_wife_kill_count,
+                                .cursor_position = mouse_pos,
                             };
                             scheduler.dispatchEvent(&storage, .game_update, update_context);
                             scheduler.waitEvent(.game_update);
@@ -1024,8 +1040,22 @@ pub fn main() anyerror!void {
                         }
 
                         {
-                            // UI can go here
-                            const staff = storage.getComponent(player_staff_entity, *components.Staff) catch unreachable;
+                            const GrabbedItem = struct {
+                                pos: components.Position,
+                                old_slot: components.OldSlot,
+                                inv_item: components.InventoryItem,
+                                attach_to_cursor: components.AttachToCursor,
+                            };
+
+                            const GrabbedItemQuery = Storage.Query(struct {
+                                entity: ecez.Entity,
+                                pos: *components.Position,
+                                old_slot: components.OldSlot,
+                                inv_item: components.InventoryItem,
+                                attach_to_cursor: components.AttachToCursor,
+                            }, .{components.InactiveTag});
+
+                            var staff = storage.getComponent(player_staff_entity, *components.Staff) catch unreachable;
                             const index_slot = @intFromEnum(GameTextureRepo.which_inventory.Slot);
                             const texture_slot = texture_repo.inventory[index_slot];
 
@@ -1038,45 +1068,29 @@ pub fn main() anyerror!void {
                             const index_yellow_gem = @intFromEnum(GameTextureRepo.which_inventory.Yellow_Gem);
                             const texture_yellow_gem = texture_repo.inventory[index_yellow_gem];
 
+                            const index_dmg_amp_mod = @intFromEnum(GameTextureRepo.which_inventory.Damage_Amp_Modifier);
+                            const texture_dmg_amp_mod = texture_repo.inventory[index_dmg_amp_mod];
+
+                            const index_piercing_modifier = @intFromEnum(GameTextureRepo.which_inventory.Piercing_Modifier);
+                            const texture_piercing_modifier = texture_repo.inventory[index_piercing_modifier];
+
                             const index_bag = @intFromEnum(GameTextureRepo.which_inventory.Gem_Bag);
                             const texture_bag = texture_repo.inventory[index_bag];
 
                             const next_projectile = input.nextStaffProjectileIndex(staff.*) orelse 255;
 
-                            for (0..staff.slot_capacity) |i| {
-                                const rect_texture = rl.Rectangle{
-                                    .x = 0,
-                                    .y = 0,
-                                    .height = @floatFromInt(texture_slot.height),
-                                    .width = @floatFromInt(texture_slot.width),
-                                };
-                                const start_pos = (window_width / 2) - ((@as(f32, @floatFromInt(staff.slot_capacity)) * 75.0) / 2) + (@as(f32, @floatFromInt(texture_slot.width)) / 2);
-                                const pos = rl.Vector2{
-                                    .x = start_pos + @as(f32, @floatFromInt(i)) * 75,
-                                    .y = window_height - window_height * 0.1,
-                                };
-
-                                if (i == next_projectile) {
-                                    rl.drawTextureRec(texture_slot_cursor, rect_texture, pos, rl.Color.white);
-                                } else {
-                                    rl.drawTextureRec(texture_slot, rect_texture, pos, rl.Color.white);
-                                }
-                                switch (staff.slots[i]) {
-                                    .none => {},
-                                    .projectile => |proj| {
-                                        switch (proj.type) {
-                                            .bolt => rl.drawTextureRec(texture_yellow_gem, rect_texture, pos, rl.Color.white),
-                                            .red_gem => rl.drawTextureRec(texture_red_gem, rect_texture, pos, rl.Color.white),
-                                        }
-                                    },
-                                    .modifier => |mod| {
-                                        switch (mod) {
-                                            .piercing => rl.drawTextureRec(texture_yellow_gem, rect_texture, pos, rl.Color.white),
-                                            .dmg_amp => rl.drawTextureRec(texture_red_gem, rect_texture, pos, rl.Color.white),
-                                        }
-                                    },
-                                }
-                            }
+                            const inventory_rect = rl.Rectangle{
+                                .x = (window_width / 2) - window_height / 4,
+                                .y = window_height / 3,
+                                .height = window_height / 2,
+                                .width = window_height / 2,
+                            };
+                            const item_rect = rl.Rectangle{
+                                .x = 0,
+                                .y = 0,
+                                .width = @floatFromInt(texture_slot.width),
+                                .height = @floatFromInt(texture_slot.height),
+                            };
 
                             if (in_inventory) {
                                 const rect_source = rl.Rectangle{
@@ -1085,22 +1099,237 @@ pub fn main() anyerror!void {
                                     .height = @floatFromInt(texture_bag.height),
                                     .width = @floatFromInt(texture_bag.width),
                                 };
-                                const start_pos = (window_width / 2) - window_height / 4;
-                                const rect_dest = rl.Rectangle{
-                                    .x = start_pos,
-                                    .y = window_height / 3,
-                                    .height = window_height / 2,
-                                    .width = window_height / 2,
-                                };
                                 rl.drawTexturePro(
                                     texture_bag,
                                     rect_source,
-                                    rect_dest,
+                                    inventory_rect,
                                     rl.Vector2{ .x = 0, .y = 0 },
                                     0.0,
                                     rl.Color.white,
                                 );
+
+                                const InInvenventoryQuery = Storage.Query(struct {
+                                    entity: ecez.Entity,
+                                    pos: components.Position,
+                                    inv_item: components.InventoryItem,
+                                }, .{ components.AttachToCursor, components.OldSlot, components.InactiveTag });
+
+                                var inventory_item_iterator = InInvenventoryQuery.submit(&storage);
+                                while (inventory_item_iterator.next()) |item| {
+                                    const texture = switch (item.inv_item.item) {
+                                        .projectile => |proj| switch (proj.type) {
+                                            .bolt => texture_yellow_gem,
+                                            .red_gem => texture_red_gem,
+                                        },
+                                        .modifier => |mod| switch (mod) {
+                                            .piercing => texture_piercing_modifier,
+                                            .dmg_amp => texture_dmg_amp_mod,
+                                        },
+                                    };
+
+                                    const pos = rl.Vector2{
+                                        .x = item.pos.vec[0],
+                                        .y = item.pos.vec[1],
+                                    };
+                                    rl.drawTextureRec(texture, item_rect, pos, rl.Color.white);
+
+                                    var grabbed_query = GrabbedItemQuery.submit(&storage);
+                                    const no_grabbed_item = grabbed_query.next() == null;
+
+                                    if (no_grabbed_item) {
+                                        const is_hovered = rl.checkCollisionPointRec(mouse_pos, rl.Rectangle{
+                                            .x = pos.x,
+                                            .y = pos.y,
+                                            .height = @floatFromInt(texture_slot.height),
+                                            .width = @floatFromInt(texture_slot.width),
+                                        });
+
+                                        if (is_hovered and rl.isMouseButtonDown(rl.MouseButton.mouse_button_left)) {
+                                            const offset_x = -item_rect.width * 0.5;
+                                            try storage.queueSetComponent(item.entity, components.AttachToCursor{
+                                                .offset_x = offset_x,
+                                                .offset_y = 0,
+                                            });
+                                            try storage.queueSetComponent(item.entity, components.OldSlot{ .type = .{
+                                                .inventory_pos = item.pos,
+                                            } });
+                                        }
+                                    }
+                                }
+                                try storage.flushStorageQueue();
                             }
+
+                            for (0..staff.slot_capacity) |i| {
+                                const start_pos = (window_width / 2) - ((@as(f32, @floatFromInt(staff.slot_capacity)) * 75.0) / 2) + (@as(f32, @floatFromInt(texture_slot.width)) / 2);
+                                const pos = rl.Vector2{
+                                    .x = start_pos + @as(f32, @floatFromInt(i)) * 75,
+                                    .y = window_height - window_height * 0.1,
+                                };
+
+                                const grabbable_item: ?components.InventoryItem.Item = check_may_grab_blk: {
+                                    const is_hovered = rl.checkCollisionPointRec(mouse_pos, rl.Rectangle{
+                                        .x = pos.x,
+                                        .y = pos.y,
+                                        .height = @floatFromInt(texture_slot.height),
+                                        .width = @floatFromInt(texture_slot.width),
+                                    });
+
+                                    if (false == is_hovered) {
+                                        break :check_may_grab_blk null;
+                                    }
+
+                                    var grabbed_item_iter = GrabbedItemQuery.submit(&storage);
+                                    const grabbed_item = grabbed_item_iter.next();
+                                    if (rl.isMouseButtonReleased(.mouse_button_left)) {
+                                        if (grabbed_item) |item| {
+                                            // TODO: swap item in staff if any to the inventory
+                                            switch (item.inv_item.item) {
+                                                .projectile => |proj| staff.slots[i] = .{ .projectile = proj },
+                                                .modifier => |mod| staff.slots[i] = .{ .modifier = mod },
+                                            }
+                                            staff.used_slots = @mod(staff.used_slots + 1, staff.slot_capacity);
+
+                                            break :check_may_grab_blk null;
+                                        }
+                                    }
+
+                                    if (false == in_inventory or null != grabbed_item) {
+                                        break :check_may_grab_blk null;
+                                    }
+
+                                    const grabbable = switch (staff.slots[i]) {
+                                        .none => null,
+                                        .projectile => |proj| components.InventoryItem.Item{
+                                            .projectile = proj,
+                                        },
+                                        .modifier => |mod| components.InventoryItem.Item{
+                                            .modifier = mod,
+                                        },
+                                    };
+
+                                    if (grabbable) |grab_item| {
+                                        if (rl.isMouseButtonDown(rl.MouseButton.mouse_button_left)) {
+                                            staff.slot_cursor = 0;
+                                            staff.slots[i] = .none;
+                                            staff.used_slots -= 1;
+
+                                            // TODO: !!!query entities for reuse!!!
+                                            const offset_x = -item_rect.width * 0.5;
+                                            _ = try storage.createEntity(GrabbedItem{
+                                                .pos = components.Position{
+                                                    .vec = zm.f32x4s(0), // set later
+                                                },
+                                                .old_slot = components.OldSlot{
+                                                    .type = .{ .staff_index = @intCast(i) },
+                                                },
+                                                .inv_item = components.InventoryItem{
+                                                    .item = grab_item,
+                                                },
+                                                .attach_to_cursor = components.AttachToCursor{
+                                                    .offset_x = offset_x,
+                                                    .offset_y = 0,
+                                                },
+                                            });
+                                        }
+                                    }
+
+                                    break :check_may_grab_blk grabbable;
+                                };
+
+                                const slot_texture = slot_texture_blk: {
+                                    if (i == next_projectile) {
+                                        break :slot_texture_blk texture_slot_cursor;
+                                    } else {
+                                        break :slot_texture_blk texture_slot;
+                                    }
+                                };
+                                rl.drawTextureRec(
+                                    slot_texture,
+                                    item_rect,
+                                    pos,
+                                    if (grabbable_item != null) rl.Color.red else rl.Color.white,
+                                );
+
+                                const gem_texture = switch (staff.slots[i]) {
+                                    .none => null,
+                                    .projectile => |proj| switch (proj.type) {
+                                        .bolt => texture_yellow_gem,
+                                        .red_gem => texture_red_gem,
+                                    },
+                                    .modifier => |mod| switch (mod) {
+                                        .piercing => texture_piercing_modifier,
+                                        .dmg_amp => texture_dmg_amp_mod,
+                                    },
+                                };
+                                if (gem_texture) |texture| {
+                                    rl.drawTextureRec(
+                                        texture,
+                                        item_rect,
+                                        pos,
+                                        rl.Color.white,
+                                    );
+                                }
+                            }
+
+                            var attached_iter = GrabbedItemQuery.submit(&storage);
+                            if (attached_iter.next()) |grabbed| {
+                                if (rl.isMouseButtonReleased(rl.MouseButton.mouse_button_left) and in_inventory) {
+                                    const is_inventory_hovered = rl.checkCollisionPointRec(mouse_pos, inventory_rect);
+                                    if (is_inventory_hovered) {
+                                        grabbed.pos.vec = zm.f32x4(
+                                            mouse_pos.x + grabbed.attach_to_cursor.offset_x,
+                                            mouse_pos.y + grabbed.attach_to_cursor.offset_y,
+                                            0,
+                                            0,
+                                        );
+
+                                        // get staff again, component pointer is dangling
+                                        staff = try storage.getComponent(player_staff_entity, *components.Staff);
+
+                                        try storage.removeComponents(grabbed.entity, .{
+                                            components.OldSlot,
+                                            components.AttachToCursor,
+                                        });
+                                    } else {
+                                        switch (grabbed.old_slot.type) {
+                                            .staff_index => |index| {
+                                                switch (grabbed.inv_item.item) {
+                                                    .projectile => |proj| staff.slots[index].projectile = proj,
+                                                    .modifier => |mod| staff.slots[index].modifier = mod,
+                                                }
+                                                staff.slot_cursor = 0;
+                                                staff.used_slots += 1;
+                                                try storage.setComponent(grabbed.entity, components.InactiveTag{});
+                                            },
+                                            .inventory_pos => |inv_pos| {
+                                                grabbed.pos.* = inv_pos;
+                                                try storage.removeComponents(grabbed.entity, .{
+                                                    components.OldSlot,
+                                                    components.AttachToCursor,
+                                                });
+                                            },
+                                        }
+                                    }
+                                } else {
+                                    const pos = rl.Vector2{
+                                        .x = mouse_pos.x + grabbed.attach_to_cursor.offset_x,
+                                        .y = mouse_pos.y + grabbed.attach_to_cursor.offset_y,
+                                    };
+
+                                    const gem_texture = switch (grabbed.inv_item.item) {
+                                        .projectile => |proj| switch (proj.type) {
+                                            .bolt => texture_yellow_gem,
+                                            .red_gem => texture_red_gem,
+                                        },
+                                        .modifier => |mod| switch (mod) {
+                                            .piercing => texture_piercing_modifier,
+                                            .dmg_amp => texture_dmg_amp_mod,
+                                        },
+                                    };
+                                    rl.drawTextureRec(gem_texture, item_rect, pos, rl.Color.white);
+                                }
+                            }
+                            // std.debug.assert(null == attached_iter.next()); TODO
                         }
                     }
                 }
