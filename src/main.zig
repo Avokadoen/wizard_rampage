@@ -1055,6 +1055,26 @@ pub fn main() anyerror!void {
                                 attach_to_cursor: components.AttachToCursor,
                             }, .{components.InactiveTag});
 
+                            const UnusedGrabbedItemQuery = Storage.Query(struct {
+                                entity: ecez.Entity,
+                                pos: *components.Position,
+                                _: components.InactiveTag,
+                                old_slot: *components.OldSlot,
+                                inv_item: *components.InventoryItem,
+                                attach_to_cursor: *components.AttachToCursor,
+                            }, .{});
+
+                            const InInventoryItem = struct {
+                                pos: components.Position,
+                                inv_item: components.InventoryItem,
+                            };
+
+                            const InInvenventoryQuery = Storage.Query(struct {
+                                entity: ecez.Entity,
+                                pos: components.Position,
+                                inv_item: components.InventoryItem,
+                            }, .{ components.AttachToCursor, components.OldSlot, components.InactiveTag });
+
                             var staff = storage.getComponent(player_staff_entity, *components.Staff) catch unreachable;
                             const index_slot = @intFromEnum(GameTextureRepo.which_inventory.Slot);
                             const texture_slot = texture_repo.inventory[index_slot];
@@ -1108,12 +1128,6 @@ pub fn main() anyerror!void {
                                     rl.Color.white,
                                 );
 
-                                const InInvenventoryQuery = Storage.Query(struct {
-                                    entity: ecez.Entity,
-                                    pos: components.Position,
-                                    inv_item: components.InventoryItem,
-                                }, .{ components.AttachToCursor, components.OldSlot, components.InactiveTag });
-
                                 var inventory_item_iterator = InInvenventoryQuery.submit(&storage);
                                 while (inventory_item_iterator.next()) |item| {
                                     const texture = switch (item.inv_item.item) {
@@ -1159,13 +1173,20 @@ pub fn main() anyerror!void {
                                 try storage.flushStorageQueue();
                             }
 
+                            const gem_start_pos = (window_width / 2) - ((@as(f32, @floatFromInt(staff.slot_capacity)) * 75.0) / 2) + (@as(f32, @floatFromInt(texture_slot.width)) / 2);
+                            // if (in_inventory) {
+                            //     const PlayerStaffTextureQuery = Storage.Query(struct{
+                            //         player: components.PlayerTag,
+                            //     }, comptime exclude_types: anytype)
+                            // }
+
                             for (0..staff.slot_capacity) |i| {
-                                const start_pos = (window_width / 2) - ((@as(f32, @floatFromInt(staff.slot_capacity)) * 75.0) / 2) + (@as(f32, @floatFromInt(texture_slot.width)) / 2);
                                 const pos = rl.Vector2{
-                                    .x = start_pos + @as(f32, @floatFromInt(i)) * 75,
+                                    .x = gem_start_pos + @as(f32, @floatFromInt(i)) * 75,
                                     .y = window_height - window_height * 0.1,
                                 };
 
+                                var storable_item = false;
                                 const grabbable_item: ?components.InventoryItem.Item = check_may_grab_blk: {
                                     const is_hovered = rl.checkCollisionPointRec(mouse_pos, rl.Rectangle{
                                         .x = pos.x,
@@ -1175,25 +1196,6 @@ pub fn main() anyerror!void {
                                     });
 
                                     if (false == is_hovered) {
-                                        break :check_may_grab_blk null;
-                                    }
-
-                                    var grabbed_item_iter = GrabbedItemQuery.submit(&storage);
-                                    const grabbed_item = grabbed_item_iter.next();
-                                    if (rl.isMouseButtonReleased(.mouse_button_left)) {
-                                        if (grabbed_item) |item| {
-                                            // TODO: swap item in staff if any to the inventory
-                                            switch (item.inv_item.item) {
-                                                .projectile => |proj| staff.slots[i] = .{ .projectile = proj },
-                                                .modifier => |mod| staff.slots[i] = .{ .modifier = mod },
-                                            }
-                                            staff.used_slots = @mod(staff.used_slots + 1, staff.slot_capacity);
-
-                                            break :check_may_grab_blk null;
-                                        }
-                                    }
-
-                                    if (false == in_inventory or null != grabbed_item) {
                                         break :check_may_grab_blk null;
                                     }
 
@@ -1207,29 +1209,94 @@ pub fn main() anyerror!void {
                                         },
                                     };
 
+                                    const grab_offset_x = -item_rect.width * 0.5;
+
+                                    var grabbed_item_iter = GrabbedItemQuery.submit(&storage);
+                                    const grabbed_item = grabbed_item_iter.next();
+                                    if (rl.isMouseButtonReleased(.mouse_button_left)) {
+                                        if (grabbed_item) |grabbed| {
+                                            const add_to_staff_slot_count = swap_with_existing_slot_item_blk: {
+                                                // If we are hovering a item in the slot
+                                                if (grabbable) |grabbable_item| {
+                                                    // Swap depending on item type we are swapping
+                                                    switch (grabbed.old_slot.type) {
+                                                        .staff_index => |index| {
+                                                            switch (grabbable_item) {
+                                                                .projectile => |proj| staff.slots[index] = .{ .projectile = proj },
+                                                                .modifier => |mod| staff.slots[index] = .{ .modifier = mod },
+                                                            }
+
+                                                            break :swap_with_existing_slot_item_blk false;
+                                                        },
+                                                        .inventory_pos => |inv_pos| {
+                                                            // TODO: query unused before create
+                                                            _ = try storage.createEntity(InInventoryItem{
+                                                                .pos = inv_pos,
+                                                                .inv_item = components.InventoryItem{
+                                                                    .item = grabbable_item,
+                                                                },
+                                                            });
+
+                                                            break :swap_with_existing_slot_item_blk true;
+                                                        },
+                                                    }
+                                                }
+
+                                                break :swap_with_existing_slot_item_blk true;
+                                            };
+
+                                            switch (grabbed.inv_item.item) {
+                                                .projectile => |proj| staff.slots[i] = .{ .projectile = proj },
+                                                .modifier => |mod| staff.slots[i] = .{ .modifier = mod },
+                                            }
+
+                                            if (add_to_staff_slot_count) {
+                                                staff.used_slots = @mod(staff.used_slots + 1, staff.slot_capacity);
+                                            }
+
+                                            try storage.setComponent(grabbed.entity, components.InactiveTag{});
+
+                                            break :check_may_grab_blk null;
+                                        }
+                                    }
+
+                                    if (false == in_inventory or null != grabbed_item) {
+                                        storable_item = null != grabbed_item;
+                                        break :check_may_grab_blk null;
+                                    }
+
                                     if (grabbable) |grab_item| {
                                         if (rl.isMouseButtonDown(rl.MouseButton.mouse_button_left)) {
                                             staff.slot_cursor = 0;
                                             staff.slots[i] = .none;
                                             staff.used_slots -= 1;
 
-                                            // TODO: !!!query entities for reuse!!!
-                                            const offset_x = -item_rect.width * 0.5;
-                                            _ = try storage.createEntity(GrabbedItem{
-                                                .pos = components.Position{
-                                                    .vec = zm.f32x4s(0), // set later
-                                                },
-                                                .old_slot = components.OldSlot{
+                                            var unused_grabbed_item_iter = UnusedGrabbedItemQuery.submit(&storage);
+                                            if (unused_grabbed_item_iter.next()) |unused_grabbed_item| {
+                                                unused_grabbed_item.old_slot.* = components.OldSlot{
                                                     .type = .{ .staff_index = @intCast(i) },
-                                                },
-                                                .inv_item = components.InventoryItem{
-                                                    .item = grab_item,
-                                                },
-                                                .attach_to_cursor = components.AttachToCursor{
-                                                    .offset_x = offset_x,
-                                                    .offset_y = 0,
-                                                },
-                                            });
+                                                };
+                                                unused_grabbed_item.inv_item.item = grab_item;
+                                                unused_grabbed_item.attach_to_cursor.offset_x = grab_offset_x;
+
+                                                try storage.removeComponent(unused_grabbed_item.entity, components.InactiveTag);
+                                            } else {
+                                                _ = try storage.createEntity(GrabbedItem{
+                                                    .pos = components.Position{
+                                                        .vec = zm.f32x4s(0), // set later
+                                                    },
+                                                    .old_slot = components.OldSlot{
+                                                        .type = .{ .staff_index = @intCast(i) },
+                                                    },
+                                                    .inv_item = components.InventoryItem{
+                                                        .item = grab_item,
+                                                    },
+                                                    .attach_to_cursor = components.AttachToCursor{
+                                                        .offset_x = grab_offset_x,
+                                                        .offset_y = 0,
+                                                    },
+                                                });
+                                            }
                                         }
                                     }
 
@@ -1247,7 +1314,7 @@ pub fn main() anyerror!void {
                                     slot_texture,
                                     item_rect,
                                     pos,
-                                    if (grabbable_item != null) rl.Color.red else rl.Color.white,
+                                    if (grabbable_item != null or storable_item) rl.Color.red else rl.Color.white,
                                 );
 
                                 const gem_texture = switch (staff.slots[i]) {
