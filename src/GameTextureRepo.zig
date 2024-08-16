@@ -246,6 +246,7 @@ pub const which_country_side = enum {
 pub const which_inventory = enum {
     Damage_Amp_Modifier,
     Yellow_Gem,
+    Gem_Slot_Staff_Background,
     Piercing_Modifier,
     Red_Gem,
     Slot,

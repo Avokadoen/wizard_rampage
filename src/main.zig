@@ -1173,16 +1173,34 @@ pub fn main() anyerror!void {
                                 try storage.flushStorageQueue();
                             }
 
-                            const gem_start_pos = (window_width / 2) - ((@as(f32, @floatFromInt(staff.slot_capacity)) * 75.0) / 2) + (@as(f32, @floatFromInt(texture_slot.width)) / 2);
-                            // if (in_inventory) {
-                            //     const PlayerStaffTextureQuery = Storage.Query(struct{
-                            //         player: components.PlayerTag,
-                            //     }, comptime exclude_types: anytype)
-                            // }
+                            const gem_width = 75.0;
+                            const gem_start_pos = (window_width / 2) - ((@as(f32, @floatFromInt(staff.slot_capacity)) * gem_width) / 2) + (@as(f32, @floatFromInt(texture_slot.width)) / 2);
+
+                            // Draw staff as gem background when in inventory
+                            if (in_inventory) {
+                                const staff_texture_index = @intFromEnum(GameTextureRepo.which_inventory.Gem_Slot_Staff_Background);
+                                const staff_texture = texture_repo.inventory[staff_texture_index];
+
+                                const rotated_height = gem_width * @as(f32, @floatFromInt(staff.slot_capacity)) * 2.0; // width after rotation
+                                const height_change_ratio = rotated_height / @as(f32, @floatFromInt(staff_texture.height));
+
+                                const pos = rl.Vector2{
+                                    .x = (window_width / 2) - rotated_height * 0.5,
+                                    .y = window_height - window_height * 0.1 + (@as(f32, @floatFromInt(staff_texture.width)) * height_change_ratio) * 0.5 + gem_width * 0.5,
+                                };
+
+                                rl.drawTextureEx(
+                                    staff_texture,
+                                    pos,
+                                    270,
+                                    height_change_ratio,
+                                    rl.Color.white,
+                                );
+                            }
 
                             for (0..staff.slot_capacity) |i| {
                                 const pos = rl.Vector2{
-                                    .x = gem_start_pos + @as(f32, @floatFromInt(i)) * 75,
+                                    .x = gem_start_pos + @as(f32, @floatFromInt(i)) * gem_width,
                                     .y = window_height - window_height * 0.1,
                                 };
 
