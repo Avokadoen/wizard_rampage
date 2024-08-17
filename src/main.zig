@@ -1038,6 +1038,7 @@ pub fn main() anyerror!void {
                             }
                         }
 
+                        // UI Drawing
                         {
                             const GrabbedItem = struct {
                                 pos: components.Position,
@@ -1197,6 +1198,7 @@ pub fn main() anyerror!void {
                                 );
                             }
 
+                            // Draw bottom ui with staff gem slots
                             for (0..staff.slot_capacity) |i| {
                                 const pos = rl.Vector2{
                                     .x = gem_start_pos + @as(f32, @floatFromInt(i)) * gem_width,
@@ -1413,7 +1415,91 @@ pub fn main() anyerror!void {
                                     rl.drawTextureRec(gem_texture, item_rect, pos, rl.Color.white);
                                 }
                             }
-                            // std.debug.assert(null == attached_iter.next()); TODO
+
+                            // Draw tooltip for hovered gems
+                            if (in_inventory) draw_tooltip_blk: {
+                                const drawTooltip = struct {
+                                    pub inline fn draw(tooltip_texture: rl.Texture, source_rect: rl.Rectangle, mouse: rl.Vector2, pos: rl.Vector2, txt: [*:0]const u8) bool {
+                                        const is_hovered = rl.checkCollisionPointRec(mouse, rl.Rectangle{
+                                            .x = pos.x,
+                                            .y = pos.y,
+                                            .width = @floatFromInt(tooltip_texture.width),
+                                            .height = @floatFromInt(tooltip_texture.height),
+                                        });
+
+                                        if (is_hovered) {
+                                            const tooltip_pos = rl.Vector2{
+                                                .x = pos.x + @as(f32, @floatFromInt(tooltip_texture.width)),
+                                                .y = pos.y - @as(f32, @floatFromInt(tooltip_texture.height)),
+                                            };
+
+                                            const dest_rect = rl.Rectangle{
+                                                .x = tooltip_pos.x,
+                                                .y = tooltip_pos.y - source_rect.height * 3.0 * 0.5,
+                                                .width = source_rect.width * 4.0,
+                                                .height = source_rect.height * 2.0,
+                                            };
+
+                                            rl.drawTexturePro(
+                                                tooltip_texture,
+                                                source_rect,
+                                                dest_rect,
+                                                rl.Vector2.zero(),
+                                                0,
+                                                rl.Color.red,
+                                            );
+                                            rl.drawText(
+                                                txt,
+                                                @intFromFloat(dest_rect.x + 12 * 3),
+                                                @intFromFloat(dest_rect.y + 10 * 3),
+                                                18,
+                                                rl.Color.ray_white,
+                                            );
+                                        }
+
+                                        return is_hovered;
+                                    }
+                                }.draw;
+
+                                // Check first if cursor overlap staff gems
+                                for (0..staff.slot_capacity) |i| {
+                                    if (staff.slots[i] == .none) continue;
+
+                                    const pos = rl.Vector2{
+                                        .x = gem_start_pos + @as(f32, @floatFromInt(i)) * gem_width,
+                                        .y = window_height - window_height * 0.1,
+                                    };
+
+                                    var buf: [256]u8 = undefined;
+                                    const txt = switch (staff.slots[i]) {
+                                        .projectile => |proj| try std.fmt.bufPrintZ(&buf, "{s}\nDamage: {d}\nKnockback: {d}", .{ @tagName(proj.type), proj.attrs.dmg, proj.attrs.weight }),
+                                        .modifier => |mod| try std.fmt.bufPrintZ(&buf, "{s}", .{@tagName(mod)}),
+                                        .none => unreachable,
+                                    };
+
+                                    if (drawTooltip(texture_slot, item_rect, mouse_pos, pos, txt)) {
+                                        break :draw_tooltip_blk;
+                                    }
+                                }
+
+                                var inventory_iter = InInvenventoryQuery.submit(&storage);
+                                while (inventory_iter.next()) |inv_item| {
+                                    const pos = rl.Vector2{
+                                        .x = inv_item.pos.vec[0],
+                                        .y = inv_item.pos.vec[1],
+                                    };
+
+                                    var buf: [256]u8 = undefined;
+                                    const txt = switch (inv_item.inv_item.item) {
+                                        .projectile => |proj| try std.fmt.bufPrintZ(&buf, "{s}\nDamage: {d}\nKnockback: {d}", .{ @tagName(proj.type), proj.attrs.dmg, proj.attrs.weight }),
+                                        .modifier => |mod| try std.fmt.bufPrintZ(&buf, "{s}", .{@tagName(mod)}),
+                                    };
+
+                                    if (drawTooltip(texture_slot, item_rect, mouse_pos, pos, txt)) {
+                                        break :draw_tooltip_blk;
+                                    }
+                                }
+                            }
                         }
                     }
                 }
