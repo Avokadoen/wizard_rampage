@@ -262,17 +262,48 @@ pub fn CreateUpdateSystems(Storage: type) type {
             }
         };
 
-        pub const UpdateVelocity = struct {
+        pub const UpdateVelocityBasedMoveDir = struct {
+            pub fn updateVelocityBasedMoveDir(
+                vel: *components.Velocity,
+                move_speed: components.MoveSpeed,
+                move_dir: *components.DesiredMovedDir,
+            ) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
+                const vel_dir = zm.normalize2(vel.vec);
+                // if max speed has been reached or npc want to move in another direction
+                if (zm.length2(vel.vec)[0] < move_speed.max or zm.dot2(move_dir.vec, vel_dir)[0] < 0.6) {
+                    vel.vec += move_dir.vec * @as(zm.Vec, @splat(move_speed.accelerate));
+                }
+
+                move_dir.vec = zm.f32x4s(0);
+            }
+        };
+
+        pub const UpdatePositionBasedOnVelocity = struct {
             pub fn updatePositionBasedOnVelocity(
                 pos: *components.Position,
-                vel: *components.Velocity,
+                vel: components.Velocity,
                 _: ecez.ExcludeEntityWith(.{ components.InactiveTag, components.ChildOf }),
             ) void {
                 const zone = tracy.ZoneN(@src(), @src().fn_name);
                 defer zone.End();
 
                 pos.vec += vel.vec * @as(zm.Vec, @splat(delta_time));
-                vel.vec = vel.vec * @as(zm.Vec, @splat(vel.drag));
+            }
+        };
+
+        pub const UpdateVelocityBasedOnDrag = struct {
+            pub fn updateVelocityBasedOnDrag(
+                vel: *components.Velocity,
+                drag: components.Drag,
+                _: ecez.ExcludeEntityWith(.{ components.InactiveTag, components.ChildOf }),
+            ) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
+                vel.vec = vel.vec * @as(zm.Vec, @splat(drag.value));
             }
         };
 
@@ -467,7 +498,7 @@ pub fn CreateUpdateSystems(Storage: type) type {
 
             pub fn targetPlayerOrFlee(
                 pos: components.Position,
-                vel: *components.Velocity,
+                mov_dir: *components.DesiredMovedDir,
                 _: components.HostileTag,
                 context: Context,
                 player_iter: *QueryPlayer,
@@ -477,20 +508,10 @@ pub fn CreateUpdateSystems(Storage: type) type {
 
                 const player = player_iter.next() orelse @panic("targetPlayer: wtf");
 
-                const move_dir = zm.normalize2(player.pos.vec - pos.vec);
-                const vel_dir = zm.normalize2(pos.vec);
+                const moving_in_dir = zm.normalize2(player.pos.vec - pos.vec);
 
-                // TODO: dont hardcode this
-                const npc_max_speed = 240;
-                const npc_move_speed = 40;
-
-                // if max speed has been reached or npc want to move in another direction
-                if (zm.length2(vel.vec)[0] < npc_max_speed or zm.dot2(move_dir, vel_dir)[0] < 0.6) {
-                    const move_vector = move_dir * @as(zm.Vec, @splat(npc_move_speed));
-
-                    const target_or_flee_vector = if (context.the_wife_kill_count.* >= 1) @as(zm.Vec, @splat(-1)) else @as(zm.Vec, @splat(1));
-                    vel.vec += move_vector * target_or_flee_vector;
-                }
+                const target_or_flee_vector = if (context.the_wife_kill_count.* >= 1) @as(zm.Vec, @splat(-1)) else @as(zm.Vec, @splat(1));
+                mov_dir.vec = moving_in_dir * target_or_flee_vector;
             }
         };
     };

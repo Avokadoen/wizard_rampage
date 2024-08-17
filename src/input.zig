@@ -13,39 +13,26 @@ pub fn CreateInput(Storage: type) type {
     return struct {
         fn moveUp(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             _ = staff_entity;
-            const vel = storage.getComponent(player_entity, *components.Velocity) catch unreachable;
-
-            vel.vec[1] -= 10;
-            if (vel.vec[1] > -500) {
-                vel.vec[1] -= 100;
-            }
+            const move_dir = storage.getComponent(player_entity, *components.DesiredMovedDir) catch unreachable;
+            move_dir.vec[1] += -1;
         }
 
         fn moveDown(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             _ = staff_entity;
-            const vel = storage.getComponent(player_entity, *components.Velocity) catch unreachable;
-
-            if (vel.vec[1] < 500) {
-                vel.vec[1] += 100;
-            }
+            const move_dir = storage.getComponent(player_entity, *components.DesiredMovedDir) catch unreachable;
+            move_dir.vec[1] += 1;
         }
 
         fn moveRight(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             _ = staff_entity;
-            const vel = storage.getComponent(player_entity, *components.Velocity) catch unreachable;
-
-            if (vel.vec[0] < 500) {
-                vel.vec[0] += 100;
-            }
+            const move_dir = storage.getComponent(player_entity, *components.DesiredMovedDir) catch unreachable;
+            move_dir.vec[0] += 1;
         }
 
         fn moveLeft(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             _ = staff_entity;
-            const vel = storage.getComponent(player_entity, *components.Velocity) catch unreachable;
-
-            if (vel.vec[0] > -500) {
-                vel.vec[0] -= 100;
-            }
+            const move_dir = storage.getComponent(player_entity, *components.DesiredMovedDir) catch unreachable;
+            move_dir.vec[0] -= 1;
         }
 
         fn shootUp(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
@@ -101,6 +88,7 @@ pub fn CreateInput(Storage: type) type {
                 pos: components.Position,
                 rot: components.Rotation,
                 vel: components.Velocity,
+                drag: components.Drag,
                 collider: components.CircleCollider,
                 texture: components.Texture,
                 anim: components.AnimTexture,
@@ -114,6 +102,7 @@ pub fn CreateInput(Storage: type) type {
                 pos: *components.Position,
                 rot: *components.Rotation,
                 vel: *components.Velocity,
+                drag: *components.Drag,
                 collider: *components.CircleCollider,
                 texture: *components.Texture,
                 anim: *components.AnimTexture,
@@ -153,7 +142,8 @@ pub fn CreateInput(Storage: type) type {
                 if (projectile_iter.next()) |projectile| {
                     projectile.pos.* = components.Position{ .vec = pos.vec + proj_offset };
                     projectile.rot.* = components.Rotation{ .value = 0 };
-                    projectile.vel.* = components.Velocity{ .vec = vel, .drag = 0.98 };
+                    projectile.vel.* = components.Velocity{ .vec = vel };
+                    projectile.drag.* = components.Drag{ .value = 0.98 };
                     projectile.collider.* = components.CircleCollider{
                         .x = @floatCast(collider_offset_x * cs - collider_offset_y * sn),
                         .y = @floatCast(collider_offset_x * sn + collider_offset_y * cs),
@@ -181,7 +171,8 @@ pub fn CreateInput(Storage: type) type {
                     _ = storage.createEntity(Projectile{
                         .pos = components.Position{ .vec = pos.vec + proj_offset },
                         .rot = components.Rotation{ .value = 0 },
-                        .vel = components.Velocity{ .vec = vel, .drag = 0.98 },
+                        .vel = components.Velocity{ .vec = vel },
+                        .drag = components.Drag{ .value = 0.98 },
                         .collider = components.CircleCollider{
                             .x = @floatCast(collider_offset_x * cs - collider_offset_y * sn),
                             .y = @floatCast(collider_offset_x * sn + collider_offset_y * cs),

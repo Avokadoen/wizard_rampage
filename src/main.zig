@@ -27,14 +27,16 @@ const Scheduler = ecez.CreateScheduler(
         ecez.Event("game_update", .{
             UpdateSystems.FireRate,
             UpdateSystems.LifeTime,
-            UpdateSystems.UpdateVelocity,
-            ecez.DependOn(UpdateSystems.RotateAfterVelocity, .{UpdateSystems.UpdateVelocity}),
+            UpdateSystems.TargetPlayerOrFlee,
+            ecez.DependOn(UpdateSystems.UpdateVelocityBasedMoveDir, .{UpdateSystems.TargetPlayerOrFlee}),
+            ecez.DependOn(UpdateSystems.UpdatePositionBasedOnVelocity, .{UpdateSystems.UpdateVelocityBasedMoveDir}),
+            ecez.DependOn(UpdateSystems.UpdateVelocityBasedOnDrag, .{UpdateSystems.UpdatePositionBasedOnVelocity}),
+            ecez.DependOn(UpdateSystems.RotateAfterVelocity, .{UpdateSystems.UpdateVelocityBasedOnDrag}),
             ecez.DependOn(UpdateSystems.MovableToImmovableRecToRecCollisionResolve, .{UpdateSystems.RotateAfterVelocity}),
             ecez.DependOn(UpdateSystems.MovableToMovableRecToRecCollisionResolve, .{UpdateSystems.MovableToImmovableRecToRecCollisionResolve}),
             ecez.DependOn(UpdateSystems.InherentFromParent, .{UpdateSystems.MovableToMovableRecToRecCollisionResolve}),
             ecez.DependOn(UpdateSystems.ProjectileHitKillable, .{UpdateSystems.InherentFromParent}),
             ecez.DependOn(UpdateSystems.RegisterDead, .{UpdateSystems.ProjectileHitKillable}),
-            ecez.DependOn(UpdateSystems.TargetPlayerOrFlee, .{UpdateSystems.RegisterDead}),
             // run in parallel
             ecez.DependOn(UpdateSystems.UpdateCamera, .{UpdateSystems.InherentFromParent}),
             ecez.DependOn(UpdateSystems.OrientTexture, .{UpdateSystems.InherentFromParent}),
@@ -348,6 +350,9 @@ pub fn main() anyerror!void {
                         pos: components.Position,
                         scale: components.Scale,
                         vel: components.Velocity,
+                        drag: components.Drag,
+                        mv_speed: components.MoveSpeed,
+                        move_dir: components.DesiredMovedDir,
                         col: components.RectangleCollider,
                         rec_tag: components.DrawRectangleTag,
                         player_tag: components.PlayerTag,
@@ -368,7 +373,15 @@ pub fn main() anyerror!void {
                         },
                         .vel = components.Velocity{
                             .vec = zm.f32x4s(0),
-                            .drag = 0.8,
+                        },
+                        .drag = components.Drag{ .value = 0.8 },
+                        .mv_speed = components.MoveSpeed{
+                            // TODO: this will make players with smaller res move faster.
+                            .max = 500,
+                            .accelerate = 100,
+                        },
+                        .move_dir = components.DesiredMovedDir{
+                            .vec = zm.f32x4s(0),
                         },
                         .col = components.RectangleCollider{
                             .width = player_hit_box_width,
@@ -405,7 +418,6 @@ pub fn main() anyerror!void {
                         },
                         .vel = components.Velocity{
                             .vec = zm.f32x4s(0),
-                            .drag = 1,
                         },
                         .texture = components.Texture{
                             .type = @intFromEnum(GameTextureRepo.texture_type.player),
@@ -430,7 +442,6 @@ pub fn main() anyerror!void {
                         },
                         .vel = components.Velocity{
                             .vec = zm.f32x4s(0),
-                            .drag = 1,
                         },
                         .texture = components.Texture{
                             .type = @intFromEnum(GameTextureRepo.texture_type.player),
@@ -455,7 +466,6 @@ pub fn main() anyerror!void {
                         },
                         .vel = components.Velocity{
                             .vec = zm.f32x4s(0),
-                            .drag = 0.94,
                         },
                         .texture = components.Texture{
                             .type = @intFromEnum(GameTextureRepo.texture_type.player),
@@ -490,7 +500,6 @@ pub fn main() anyerror!void {
                         },
                         .vel = components.Velocity{
                             .vec = zm.f32x4s(0),
-                            .drag = 1,
                         },
                         .texture = components.Texture{
                             .type = @intFromEnum(GameTextureRepo.texture_type.player),
@@ -527,7 +536,6 @@ pub fn main() anyerror!void {
                         },
                         .vel = components.Velocity{
                             .vec = zm.f32x4s(0),
-                            .drag = 1,
                         },
                         .texture = components.Texture{
                             .type = @intFromEnum(GameTextureRepo.texture_type.player),
@@ -604,7 +612,6 @@ pub fn main() anyerror!void {
                         },
                         .vel = components.Velocity{
                             .vec = zm.f32x4s(0),
-                            .drag = 1,
                         },
                         .texture = components.Texture{
                             .type = @intFromEnum(GameTextureRepo.texture_type.player),
@@ -1536,6 +1543,9 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
         pos: components.Position,
         scale: components.Scale,
         vel: components.Velocity,
+        drag: components.Drag,
+        mv_speed: components.MoveSpeed,
+        move_dir: components.DesiredMovedDir,
         col: components.RectangleCollider,
         rec_tag: components.DrawRectangleTag,
         hostile_tag: components.HostileTag,
@@ -1549,7 +1559,14 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
         .scale = components.Scale{ .x = scale, .y = scale },
         .vel = components.Velocity{
             .vec = zm.f32x4s(0),
-            .drag = 0.7,
+        },
+        .drag = components.Drag{ .value = 0.7 },
+        .mv_speed = components.MoveSpeed{
+            .max = 240,
+            .accelerate = 40,
+        },
+        .move_dir = components.DesiredMovedDir{
+            .vec = zm.f32x4s(0),
         },
         .col = components.RectangleCollider{
             .width = player_hit_box_width,
@@ -1584,7 +1601,6 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
         .scale = components.Scale{ .x = 1, .y = 1 },
         .vel = components.Velocity{
             .vec = zm.f32x4s(0),
-            .drag = 1,
         },
         .texture = components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.farmer),
@@ -1606,7 +1622,6 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
         .scale = components.Scale{ .x = 1, .y = 1 },
         .vel = components.Velocity{
             .vec = zm.f32x4s(0),
-            .drag = 1,
         },
         .texture = components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.farmer),
@@ -1628,7 +1643,6 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
         .scale = components.Scale{ .x = 1, .y = 1 },
         .vel = components.Velocity{
             .vec = zm.f32x4s(0),
-            .drag = 0.94,
         },
         .texture = components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.farmer),
@@ -1660,7 +1674,6 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
         .scale = components.Scale{ .x = 1, .y = 1 },
         .vel = components.Velocity{
             .vec = zm.f32x4s(0),
-            .drag = 1,
         },
         .texture = components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.farmer),
@@ -1694,7 +1707,6 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
         .scale = components.Scale{ .x = 1, .y = 1 },
         .vel = components.Velocity{
             .vec = zm.f32x4s(0),
-            .drag = 1,
         },
         .texture = components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.farmer),
@@ -1735,6 +1747,9 @@ fn createTheFarmersWife(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfM
         pos: components.Position,
         scale: components.Scale,
         vel: components.Velocity,
+        drag: components.Drag,
+        mv_speed: components.MoveSpeed,
+        move_dir: components.DesiredMovedDir,
         col: components.RectangleCollider,
         rec_tag: components.DrawRectangleTag,
         hostile_tag: components.HostileTag,
@@ -1748,7 +1763,16 @@ fn createTheFarmersWife(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfM
         .scale = components.Scale{ .x = scale, .y = scale },
         .vel = components.Velocity{
             .vec = zm.f32x4s(0),
-            .drag = 0.85,
+        },
+        .drag = components.Drag{
+            .value = 0.7,
+        },
+        .mv_speed = components.MoveSpeed{
+            .max = 300,
+            .accelerate = 45,
+        },
+        .move_dir = components.DesiredMovedDir{
+            .vec = zm.f32x4s(0),
         },
         .col = components.RectangleCollider{
             .width = player_hit_box_width * 1.5,
@@ -1783,7 +1807,6 @@ fn createTheFarmersWife(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfM
         .scale = components.Scale{ .x = 1, .y = 1 },
         .vel = components.Velocity{
             .vec = zm.f32x4s(0),
-            .drag = 1,
         },
         .texture = components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.wife),
@@ -1805,7 +1828,6 @@ fn createTheFarmersWife(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfM
         .scale = components.Scale{ .x = 1, .y = 1 },
         .vel = components.Velocity{
             .vec = zm.f32x4s(0),
-            .drag = 1,
         },
         .texture = components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.wife),
@@ -1837,7 +1859,6 @@ fn createTheFarmersWife(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfM
         .scale = components.Scale{ .x = 1, .y = 1 },
         .vel = components.Velocity{
             .vec = zm.f32x4s(0),
-            .drag = 1,
         },
         .texture = components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.wife),
@@ -1871,7 +1892,6 @@ fn createTheFarmersWife(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfM
         .scale = components.Scale{ .x = 1, .y = 1 },
         .vel = components.Velocity{
             .vec = zm.f32x4s(0),
-            .drag = 1,
         },
         .texture = components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.wife),

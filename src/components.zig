@@ -6,6 +6,9 @@ pub const all = .{
     Rotation,
     Scale,
     Velocity,
+    Drag,
+    MoveSpeed,
+    DesiredMovedDir,
     RectangleCollider,
     CircleCollider,
     Collision,
@@ -52,7 +55,19 @@ pub const Scale = struct {
 
 pub const Velocity = struct {
     vec: zm.Vec,
-    drag: f32,
+};
+
+pub const DesiredMovedDir = struct {
+    vec: zm.Vec,
+};
+
+pub const MoveSpeed = struct {
+    max: f32,
+    accelerate: f32,
+};
+
+pub const Drag = struct {
+    value: f32,
 };
 
 pub const RectangleCollider = packed struct {
