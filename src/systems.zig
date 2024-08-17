@@ -317,7 +317,7 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 const zone = tracy.ZoneN(@src(), @src().fn_name);
                 defer zone.End();
 
-                const parent_vel = update_context.storage.getComponent(child_of.parent, components.Velocity) catch @panic("inherentParentVelocity: wtf");
+                const parent_vel = update_context.storage.getComponent(child_of.parent, components.Velocity) catch return;
                 vel.* = parent_vel;
             }
 
@@ -330,7 +330,7 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 const zone = tracy.ZoneN(@src(), @src().fn_name);
                 defer zone.End();
 
-                const parent_pos = update_context.storage.getComponent(child_of.parent, components.Position) catch @panic("inherentParentPosition: wtf");
+                const parent_pos = update_context.storage.getComponent(child_of.parent, components.Position) catch return;
                 const offset = zm.f32x4(child_of.offset_x, child_of.offset_y, 0, 0);
                 pos.vec = parent_pos.vec + offset;
             }
@@ -344,7 +344,7 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 const zone = tracy.ZoneN(@src(), @src().fn_name);
                 defer zone.End();
 
-                const parent_scale = update_context.storage.getComponent(child_of.parent, components.Scale) catch @panic("inherentParentScale: wtf");
+                const parent_scale = update_context.storage.getComponent(child_of.parent, components.Scale) catch return;
                 scale.* = parent_scale;
             }
 
