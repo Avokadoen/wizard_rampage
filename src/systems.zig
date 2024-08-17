@@ -424,7 +424,7 @@ pub fn CreateUpdateSystems(Storage: type) type {
             }
         };
 
-        pub const TargetPlayer = struct {
+        pub const TargetPlayerOrFlee = struct {
             const QueryPlayer = Storage.Query(
                 struct {
                     pos: components.Position,
@@ -434,10 +434,11 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 .{},
             ).Iter;
 
-            pub fn targetPlayer(
+            pub fn targetPlayerOrFlee(
                 pos: components.Position,
                 vel: *components.Velocity,
                 _: components.HostileTag,
+                context: Context,
                 player_iter: *QueryPlayer,
             ) void {
                 const zone = tracy.ZoneN(@src(), @src().fn_name);
@@ -455,7 +456,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 // if max speed has been reached or npc want to move in another direction
                 if (zm.length2(vel.vec)[0] < npc_max_speed or zm.dot2(move_dir, vel_dir)[0] < 0.6) {
                     const move_vector = move_dir * @as(zm.Vec, @splat(npc_move_speed));
-                    vel.vec += move_vector;
+
+                    const target_or_flee_vector = if (context.the_wife_kill_count.* >= 1) @as(zm.Vec, @splat(-1)) else @as(zm.Vec, @splat(1));
+                    vel.vec += move_vector * target_or_flee_vector;
                 }
             }
         };

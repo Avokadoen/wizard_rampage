@@ -34,7 +34,7 @@ const Scheduler = ecez.CreateScheduler(
             ecez.DependOn(UpdateSystems.InherentFromParent, .{UpdateSystems.MovableToMovableRecToRecCollisionResolve}),
             ecez.DependOn(UpdateSystems.ProjectileHitKillable, .{UpdateSystems.InherentFromParent}),
             ecez.DependOn(UpdateSystems.RegisterDead, .{UpdateSystems.ProjectileHitKillable}),
-            ecez.DependOn(UpdateSystems.TargetPlayer, .{UpdateSystems.RegisterDead}),
+            ecez.DependOn(UpdateSystems.TargetPlayerOrFlee, .{UpdateSystems.RegisterDead}),
             // run in parallel
             ecez.DependOn(UpdateSystems.UpdateCamera, .{UpdateSystems.InherentFromParent}),
             ecez.DependOn(UpdateSystems.OrientTexture, .{UpdateSystems.InherentFromParent}),
@@ -58,6 +58,7 @@ const player_part_offset_y = -player_hit_box_height * 1.6;
 const max_farmers: u16 = 400;
 const farmer_spawn_timer: u64 = 10;
 const farmers_to_kill_before_wife_spawns = 100;
+const frames_after_wife_kill_to_victory_state = 60 * 10;
 
 pub fn main() anyerror!void {
     // Initialize window
@@ -674,7 +675,7 @@ pub fn main() anyerror!void {
                     const hor_fence_width: u32 = @intCast(horizontal_fence.width);
                     var i: u32 = 0;
                     while (i < arena_width) : (i += hor_fence_width) {
-                        // // South
+                        // South
                         _ = try storage.createEntity(LevelBoundary{
                             .pos = components.Position{ .vec = zm.f32x4(
                                 @floatFromInt(i),
@@ -866,6 +867,7 @@ pub fn main() anyerror!void {
                 var the_wife_spawned: bool = false;
                 var farmer_kill_count: u64 = 0;
                 var the_wife_kill_count: u64 = 0;
+                var frames_since_wife_kill: u64 = 0;
 
                 // TODO: pause
                 while (!rl.windowShouldClose()) {
@@ -873,9 +875,12 @@ pub fn main() anyerror!void {
 
                     const mouse_pos = rl.getMousePosition();
 
-                    if (the_wife_kill_count >= 1) {
+                    if (frames_since_wife_kill >= frames_after_wife_kill_to_victory_state) {
                         current_state = .victory_screen;
                         continue :outer_loop;
+                    }
+                    if (the_wife_kill_count >= 1) {
+                        frames_since_wife_kill += 1;
                     }
 
                     // Play music
