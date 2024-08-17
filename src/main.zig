@@ -844,19 +844,6 @@ pub fn main() anyerror!void {
                     }
                 }
 
-                // Setup inventory
-                const inventory_entity = create_inventory_blk: {
-                    const Inventory = struct {
-                        inv: components.Inventory,
-                    };
-
-                    break :create_inventory_blk try storage.createEntity(Inventory{ .inv = components.Inventory{
-                        .items_len = 0,
-                        .items = undefined,
-                    } });
-                };
-                _ = inventory_entity;
-
                 load_assets_zone.End();
 
                 var in_inventory = false;
