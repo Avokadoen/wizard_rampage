@@ -2,6 +2,8 @@
 
 This was my, @Eivindaj and @JayJayDev's gamejam from 09.08.24-11.08.24
 
+Gamejam was concluded with commit 03862d7f766626f268c791e2ae33baaccea6d656 ([release](https://github.com/Avokadoen/gamejam_09_08_24/releases/tag/0.0.1)), but some commits have been pushed after to make the game more enjoyable to play.
+
 We wanted to make something inspired by binding of isaac. The game is built with the [zig programming language (v0.13.0)](https://ziglang.org/),
 [raylib](https://www.raylib.com/) using [raylib-zig](https://github.com/Not-Nik/raylib-zig) as our bindings for zig.
 
