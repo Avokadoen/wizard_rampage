@@ -111,8 +111,8 @@ pub fn CreateInput(Storage: type) type {
                 projectile: *components.Projectile,
             }, .{});
 
-            const fire_rate = storage.getComponent(staff_entity, *components.FireRate) catch unreachable;
-            if (fire_rate.cooldown_fire_rate == 0) {
+            const fire_rate = storage.getComponent(staff_entity, *components.AttackRate) catch unreachable;
+            if (fire_rate.active_cooldown <= 0) {
                 const pos = storage.getComponent(player_entity, components.Position) catch unreachable;
                 const staff_comp_ptr = storage.getComponent(staff_entity, *components.Staff) catch unreachable;
                 const next_projectile = findNextStaffProjectile(staff_comp_ptr) orelse return;
@@ -198,7 +198,7 @@ pub fn CreateInput(Storage: type) type {
                     }) catch (@panic("rip projectiles"));
                 }
 
-                fire_rate.cooldown_fire_rate = fire_rate.base_fire_rate;
+                fire_rate.active_cooldown = fire_rate.cooldown;
             }
         }
 

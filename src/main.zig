@@ -25,7 +25,7 @@ const Scheduler = ecez.CreateScheduler(
     Storage,
     .{
         ecez.Event("game_update", .{
-            UpdateSystems.FireRate,
+            UpdateSystems.TickAttackRate,
             UpdateSystems.LifeTime,
             UpdateSystems.TargetPlayerOrFlee,
             ecez.DependOn(UpdateSystems.UpdateVelocityBasedMoveDir, .{UpdateSystems.TargetPlayerOrFlee}),
@@ -575,7 +575,7 @@ pub fn main() anyerror!void {
                         texture: components.Texture,
                         orientation_based_draw_order: components.OrientationBasedDrawOrder,
                         orientation_texture: components.OrientationTexture,
-                        fire_rate: components.FireRate,
+                        fire_rate: components.AttackRate,
                         child_of: components.ChildOf,
                         staff: components.Staff,
                     };
@@ -633,9 +633,9 @@ pub fn main() anyerror!void {
                         .orientation_texture = components.OrientationTexture{
                             .start_texture_index = @intFromEnum(GameTextureRepo.which_player.Staff0001),
                         },
-                        .fire_rate = components.FireRate{
-                            .base_fire_rate = 60,
-                            .cooldown_fire_rate = 0,
+                        .fire_rate = components.AttackRate{
+                            .cooldown = 10,
+                            .active_cooldown = 0,
                         },
                         .child_of = components.ChildOf{
                             .parent = player_entity,
@@ -1634,8 +1634,10 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
         move_dir: components.DesiredMovedDir,
         col: components.RectangleCollider,
         rec_tag: components.DrawRectangleTag,
+        attack_rate: components.AttackRate,
         hostile_tag: components.HostileTag,
         farmer_tag: components.FarmerTag,
+        melee: components.Melee,
         health: components.Health,
         vocals: components.Vocals,
     };
@@ -1659,8 +1661,16 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
             .height = player_hit_box_height,
         },
         .rec_tag = components.DrawRectangleTag{},
+        .attack_rate = components.AttackRate{
+            .active_cooldown = 0,
+            .cooldown = 60 * 3,
+        },
         .hostile_tag = components.HostileTag{},
         .farmer_tag = components.FarmerTag{},
+        .melee = components.Melee{
+            .dmg = 5,
+            .range = 50,
+        },
         .health = components.Health{
             .max = 50,
             .value = 50,
@@ -1838,8 +1848,10 @@ fn createTheFarmersWife(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfM
         move_dir: components.DesiredMovedDir,
         col: components.RectangleCollider,
         rec_tag: components.DrawRectangleTag,
+        attack_rate: components.AttackRate,
         hostile_tag: components.HostileTag,
         wife_tag: components.FarmersWifeTag,
+        melee: components.Melee,
         health: components.Health,
         vocals: components.Vocals,
     };
@@ -1865,11 +1877,19 @@ fn createTheFarmersWife(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfM
             .height = player_hit_box_height * 1.5,
         },
         .rec_tag = components.DrawRectangleTag{},
+        .attack_rate = components.AttackRate{
+            .active_cooldown = 0,
+            .cooldown = 60 * 3,
+        },
         .hostile_tag = components.HostileTag{},
         .wife_tag = components.FarmersWifeTag{},
         .health = components.Health{
             .max = 500,
             .value = 500,
+        },
+        .melee = components.Melee{
+            .dmg = 10,
+            .range = 80,
         },
         .vocals = components.Vocals{
             .on_death_start = @intFromEnum(GameSoundRepo.which_effects.Kill),

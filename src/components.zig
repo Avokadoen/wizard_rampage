@@ -19,7 +19,7 @@ pub const all = .{
     AnimTexture,
     DrawCircleTag,
     Camera,
-    FireRate,
+    AttackRate,
     PlayerTag,
     LifeTime,
     InactiveTag,
@@ -32,6 +32,7 @@ pub const all = .{
     Projectile,
     InventoryItem,
     Inventory,
+    Melee,
     Health,
     DiedThisFrameTag,
     BloodSplatterGroundTag,
@@ -122,9 +123,9 @@ pub const Camera = struct {
     width: f32,
     height: f32,
 };
-pub const FireRate = struct {
-    base_fire_rate: u8,
-    cooldown_fire_rate: u8,
+pub const AttackRate = struct {
+    cooldown: u8,
+    active_cooldown: u8,
 };
 pub const PlayerTag = struct {};
 
@@ -203,6 +204,11 @@ pub const InventoryItem = struct {
     };
 
     item: Item,
+};
+
+pub const Melee = struct {
+    dmg: i32,
+    range: f32,
 };
 
 pub const Health = struct {

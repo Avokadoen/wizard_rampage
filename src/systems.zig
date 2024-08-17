@@ -101,6 +101,66 @@ pub fn CreateUpdateSystems(Storage: type) type {
                     }
                 }
             }
+
+            const HostileMeleeQuery = Storage.Query(
+                struct {
+                    pos: components.Position,
+                    attack_rate: *components.AttackRate,
+                    hostile: components.HostileTag,
+                    melee: components.Melee,
+                },
+                .{components.InactiveTag},
+            ).Iter;
+            pub fn hostileMeleePlayer(
+                player_pos: components.Position,
+                player_col: components.RectangleCollider,
+                _: components.PlayerTag,
+                health: *components.Health,
+                player_vocals: components.Vocals,
+                context: Context,
+                hostile_iter: *HostileMeleeQuery,
+                _: ecez.ExcludeEntityWith(.{ components.InactiveTag, components.Projectile }),
+            ) void {
+                const zone = tracy.ZoneN(@src(), @src().fn_name);
+                defer zone.End();
+
+                // If the wife has been killed, then farmers are fleeing
+                if (context.the_wife_kill_count.* >= 1) {
+                    return;
+                }
+
+                const on_dmg_index = context.rng.intRangeAtMost(u8, player_vocals.on_dmg_start, player_vocals.on_dmg_end);
+                const on_dmg_sound = context.sound_repo[on_dmg_index];
+
+                const player_circle = components.CircleCollider{
+                    .x = 0,
+                    .y = 0,
+                    .radius = @max(player_col.height, player_col.height),
+                };
+
+                while (hostile_iter.next()) |hostile| {
+                    if (hostile.attack_rate.active_cooldown > 0) continue;
+
+                    const hostile_circle = components.CircleCollider{
+                        .x = 0,
+                        .y = 0,
+                        .radius = hostile.melee.range,
+                    };
+
+                    const collision = physics.Intersection.circleAndCircle(
+                        player_circle,
+                        player_pos,
+                        hostile_circle,
+                        hostile.pos,
+                    );
+                    if (collision) {
+                        hostile.attack_rate.active_cooldown = hostile.attack_rate.cooldown;
+                        health.value -= hostile.melee.dmg;
+
+                        rl.playSound(on_dmg_sound);
+                    }
+                }
+            }
         };
 
         pub const RotateAfterVelocity = struct {
@@ -472,16 +532,16 @@ pub fn CreateUpdateSystems(Storage: type) type {
             }
         };
 
-        pub const FireRate = struct {
-            pub fn fireRate(
-                fire_rate: *components.FireRate,
+        pub const TickAttackRate = struct {
+            pub fn tickAttackRate(
+                attack_rate: *components.AttackRate,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
             ) void {
                 const zone = tracy.ZoneN(@src(), @src().fn_name);
                 defer zone.End();
 
-                if (fire_rate.cooldown_fire_rate > 0) {
-                    fire_rate.cooldown_fire_rate -= 5;
+                if (attack_rate.active_cooldown > 0) {
+                    attack_rate.active_cooldown -= 1;
                 }
             }
         };
