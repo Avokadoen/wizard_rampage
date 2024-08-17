@@ -1981,6 +1981,18 @@ pub fn spawnBloodSplatter(
     var deferred_gore_splatter_entities = std.ArrayList(GoreSplatter).init(allocator);
     defer deferred_gore_splatter_entities.deinit();
 
+    const CameraQuery = Storage.Query(
+        struct {
+            pos: components.Position,
+            scale: components.Scale,
+            cam: components.Camera,
+        },
+        // exclude type
+        .{components.InactiveTag},
+    );
+    var camera_iter = CameraQuery.submit(storage);
+    const camera = camera_iter.next().?;
+
     while (died_this_frame_iter.next()) |dead_this_frame| {
         const scale = storage.getComponent(dead_this_frame.entity, components.Scale) catch components.Scale{ .x = 1, .y = 1 };
         const splatter_offset = zm.f32x4(-100 * scale.x, -100 * scale.y, 0, 0);
@@ -2032,7 +2044,12 @@ pub fn spawnBloodSplatter(
             inactive_gore.lifetime.* = lifetime_comp;
         } else {
             const splatter_index = rng.intRangeAtMost(u8, @intFromEnum(GameSoundRepo.which_effects.Splatter_01), @intFromEnum(GameSoundRepo.which_effects.Splatter_03));
-            rl.playSound(sound_repo.effects[splatter_index]);
+            const splatter_sound = sound_repo.effects[splatter_index];
+
+            const pan = ((gore_pos.vec - camera.pos.vec)[0] * camera.scale.x) / camera.cam.width;
+            rl.setSoundPan(splatter_sound, pan);
+
+            rl.playSound(splatter_sound);
 
             try deferred_gore_splatter_entities.append(GoreSplatter{
                 .pos = gore_pos,

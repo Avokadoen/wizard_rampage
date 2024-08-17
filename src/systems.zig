@@ -112,8 +112,18 @@ pub fn CreateUpdateSystems(Storage: type) type {
             }
         };
 
+        const CameraQuery = Storage.Query(
+            struct {
+                pos: components.Position,
+                scale: components.Scale,
+                cam: components.Camera,
+            },
+            // exclude type
+            .{components.InactiveTag},
+        ).Iter;
+
         pub const ProjectileHitKillable = struct {
-            const QueryKillablesMov = Storage.Query(
+            const QueryKillable = Storage.Query(
                 struct {
                     entity: ecez.Entity,
                     pos: components.Position,
@@ -130,7 +140,8 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 vel: components.Velocity,
                 circle: components.CircleCollider,
                 proj: components.Projectile,
-                killable_iter_movable: *QueryKillablesMov,
+                killable_iter: *QueryKillable,
+                camera_iter: *CameraQuery,
                 edit_queue: *Storage.StorageEditQueue,
                 context: Context,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
@@ -139,7 +150,7 @@ pub fn CreateUpdateSystems(Storage: type) type {
                 defer zone.End();
 
                 const offset = zm.f32x4(@floatCast(circle.x), @floatCast(circle.y), 0, 0);
-                while (killable_iter_movable.next()) |killable| {
+                while (killable_iter.next()) |killable| {
                     if (physics.Intersection.circleAndRect(circle, components.Position{ .vec = pos.vec + offset }, killable.col, killable.pos)) {
                         if (killable.health.value <= 0) continue;
 
@@ -147,6 +158,15 @@ pub fn CreateUpdateSystems(Storage: type) type {
                         if (maybe_vocals) |vocals| {
                             const on_dmg_index = context.rng.intRangeAtMost(u8, vocals.on_dmg_start, vocals.on_dmg_end);
                             const on_dmg_sound = context.sound_repo[on_dmg_index];
+
+                            const pitch_range = 0.2;
+                            const pitch = 1 - (context.rng.float(f32) - 0.5) * pitch_range;
+                            rl.setSoundPitch(on_dmg_sound, pitch);
+
+                            const camera = camera_iter.next().?;
+                            const pan = ((pos.vec - camera.pos.vec)[0] * camera.scale.x) / camera.cam.width;
+                            rl.setSoundPan(on_dmg_sound, pan);
+
                             rl.playSound(on_dmg_sound);
                         }
 
@@ -179,7 +199,9 @@ pub fn CreateUpdateSystems(Storage: type) type {
         pub const RegisterDead = struct {
             pub fn registerDead(
                 entity: ecez.Entity,
+                pos: components.Position,
                 health: components.Health,
+                camera_iter: *CameraQuery,
                 edit_queue: *Storage.StorageEditQueue,
                 context: Context,
                 _: ecez.ExcludeEntityWith(.{components.InactiveTag}),
@@ -192,6 +214,15 @@ pub fn CreateUpdateSystems(Storage: type) type {
                     if (maybe_vocals) |vocals| {
                         const on_death_index = context.rng.intRangeAtMost(u8, vocals.on_death_start, vocals.on_death_end);
                         const on_death_sound = context.sound_repo[on_death_index];
+
+                        const pitch_range = 0.2;
+                        const pitch = 1 - (context.rng.float(f32) - 0.5) * pitch_range;
+                        rl.setSoundPitch(on_death_sound, pitch);
+
+                        const camera = camera_iter.next().?;
+                        const pan = ((pos.vec - camera.pos.vec)[0] * camera.scale.x) / camera.cam.width;
+                        rl.setSoundPan(on_death_sound, pan);
+
                         rl.playSound(on_death_sound);
                     }
 

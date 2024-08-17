@@ -11,6 +11,14 @@ pub fn init() GameSoundRepo {
         sound.* = rl.loadSound("resources/sounds/effects/" ++ which_texture.name ++ ".wav");
     }
 
+    inline for ([_]NormalizeEffect{
+        .{ .which = .Player_Damage_02, .new_volume = 0.4 },
+        .{ .which = .Player_Damage_03, .new_volume = 0.4 },
+    }) |normalize| {
+        const sound = effects[@intFromEnum(normalize.which)];
+        rl.setSoundVolume(sound, normalize.new_volume);
+    }
+
     return GameSoundRepo{
         .effects = effects,
     };
@@ -21,6 +29,11 @@ pub fn deinit(self: GameSoundRepo) void {
         rl.unloadSound(sound);
     }
 }
+
+const NormalizeEffect = struct {
+    which: which_effects,
+    new_volume: f32,
+};
 
 pub const which_effects = enum {
     Enemy_Attack,
