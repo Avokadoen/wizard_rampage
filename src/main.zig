@@ -851,6 +851,13 @@ pub fn main() anyerror!void {
                     }
                 }
 
+                // NOTE 2: Defining null for vertex shader forces usage of internal default vertex shader
+                const shader_cauldron = rl.loadShader(null, "resources/shaders/glsl330/cauldron_hp.fs");
+                defer rl.unloadShader(shader_cauldron);
+
+                const shader_health_info_location = rl.getShaderLocation(shader_cauldron, "healthRatio");
+                const shader_blood_texture_location = rl.getShaderLocation(shader_cauldron, "cauldronBlood");
+
                 load_assets_zone.End();
 
                 var in_inventory = false;
@@ -1413,6 +1420,66 @@ pub fn main() anyerror!void {
                                         },
                                     };
                                     rl.drawTextureRec(gem_texture, item_rect, pos, rl.Color.white);
+                                }
+                            }
+
+                            // Draw cauldron (health indicator)
+                            {
+                                const cauldron_texture_index = @intFromEnum(GameTextureRepo.which_cauldron.HP_Cauldron);
+                                const cauldron_texture = texture_repo.cauldron[cauldron_texture_index];
+                                const cauldron_rect = rl.Rectangle{
+                                    .x = 0,
+                                    .y = 0,
+                                    .width = @floatFromInt(cauldron_texture.width),
+                                    .height = @floatFromInt(cauldron_texture.height),
+                                };
+                                const cauldron_dest = rl.Rectangle{
+                                    .x = window_width * 0.1,
+                                    .y = window_height * 0.8,
+                                    .width = window_width * 0.08,
+                                    .height = window_width * 0.08,
+                                };
+
+                                rl.drawTexturePro(
+                                    cauldron_texture,
+                                    cauldron_rect,
+                                    cauldron_dest,
+                                    rl.Vector2.zero(),
+                                    0,
+                                    rl.Color.white,
+                                );
+
+                                {
+                                    rl.beginShaderMode(shader_cauldron);
+                                    defer rl.endShaderMode();
+
+                                    // set cauldron texture once
+                                    const blood_texture_index = @intFromEnum(GameTextureRepo.which_cauldron.HP_Blood);
+                                    const blood_texture = texture_repo.cauldron[blood_texture_index];
+
+                                    rl.setShaderValueTexture(shader_cauldron, shader_blood_texture_location, blood_texture);
+                                    {
+                                        const player_health = try storage.getComponent(player_entity, components.Health);
+                                        const health_ratio = @as(f32, @floatFromInt(player_health.value)) / @as(f32, @floatFromInt(player_health.max));
+                                        rl.setShaderValue(
+                                            shader_cauldron,
+                                            shader_health_info_location,
+                                            @ptrCast(&health_ratio),
+                                            rl.ShaderUniformDataType.shader_uniform_float,
+                                        );
+                                    }
+
+                                    const mask_texture_index = @intFromEnum(GameTextureRepo.which_cauldron.HP_Mask);
+                                    const mask_texture = texture_repo.cauldron[mask_texture_index];
+
+                                    rl.drawTexturePro(
+                                        mask_texture,
+                                        cauldron_rect,
+                                        cauldron_dest,
+                                        rl.Vector2.zero(),
+                                        0,
+                                        rl.Color.white,
+                                    );
                                 }
                             }
 

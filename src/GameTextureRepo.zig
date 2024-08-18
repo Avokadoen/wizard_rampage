@@ -10,6 +10,7 @@ country: [@typeInfo(which_country_side).Enum.fields.len]rl.Texture,
 inventory: [@typeInfo(which_inventory).Enum.fields.len]rl.Texture,
 decor: [@typeInfo(which_decor).Enum.fields.len]rl.Texture,
 wife: [@typeInfo(which_wife).Enum.fields.len]rl.Texture,
+cauldron: [@typeInfo(which_cauldron).Enum.fields.len]rl.Texture,
 
 pub fn init() GameTextureRepo {
     const player = loadTextureGroup(which_player, "resources/textures/player/");
@@ -20,6 +21,7 @@ pub fn init() GameTextureRepo {
     const inventory = loadTextureGroup(which_inventory, "resources/textures/inventory/");
     const decor = loadTextureGroup(which_decor, "resources/textures/decor/");
     const wife = loadTextureGroup(which_wife, "resources/textures/boss_wife/");
+    const cauldron = loadTextureGroup(which_cauldron, "resources/textures/player/cauldron/");
 
     return GameTextureRepo{
         .player = player,
@@ -30,10 +32,12 @@ pub fn init() GameTextureRepo {
         .inventory = inventory,
         .decor = decor,
         .wife = wife,
+        .cauldron = cauldron,
     };
 }
 
 pub fn deinit(self: GameTextureRepo) void {
+    // TODO: use reflection for this
     inline for (self.player) |texture| {
         texture.unload();
     }
@@ -58,6 +62,9 @@ pub fn deinit(self: GameTextureRepo) void {
     inline for (self.wife) |texture| {
         texture.unload();
     }
+    inline for (self.cauldron) |texture| {
+        texture.unload();
+    }
 }
 
 fn loadTextureGroup(comptime TextureEnum: type, comptime texture_group_path: []const u8) [@typeInfo(TextureEnum).Enum.fields.len]rl.Texture {
@@ -80,6 +87,7 @@ pub const texture_type = enum {
     inventory,
     decor,
     wife,
+    cauldron,
 };
 
 pub const which_player = enum {
@@ -292,4 +300,10 @@ pub const which_wife = enum {
     Wife_Idle_Head0006,
     Wife_Idle_Head0007,
     Wife_Idle_Head0008,
+};
+
+pub const which_cauldron = enum {
+    HP_Blood,
+    HP_Cauldron,
+    HP_Mask,
 };
