@@ -157,6 +157,8 @@ pub fn CreateUpdateSystems(Storage: type) type {
                         hostile.attack_rate.active_cooldown = hostile.attack_rate.cooldown;
                         health.value -= hostile.melee.dmg;
 
+                        rl.setSoundPitch(on_dmg_sound, 1.0);
+                        rl.setSoundPan(on_dmg_sound, 0.5);
                         rl.playSound(on_dmg_sound);
                     }
                 }
