@@ -1259,6 +1259,8 @@ pub fn main() anyerror!void {
                                                                 .modifier => |mod| staff.slots[index] = .{ .modifier = mod },
                                                             }
 
+                                                            staff.used_slots += 1;
+
                                                             break :swap_with_existing_slot_item_blk false;
                                                         },
                                                         .inventory_pos => |inv_pos| {
