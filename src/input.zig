@@ -166,7 +166,7 @@ pub fn CreateInput(Storage: type) type {
                     };
                     projectile.projectile.* = next_projectile.proj;
 
-                    storage.removeComponent(projectile.entity, components.InactiveTag) catch unreachable;
+                    storage.unsetComponents(projectile.entity, .{components.InactiveTag});
                 } else {
                     _ = storage.createEntity(Projectile{
                         .pos = components.Position{ .vec = pos.vec + proj_offset },

@@ -19,32 +19,32 @@ const arena_width = 3000;
 const Storage = ecez.CreateStorage(components.all);
 
 const UpdateSystems = systems.CreateUpdateSystems(Storage);
-const DrawSystems = systems.CreateDrawSystems(Storage);
 
 const Scheduler = ecez.CreateScheduler(
-    Storage,
     .{
         ecez.Event("game_update", .{
-            UpdateSystems.TickAttackRate,
-            UpdateSystems.LifeTime,
-            UpdateSystems.TargetPlayerOrFlee,
-            ecez.DependOn(UpdateSystems.UpdateVelocityBasedMoveDir, .{UpdateSystems.TargetPlayerOrFlee}),
-            ecez.DependOn(UpdateSystems.UpdatePositionBasedOnVelocity, .{UpdateSystems.UpdateVelocityBasedMoveDir}),
-            ecez.DependOn(UpdateSystems.UpdateVelocityBasedOnDrag, .{UpdateSystems.UpdatePositionBasedOnVelocity}),
-            ecez.DependOn(UpdateSystems.RotateAfterVelocity, .{UpdateSystems.UpdateVelocityBasedOnDrag}),
-            ecez.DependOn(UpdateSystems.MovableToImmovableRecToRecCollisionResolve, .{UpdateSystems.RotateAfterVelocity}),
-            ecez.DependOn(UpdateSystems.MovableToMovableRecToRecCollisionResolve, .{UpdateSystems.MovableToImmovableRecToRecCollisionResolve}),
-            ecez.DependOn(UpdateSystems.InherentFromParent, .{UpdateSystems.MovableToMovableRecToRecCollisionResolve}),
-            ecez.DependOn(UpdateSystems.ProjectileHitKillable, .{UpdateSystems.InherentFromParent}),
-            ecez.DependOn(UpdateSystems.RegisterDead, .{UpdateSystems.ProjectileHitKillable}),
-            // run in parallel
-            ecez.DependOn(UpdateSystems.UpdateCamera, .{UpdateSystems.InherentFromParent}),
-            ecez.DependOn(UpdateSystems.OrientTexture, .{UpdateSystems.InherentFromParent}),
-            ecez.DependOn(UpdateSystems.AnimateTexture, .{UpdateSystems.InherentFromParent}),
-            // end run in parallel
-            ecez.DependOn(UpdateSystems.OrientationBasedDrawOrder, .{UpdateSystems.OrientTexture}),
-            // flush in game loop
-        }, UpdateSystems.Context),
+            UpdateSystems.targetPlayerOrFlee,
+            UpdateSystems.tickAttackRate,
+            UpdateSystems.lifeTime,
+            UpdateSystems.updateVelocityBasedMoveDir,
+            UpdateSystems.updatePositionBasedOnVelocity,
+            UpdateSystems.updateVelocityBasedOnDrag,
+            UpdateSystems.rotateAfterVelocity,
+            UpdateSystems.movableToImmovableRecToRecCollisionResolve,
+            UpdateSystems.movableToMovableRecToRecCollisionResolve,
+            UpdateSystems.inherentParentVelocity,
+            UpdateSystems.inherentParentPosition,
+            UpdateSystems.inherentParentScale,
+            UpdateSystems.inherentInactiveFromParent,
+            UpdateSystems.inherentActiveFromParent,
+            UpdateSystems.projectileHitKillable,
+            UpdateSystems.hostileMeleePlayer,
+            UpdateSystems.registerDead,
+            UpdateSystems.updateCamera,
+            UpdateSystems.orientTexture,
+            UpdateSystems.animateTexture,
+            UpdateSystems.orientationBasedDrawOrder,
+        }),
     },
 );
 
@@ -63,6 +63,12 @@ const farmers_to_kill_before_wife_spawns = 100;
 const frames_after_wife_kill_to_victory_state = 60 * 10;
 
 pub fn main() anyerror!void {
+    if (@import("builtin").mode == .Debug) {
+        inline for (comptime Scheduler.dumpDependencyChain(.game_update), 0..) |dep, system_index| {
+            std.debug.print("{d}: {any}\n", .{ system_index, dep });
+        }
+    }
+
     // Initialize window
     const window_width, const window_height = window_init: {
         // init window and gl
@@ -344,6 +350,212 @@ pub fn main() anyerror!void {
                     0,
                     0,
                 );
+
+                // Create camera
+                const camera_entity = try create_camera_blk: {
+                    const Camera = struct {
+                        pos: components.Position,
+                        scale: components.Scale,
+                        camera: components.Camera,
+                    };
+
+                    break :create_camera_blk storage.createEntity(Camera{
+                        .pos = components.Position{ .vec = zm.f32x4s(0) },
+                        .scale = components.Scale{
+                            .x = 2,
+                            .y = 2,
+                        },
+                        .camera = components.Camera{
+                            .width = window_width,
+                            .height = window_height,
+                        },
+                    });
+                };
+
+                // Create level boundaries
+                {
+                    const room_boundary_thickness = 100;
+                    const LevelBoundary = struct {
+                        pos: components.Position,
+                        scale: components.Scale,
+                        collider: components.RectangleCollider,
+                        texture: components.Texture,
+                    };
+
+                    const horizontal_fence = texture_repo.country[@intFromEnum(GameTextureRepo.which_country_side.Fence_Horizontal)];
+                    const hor_fence_height: u32 = @intCast(horizontal_fence.height);
+                    const hor_fence_width: u32 = @intCast(horizontal_fence.width);
+                    var i: u32 = 0;
+                    while (i < arena_width) : (i += hor_fence_width) {
+                        // South
+                        _ = try storage.createEntity(LevelBoundary{
+                            .pos = components.Position{ .vec = zm.f32x4(
+                                @floatFromInt(i),
+                                arena_height - room_boundary_thickness,
+                                0,
+                                0,
+                            ) },
+                            .scale = components.Scale{
+                                .x = 1,
+                                .y = 1,
+                            },
+                            .collider = components.RectangleCollider{
+                                .width = @floatFromInt(hor_fence_width),
+                                .height = @floatFromInt(hor_fence_height),
+                            },
+                            .texture = components.Texture{
+                                .draw_order = .o1,
+                                .type = @intFromEnum(GameTextureRepo.texture_type.country),
+                                .index = @intFromEnum(GameTextureRepo.which_country_side.Fence_Horizontal),
+                            },
+                        });
+                        // North
+                        _ = try storage.createEntity(LevelBoundary{
+                            .pos = components.Position{ .vec = zm.f32x4(
+                                @floatFromInt(i),
+                                0,
+                                0,
+                                0,
+                            ) },
+                            .scale = components.Scale{
+                                .x = 1,
+                                .y = 1,
+                            },
+                            .collider = components.RectangleCollider{
+                                .width = @floatFromInt(hor_fence_width),
+                                .height = @floatFromInt(hor_fence_height),
+                            },
+                            .texture = components.Texture{
+                                .draw_order = .o1,
+                                .type = @intFromEnum(GameTextureRepo.texture_type.country),
+                                .index = @intFromEnum(GameTextureRepo.which_country_side.Fence_Horizontal),
+                            },
+                        });
+                    }
+                    const vertical_fence = texture_repo.country[@intFromEnum(GameTextureRepo.which_country_side.Fence_Vertical)];
+                    const vert_fence_height: u32 = @intCast(vertical_fence.height);
+                    const vert_fence_width: u32 = @intCast(vertical_fence.width);
+                    i = 0;
+                    while (i < arena_width - vert_fence_height) : (i += vert_fence_height) {
+                        // West
+                        _ = try storage.createEntity(LevelBoundary{
+                            .pos = components.Position{ .vec = zm.f32x4(
+                                0,
+                                @floatFromInt(i),
+                                0,
+                                0,
+                            ) },
+                            .scale = components.Scale{
+                                .x = 1,
+                                .y = 1,
+                            },
+                            .collider = components.RectangleCollider{
+                                .width = @floatFromInt(vert_fence_width),
+                                .height = @floatFromInt(vert_fence_height),
+                            },
+                            .texture = components.Texture{
+                                .draw_order = .o1,
+                                .type = @intFromEnum(GameTextureRepo.texture_type.country),
+                                .index = @intFromEnum(GameTextureRepo.which_country_side.Fence_Vertical),
+                            },
+                        });
+                        // East
+                        _ = try storage.createEntity(LevelBoundary{
+                            .pos = components.Position{ .vec = zm.f32x4(
+                                arena_width,
+                                @floatFromInt(i),
+                                0,
+                                0,
+                            ) },
+                            .scale = components.Scale{
+                                .x = 1,
+                                .y = 1,
+                            },
+                            .collider = components.RectangleCollider{
+                                .width = @floatFromInt(vert_fence_width),
+                                .height = @floatFromInt(vert_fence_height),
+                            },
+                            .texture = components.Texture{
+                                .draw_order = .o1,
+                                .type = @intFromEnum(GameTextureRepo.texture_type.country),
+                                .index = @intFromEnum(GameTextureRepo.which_country_side.Fence_Vertical),
+                            },
+                        });
+                    }
+                }
+
+                {
+                    const GroundClutter = struct {
+                        pos: components.Position,
+                        scale: components.Scale,
+                        texture: components.Texture,
+                    };
+                    for (0..150) |_| {
+                        const pos_x = -arena_width * 0.5 + random.float(f32) * arena_width * 1.5;
+                        const pos_y = -arena_height * 0.5 + random.float(f32) * arena_height * 1.5;
+                        _ = try storage.createEntity(GroundClutter{
+                            .pos = components.Position{ .vec = zm.f32x4(
+                                pos_x,
+                                pos_y,
+                                0,
+                                0,
+                            ) },
+                            .scale = components.Scale{
+                                .x = 4 + random.float(f32) * 2,
+                                .y = 4 + random.float(f32) * 2,
+                            },
+                            .texture = components.Texture{
+                                .draw_order = .o0,
+                                .type = @intFromEnum(GameTextureRepo.texture_type.country),
+                                .index = @intFromEnum(GameTextureRepo.which_country_side.Dirt),
+                            },
+                        });
+                    }
+                    for (0..200) |_| {
+                        const pos_x = -arena_width * 0.5 + random.float(f32) * arena_width * 1.5;
+                        const pos_y = -arena_height * 0.5 + random.float(f32) * arena_height * 1.5;
+
+                        _ = try storage.createEntity(GroundClutter{
+                            .pos = components.Position{ .vec = zm.f32x4(
+                                pos_x,
+                                pos_y,
+                                0,
+                                0,
+                            ) },
+                            .scale = components.Scale{
+                                .x = 1 + random.float(f32),
+                                .y = 1 + random.float(f32),
+                            },
+                            .texture = components.Texture{
+                                .draw_order = .o0,
+                                .type = @intFromEnum(GameTextureRepo.texture_type.country),
+                                .index = @intFromEnum(GameTextureRepo.which_country_side.Grass),
+                            },
+                        });
+                    }
+                    for (0..150) |_| {
+                        const pos_x = random.float(f32) * arena_width * 1.5;
+                        const pos_y = random.float(f32) * arena_height * 1.5;
+                        const texture = if (random.boolean()) @intFromEnum(GameTextureRepo.which_decor.Daisies) else @intFromEnum(GameTextureRepo.which_decor.Rocks);
+                        _ = try storage.createEntity(GroundClutter{
+                            .pos = components.Position{ .vec = zm.f32x4(
+                                pos_x,
+                                pos_y,
+                                0,
+                                0,
+                            ) },
+                            .scale = components.Scale{
+                                .x = 0.1 + random.float(f32),
+                                .y = 0.1 + random.float(f32),
+                            },
+                            .texture = components.Texture{
+                                .draw_order = .o0,
+                                .type = @intFromEnum(GameTextureRepo.texture_type.decor),
+                                .index = texture,
+                            },
+                        });
+                    }
+                }
 
                 const player_entity = create_player_blk: {
                     const Player = struct {
@@ -646,211 +858,6 @@ pub fn main() anyerror!void {
                     });
                 };
 
-                // Create camera
-                const camera_entity = try create_camera_blk: {
-                    const Camera = struct {
-                        pos: components.Position,
-                        scale: components.Scale,
-                        camera: components.Camera,
-                    };
-
-                    break :create_camera_blk storage.createEntity(Camera{
-                        .pos = components.Position{ .vec = zm.f32x4s(0) },
-                        .scale = components.Scale{
-                            .x = 2,
-                            .y = 2,
-                        },
-                        .camera = components.Camera{
-                            .width = window_width,
-                            .height = window_height,
-                        },
-                    });
-                };
-
-                // Create level boundaries
-                {
-                    const room_boundary_thickness = 100;
-                    const LevelBoundary = struct {
-                        pos: components.Position,
-                        scale: components.Scale,
-                        collider: components.RectangleCollider,
-                        texture: components.Texture,
-                    };
-
-                    const horizontal_fence = texture_repo.country[@intFromEnum(GameTextureRepo.which_country_side.Fence_Horizontal)];
-                    const hor_fence_height: u32 = @intCast(horizontal_fence.height);
-                    const hor_fence_width: u32 = @intCast(horizontal_fence.width);
-                    var i: u32 = 0;
-                    while (i < arena_width) : (i += hor_fence_width) {
-                        // South
-                        _ = try storage.createEntity(LevelBoundary{
-                            .pos = components.Position{ .vec = zm.f32x4(
-                                @floatFromInt(i),
-                                arena_height - room_boundary_thickness,
-                                0,
-                                0,
-                            ) },
-                            .scale = components.Scale{
-                                .x = 1,
-                                .y = 1,
-                            },
-                            .collider = components.RectangleCollider{
-                                .width = @floatFromInt(hor_fence_width),
-                                .height = @floatFromInt(hor_fence_height),
-                            },
-                            .texture = components.Texture{
-                                .draw_order = .o2,
-                                .type = @intFromEnum(GameTextureRepo.texture_type.country),
-                                .index = @intFromEnum(GameTextureRepo.which_country_side.Fence_Horizontal),
-                            },
-                        });
-                        // North
-                        _ = try storage.createEntity(LevelBoundary{
-                            .pos = components.Position{ .vec = zm.f32x4(
-                                @floatFromInt(i),
-                                0,
-                                0,
-                                0,
-                            ) },
-                            .scale = components.Scale{
-                                .x = 1,
-                                .y = 1,
-                            },
-                            .collider = components.RectangleCollider{
-                                .width = @floatFromInt(hor_fence_width),
-                                .height = @floatFromInt(hor_fence_height),
-                            },
-                            .texture = components.Texture{
-                                .draw_order = .o2,
-                                .type = @intFromEnum(GameTextureRepo.texture_type.country),
-                                .index = @intFromEnum(GameTextureRepo.which_country_side.Fence_Horizontal),
-                            },
-                        });
-                    }
-                    const vertical_fence = texture_repo.country[@intFromEnum(GameTextureRepo.which_country_side.Fence_Vertical)];
-                    const vert_fence_height: u32 = @intCast(vertical_fence.height);
-                    const vert_fence_width: u32 = @intCast(vertical_fence.width);
-                    i = 0;
-                    while (i < arena_width - vert_fence_height) : (i += vert_fence_height) {
-                        // West
-                        _ = try storage.createEntity(LevelBoundary{
-                            .pos = components.Position{ .vec = zm.f32x4(
-                                0,
-                                @floatFromInt(i),
-                                0,
-                                0,
-                            ) },
-                            .scale = components.Scale{
-                                .x = 1,
-                                .y = 1,
-                            },
-                            .collider = components.RectangleCollider{
-                                .width = @floatFromInt(vert_fence_width),
-                                .height = @floatFromInt(vert_fence_height),
-                            },
-                            .texture = components.Texture{
-                                .draw_order = .o2,
-                                .type = @intFromEnum(GameTextureRepo.texture_type.country),
-                                .index = @intFromEnum(GameTextureRepo.which_country_side.Fence_Vertical),
-                            },
-                        });
-                        // East
-                        _ = try storage.createEntity(LevelBoundary{
-                            .pos = components.Position{ .vec = zm.f32x4(
-                                arena_width,
-                                @floatFromInt(i),
-                                0,
-                                0,
-                            ) },
-                            .scale = components.Scale{
-                                .x = 1,
-                                .y = 1,
-                            },
-                            .collider = components.RectangleCollider{
-                                .width = @floatFromInt(vert_fence_width),
-                                .height = @floatFromInt(vert_fence_height),
-                            },
-                            .texture = components.Texture{
-                                .draw_order = .o2,
-                                .type = @intFromEnum(GameTextureRepo.texture_type.country),
-                                .index = @intFromEnum(GameTextureRepo.which_country_side.Fence_Vertical),
-                            },
-                        });
-                    }
-                }
-                {
-                    const GroundClutter = struct {
-                        pos: components.Position,
-                        scale: components.Scale,
-                        texture: components.Texture,
-                    };
-                    for (0..150) |_| {
-                        const pos_x = -arena_width * 0.5 + random.float(f32) * arena_width * 1.5;
-                        const pos_y = -arena_height * 0.5 + random.float(f32) * arena_height * 1.5;
-                        _ = try storage.createEntity(GroundClutter{
-                            .pos = components.Position{ .vec = zm.f32x4(
-                                pos_x,
-                                pos_y,
-                                0,
-                                0,
-                            ) },
-                            .scale = components.Scale{
-                                .x = 4 + random.float(f32) * 2,
-                                .y = 4 + random.float(f32) * 2,
-                            },
-                            .texture = components.Texture{
-                                .draw_order = .o0,
-                                .type = @intFromEnum(GameTextureRepo.texture_type.country),
-                                .index = @intFromEnum(GameTextureRepo.which_country_side.Dirt),
-                            },
-                        });
-                    }
-                    for (0..200) |_| {
-                        const pos_x = -arena_width * 0.5 + random.float(f32) * arena_width * 1.5;
-                        const pos_y = -arena_height * 0.5 + random.float(f32) * arena_height * 1.5;
-
-                        _ = try storage.createEntity(GroundClutter{
-                            .pos = components.Position{ .vec = zm.f32x4(
-                                pos_x,
-                                pos_y,
-                                0,
-                                0,
-                            ) },
-                            .scale = components.Scale{
-                                .x = 1 + random.float(f32),
-                                .y = 1 + random.float(f32),
-                            },
-                            .texture = components.Texture{
-                                .draw_order = .o0,
-                                .type = @intFromEnum(GameTextureRepo.texture_type.country),
-                                .index = @intFromEnum(GameTextureRepo.which_country_side.Grass),
-                            },
-                        });
-                    }
-                    for (0..150) |_| {
-                        const pos_x = random.float(f32) * arena_width * 1.5;
-                        const pos_y = random.float(f32) * arena_height * 1.5;
-                        const texture = if (random.boolean()) @intFromEnum(GameTextureRepo.which_decor.Daisies) else @intFromEnum(GameTextureRepo.which_decor.Rocks);
-                        _ = try storage.createEntity(GroundClutter{
-                            .pos = components.Position{ .vec = zm.f32x4(
-                                pos_x,
-                                pos_y,
-                                0,
-                                0,
-                            ) },
-                            .scale = components.Scale{
-                                .x = 0.1 + random.float(f32),
-                                .y = 0.1 + random.float(f32),
-                            },
-                            .texture = components.Texture{
-                                .draw_order = .o0,
-                                .type = @intFromEnum(GameTextureRepo.texture_type.decor),
-                                .index = texture,
-                            },
-                        });
-                    }
-                }
-
                 // NOTE 2: Defining null for vertex shader forces usage of internal default vertex shader
                 const shader_cauldron = rl.loadShader(null, "resources/shaders/glsl330/cauldron_hp.fs");
                 defer rl.unloadShader(shader_cauldron);
@@ -921,20 +928,19 @@ pub fn main() anyerror!void {
 
                             // system update dispatch
                             const update_context = UpdateSystems.Context{
-                                .storage = storage,
                                 .sound_repo = &sound_repo.effects,
                                 .rng = random,
                                 .farmer_kill_count = &farmer_kill_count,
                                 .the_wife_kill_count = &the_wife_kill_count,
                                 .cursor_position = mouse_pos,
+                                .camera_entity = camera_entity,
+                                .player_entity = player_entity,
                             };
                             scheduler.dispatchEvent(&storage, .game_update, update_context);
                             scheduler.waitEvent(.game_update);
 
-                            try storage.flushStorageQueue(); // flush any edits which occured in dispatch game_update
-
                             // Spawn blood splatter
-                            try spawnBloodSplatter(allocator, &storage, sound_repo, random);
+                            try spawnBloodSplatter(&storage, sound_repo, random);
                         }
                     }
 
@@ -1167,17 +1173,18 @@ pub fn main() anyerror!void {
 
                                         if (is_hovered and rl.isMouseButtonDown(rl.MouseButton.mouse_button_left)) {
                                             const offset_x = -item_rect.width * 0.5;
-                                            try storage.queueSetComponent(item.entity, components.AttachToCursor{
-                                                .offset_x = offset_x,
-                                                .offset_y = 0,
+                                            try storage.setComponents(item.entity, .{
+                                                components.AttachToCursor{
+                                                    .offset_x = offset_x,
+                                                    .offset_y = 0,
+                                                },
+                                                components.OldSlot{ .type = .{
+                                                    .inventory_pos = item.pos,
+                                                } },
                                             });
-                                            try storage.queueSetComponent(item.entity, components.OldSlot{ .type = .{
-                                                .inventory_pos = item.pos,
-                                            } });
                                         }
                                     }
                                 }
-                                try storage.flushStorageQueue();
                             }
 
                             const gem_width = 75.0;
@@ -1280,7 +1287,7 @@ pub fn main() anyerror!void {
                                                 staff.used_slots = @mod(staff.used_slots + 1, staff.slot_capacity);
                                             }
 
-                                            try storage.setComponent(grabbed.entity, components.InactiveTag{});
+                                            try storage.setComponents(grabbed.entity, .{components.InactiveTag{}});
 
                                             break :check_may_grab_blk null;
                                         }
@@ -1305,7 +1312,7 @@ pub fn main() anyerror!void {
                                                 unused_grabbed_item.inv_item.item = grab_item;
                                                 unused_grabbed_item.attach_to_cursor.offset_x = grab_offset_x;
 
-                                                try storage.removeComponent(unused_grabbed_item.entity, components.InactiveTag);
+                                                storage.unsetComponents(unused_grabbed_item.entity, .{components.InactiveTag});
                                             } else {
                                                 _ = try storage.createEntity(GrabbedItem{
                                                     .pos = components.Position{
@@ -1376,10 +1383,7 @@ pub fn main() anyerror!void {
                                             0,
                                         );
 
-                                        // get staff again, component pointer is dangling
-                                        staff = try storage.getComponent(player_staff_entity, *components.Staff);
-
-                                        try storage.removeComponents(grabbed.entity, .{
+                                        storage.unsetComponents(grabbed.entity, .{
                                             components.OldSlot,
                                             components.AttachToCursor,
                                         });
@@ -1392,11 +1396,11 @@ pub fn main() anyerror!void {
                                                 }
                                                 staff.slot_cursor = 0;
                                                 staff.used_slots += 1;
-                                                try storage.setComponent(grabbed.entity, components.InactiveTag{});
+                                                try storage.setComponents(grabbed.entity, .{components.InactiveTag{}});
                                             },
                                             .inventory_pos => |inv_pos| {
                                                 grabbed.pos.* = inv_pos;
-                                                try storage.removeComponents(grabbed.entity, .{
+                                                storage.unsetComponents(grabbed.entity, .{
                                                     components.OldSlot,
                                                     components.AttachToCursor,
                                                 });
@@ -2097,7 +2101,6 @@ fn createTheFarmersWife(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfM
 }
 
 pub fn spawnBloodSplatter(
-    allocator: std.mem.Allocator,
     storage: *Storage,
     sound_repo: GameSoundRepo,
     rng: std.Random,
@@ -2152,15 +2155,6 @@ pub fn spawnBloodSplatter(
     }, .{});
     var died_this_frame_iter = DiedThisFrameQuery.submit(storage);
 
-    // WORKAROUND:
-    // If we dont defer creation of blood splatter and gore, then we do UB in ecez.
-    // This can be somewhat improved with https://github.com/Avokadoen/ecez/issues/184
-    // and potentially with https://github.com/Avokadoen/ecez/issues/183
-    var deferred_blood_splatter_entities = std.ArrayList(BloodSplatter).init(allocator);
-    defer deferred_blood_splatter_entities.deinit();
-    var deferred_gore_splatter_entities = std.ArrayList(GoreSplatter).init(allocator);
-    defer deferred_gore_splatter_entities.deinit();
-
     const CameraQuery = Storage.Query(
         struct {
             pos: components.Position,
@@ -2183,12 +2177,12 @@ pub fn spawnBloodSplatter(
 
         const blood_splatterlifetime: f32 = 6;
         if (inactive_blood_iter.next()) |inactive_blood_splatter| {
-            try storage.queueRemoveComponent(inactive_blood_splatter.entity, components.InactiveTag);
+            storage.unsetComponents(inactive_blood_splatter.entity, .{components.InactiveTag});
             inactive_blood_splatter.pos.* = position;
             inactive_blood_splatter.scale.* = scale;
             inactive_blood_splatter.lifetime.* = components.LifeTime{ .value = blood_splatterlifetime };
         } else {
-            try deferred_blood_splatter_entities.append(BloodSplatter{
+            _ = try storage.createEntity(BloodSplatter{
                 .pos = position,
                 .scale = scale,
                 .texture = components.Texture{
@@ -2217,7 +2211,7 @@ pub fn spawnBloodSplatter(
             .vec = position.vec + zm.f32x4(-50, -40, 0, 0),
         };
         if (inactive_gore_iter.next()) |inactive_gore| {
-            try storage.queueRemoveComponent(inactive_gore.entity, components.InactiveTag);
+            storage.unsetComponents(inactive_gore.entity, .{components.InactiveTag});
             inactive_gore.pos.* = gore_pos;
             inactive_gore.scale.* = gore_scale;
             // inactive_gore.anim.* = anim;
@@ -2228,10 +2222,9 @@ pub fn spawnBloodSplatter(
 
             const pan = ((gore_pos.vec - camera.pos.vec)[0] * camera.scale.x) / camera.cam.width;
             rl.setSoundPan(splatter_sound, pan);
-
             rl.playSound(splatter_sound);
 
-            try deferred_gore_splatter_entities.append(GoreSplatter{
+            _ = try storage.createEntity(GoreSplatter{
                 .pos = gore_pos,
                 .rot = components.Rotation{ .value = 0 },
                 .scale = gore_scale,
@@ -2246,17 +2239,7 @@ pub fn spawnBloodSplatter(
             });
         }
 
-        try storage.queueRemoveComponent(dead_this_frame.entity, components.DiedThisFrameTag);
-    }
-
-    try storage.flushStorageQueue();
-
-    // NOTE: splatter has no guaretee to be of same length (lifetime is not the same between)
-    for (deferred_blood_splatter_entities.items) |blood_splatter| {
-        _ = try storage.createEntity(blood_splatter);
-    }
-    for (deferred_gore_splatter_entities.items) |gore_splatter| {
-        _ = try storage.createEntity(gore_splatter);
+        storage.unsetComponents(dead_this_frame.entity, .{components.DiedThisFrameTag});
     }
 }
 
