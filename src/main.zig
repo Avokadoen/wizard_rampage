@@ -61,6 +61,7 @@ const max_farmers: u16 = 400;
 const farmer_spawn_timer: u64 = 10;
 const farmers_to_kill_before_wife_spawns = 100;
 const frames_after_wife_kill_to_victory_state = 60 * 10;
+const frames_after_player_dead_to_death_state = 60 * 3;
 
 pub fn main() anyerror!void {
     if (@import("builtin").mode == .Debug) {
@@ -93,12 +94,18 @@ pub fn main() anyerror!void {
 
     rl.setTargetFPS(60); // Set our game to run at 60 frames-per-second
 
-    const LoopState = enum {
+    const EndScreen = enum { victory, dead };
+    const LoopStateEnum = enum {
         main_menu,
         game,
-        victory_screen,
+        end_screen,
     };
-    var current_state = LoopState.main_menu;
+    const LoopStateUnion = union(LoopStateEnum) {
+        main_menu,
+        game,
+        end_screen: EndScreen,
+    };
+    var current_state: LoopStateUnion = .main_menu;
 
     outer_loop: while (true) {
         switch (current_state) {
@@ -877,6 +884,9 @@ pub fn main() anyerror!void {
                 var the_wife_kill_count: u64 = 0;
                 var frames_since_wife_kill: u64 = 0;
 
+                var player_is_dead: bool = false;
+                var player_dead_frames: u32 = 0;
+
                 // TODO: pause
                 while (!rl.windowShouldClose()) {
                     tracy.FrameMark();
@@ -884,7 +894,7 @@ pub fn main() anyerror!void {
                     const mouse_pos = rl.getMousePosition();
 
                     if (frames_since_wife_kill >= frames_after_wife_kill_to_victory_state) {
-                        current_state = .victory_screen;
+                        current_state = LoopStateUnion{ .end_screen = .victory };
                         continue :outer_loop;
                     }
                     if (the_wife_kill_count >= 1) {
@@ -932,6 +942,7 @@ pub fn main() anyerror!void {
                                 .rng = random,
                                 .farmer_kill_count = &farmer_kill_count,
                                 .the_wife_kill_count = &the_wife_kill_count,
+                                .player_is_dead = &player_is_dead,
                                 .cursor_position = mouse_pos,
                                 .camera_entity = camera_entity,
                                 .player_entity = player_entity,
@@ -941,6 +952,15 @@ pub fn main() anyerror!void {
 
                             // Spawn blood splatter
                             try spawnBloodSplatter(&storage, sound_repo, random);
+
+                            if (player_is_dead) {
+                                player_dead_frames += 1;
+
+                                if (player_dead_frames >= frames_after_player_dead_to_death_state) {
+                                    current_state = LoopStateUnion{ .end_screen = .dead };
+                                    continue :outer_loop;
+                                }
+                            }
                         }
                     }
 
@@ -1578,12 +1598,15 @@ pub fn main() anyerror!void {
                 }
                 break;
             },
-            .victory_screen => {
+            .end_screen => |end_type| {
                 const load_assets_zone = tracy.ZoneN(@src(), "main menu load assets and init");
-                const image = rl.loadImage("resources/textures/victory_screen/Victory_Screen.png");
+                const image = switch (end_type) {
+                    EndScreen.victory => rl.loadImage("resources/textures/end_screen/victory_Screen.png"),
+                    EndScreen.dead => rl.loadImage("resources/textures/end_screen/dead_screen.png"),
+                };
                 defer rl.unloadImage(image);
-                const victory_texture = rl.loadTextureFromImage(image);
-                defer rl.unloadTexture(victory_texture);
+                const end_texture = rl.loadTextureFromImage(image);
+                defer rl.unloadTexture(end_texture);
 
                 load_assets_zone.End();
                 const main_menu_texture_repo = MainTextureRepo.init();
@@ -1613,11 +1636,11 @@ pub fn main() anyerror!void {
                             const rect_texture = rl.Rectangle{
                                 .x = 0,
                                 .y = 0,
-                                .height = @floatFromInt(victory_texture.height),
-                                .width = @floatFromInt(victory_texture.width),
+                                .height = @floatFromInt(end_texture.height),
+                                .width = @floatFromInt(end_texture.width),
                             };
 
-                            rl.drawTexturePro(victory_texture, rect_texture, rect_render_target, center, 0, rl.Color.white);
+                            rl.drawTexturePro(end_texture, rect_texture, rect_render_target, center, 0, rl.Color.white);
                         }
                     }
                     // Draw buttons

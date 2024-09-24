@@ -18,6 +18,7 @@ pub fn CreateUpdateSystems(Storage: type) type {
             // TODO: make atomic
             farmer_kill_count: *u64,
             the_wife_kill_count: *u64,
+            player_is_dead: *bool,
             cursor_position: rl.Vector2,
             camera_entity: ecez.Entity,
             player_entity: ecez.Entity,
@@ -395,6 +396,10 @@ pub fn CreateUpdateSystems(Storage: type) type {
                         components.InactiveTag{},
                         components.DiedThisFrameTag{},
                     }) catch @panic("registerDead: oom");
+
+                    if (item.entity.id == context.player_entity.id) {
+                        context.player_is_dead.* = true;
+                    }
                 }
             }
         }
