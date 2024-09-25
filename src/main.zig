@@ -76,7 +76,7 @@ pub fn main() anyerror!void {
     // Initialize window
     const window_width, const window_height = window_init: {
         // init window and gl
-        rl.initWindow(0, 0, "raylib [texture] example - sprite anim");
+        rl.initWindow(0, 0, "Wizard rampage");
 
         const width = rl.getScreenWidth();
         const height = rl.getScreenHeight();
