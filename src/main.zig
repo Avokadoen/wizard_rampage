@@ -18,32 +18,35 @@ const arena_width = 3000;
 
 const Storage = ecez.CreateStorage(components.all);
 
-const UpdateSystems = systems.CreateUpdateSystems(Storage);
+const Combat = systems.combat.Create(Storage);
+const Inherent = systems.inherent.Create(Storage);
+const Misc = systems.misc.Create(Storage);
+const Physics = systems.physics.Create(Storage);
 
 const Scheduler = ecez.CreateScheduler(
     .{
         ecez.Event("game_update", .{
-            UpdateSystems.targetPlayerOrFlee,
-            UpdateSystems.tickAttackRate,
-            UpdateSystems.lifeTime,
-            UpdateSystems.updateVelocityBasedMoveDir,
-            UpdateSystems.updatePositionBasedOnVelocity,
-            UpdateSystems.updateVelocityBasedOnDrag,
-            UpdateSystems.rotateAfterVelocity,
-            UpdateSystems.movableToImmovableRecToRecCollisionResolve,
-            UpdateSystems.movableToMovableRecToRecCollisionResolve,
-            UpdateSystems.inherentParentVelocity,
-            UpdateSystems.inherentParentPosition,
-            UpdateSystems.inherentParentScale,
-            UpdateSystems.inherentInactiveFromParent,
-            UpdateSystems.inherentActiveFromParent,
-            UpdateSystems.projectileHitKillable,
-            UpdateSystems.hostileMeleePlayer,
-            UpdateSystems.registerDead,
-            UpdateSystems.updateCamera,
-            UpdateSystems.orientTexture,
-            UpdateSystems.animateTexture,
-            UpdateSystems.orientationBasedDrawOrder,
+            Combat.targetPlayerOrFlee,
+            Combat.tickAttackRate,
+            Misc.lifeTime,
+            Physics.updateVelocityBasedMoveDir,
+            Physics.updatePositionBasedOnVelocity,
+            Physics.updateVelocityBasedOnDrag,
+            Physics.rotateAfterVelocity,
+            Physics.movableToImmovableRecToRecCollisionResolve,
+            Physics.movableToMovableRecToRecCollisionResolve,
+            Inherent.velocity,
+            Inherent.position,
+            Inherent.scale,
+            Inherent.inactive,
+            Inherent.active,
+            Combat.projectileHitKillable,
+            Combat.hostileMeleePlayer,
+            Combat.registerDead,
+            Misc.updateCamera,
+            Misc.orientTexture,
+            Misc.animateTexture,
+            Misc.orientationBasedDrawOrder,
         }),
     },
 );
@@ -937,7 +940,7 @@ pub fn main() anyerror!void {
                             }
 
                             // system update dispatch
-                            const update_context = UpdateSystems.Context{
+                            const update_context = systems.Context{
                                 .sound_repo = &sound_repo.effects,
                                 .rng = random,
                                 .farmer_kill_count = &farmer_kill_count,
