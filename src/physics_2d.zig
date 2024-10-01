@@ -1,12 +1,11 @@
 const std = @import("std");
-
-const zm = @import("zmath");
+const rl = @import("raylib");
 
 const components = @import("components.zig");
 
 pub const Intersection = struct {
     // FP correction, nudge any resolve by some factor to ensure collision is resolved
-    const nudge = @as(zm.Vec, @splat(1.1));
+    const nudge = rl.Vector2.init(1.1, 1.1);
 
     pub fn rectAndRect(
         a: components.RectangleCollider,
@@ -15,23 +14,21 @@ pub const Intersection = struct {
         b_pos: components.Position,
     ) bool {
         const a_lower, const a_higher = find_a_low_high_blk: {
-            const origin_dist = zm.f32x4(a.width, a.height, 0, 0);
             const lower = a_pos.vec;
-            const higher = a_pos.vec + origin_dist;
+            const higher = a_pos.vec.add(a.dim);
             break :find_a_low_high_blk .{ lower, higher };
         };
 
         const b_lower, const b_higher = find_b_low_high_blk: {
-            const origin_dist = zm.f32x4(b.width, b.height, 0, 0);
             const lower = b_pos.vec;
-            const higher = b_pos.vec + origin_dist;
+            const higher = b_pos.vec.add(b.dim);
             break :find_b_low_high_blk .{ lower, higher };
         };
 
-        const min_higher = @min(a_higher, b_higher);
-        const max_lower = @max(a_lower, b_lower);
+        const min_higher = a_higher.min(b_higher);
+        const max_lower = a_lower.max(b_lower);
 
-        return min_higher[0] >= max_lower[0] and min_higher[1] >= max_lower[1];
+        return min_higher.x >= max_lower.x and min_higher.y >= max_lower.y;
     }
 
     pub fn rectAndRectResolve(
@@ -39,33 +36,31 @@ pub const Intersection = struct {
         a_pos: components.Position,
         b: components.RectangleCollider,
         b_pos: components.Position,
-    ) ?zm.Vec {
+    ) ?rl.Vector2 {
         const a_lower, const a_higher = find_a_low_high_blk: {
-            const origin_dist = zm.f32x4(a.width, a.height, 0, 0);
             const lower = a_pos.vec;
-            const higher = a_pos.vec + origin_dist;
+            const higher = a_pos.vec.add(a.dim);
             break :find_a_low_high_blk .{ lower, higher };
         };
 
         const b_lower, const b_higher = find_b_low_high_blk: {
-            const origin_dist = zm.f32x4(b.width, b.height, 0, 0);
             const lower = b_pos.vec;
-            const higher = b_pos.vec + origin_dist;
+            const higher = b_pos.vec.add(b.dim);
             break :find_b_low_high_blk .{ lower, higher };
         };
 
-        const min_higher = @min(a_higher, b_higher);
-        const max_lower = @max(a_lower, b_lower);
+        const min_higher = a_higher.min(b_higher);
+        const max_lower = a_lower.max(b_lower);
 
-        const is_intersection_rectangle = min_higher[0] > max_lower[0] and min_higher[1] > max_lower[1];
+        const is_intersection_rectangle = min_higher.x > max_lower.x and min_higher.y > max_lower.y;
         if (is_intersection_rectangle) {
-            const resolve_vector = (max_lower - min_higher) * nudge;
-            const abs_resolve = @abs(resolve_vector);
+            const resolve_vector = max_lower.subtract(min_higher).multiply(nudge);
+            const abs_resolve = rl.Vector2.init(@abs(resolve_vector.x), @abs(resolve_vector.y));
 
-            if (abs_resolve[0] < abs_resolve[1]) {
-                return zm.f32x4(if (a_pos.vec[0] < b_pos.vec[0]) resolve_vector[0] else -resolve_vector[0], 0, 0, 0);
+            if (abs_resolve.x < abs_resolve.y) {
+                return rl.Vector2.init(if (a_pos.vec.x < b_pos.vec.x) resolve_vector.x else -resolve_vector.x, 0);
             } else {
-                return zm.f32x4(0, if (a_pos.vec[1] < b_pos.vec[1]) resolve_vector[1] else -resolve_vector[1], 0, 0);
+                return rl.Vector2.init(0, if (a_pos.vec.y < b_pos.vec.y) resolve_vector.y else -resolve_vector.y);
             }
         } else return null;
     }
@@ -77,14 +72,13 @@ pub const Intersection = struct {
         rect: components.RectangleCollider,
         rect_pos: components.Position,
     ) bool {
-        const origin_dist = zm.f32x4(rect.width, rect.height, 0, 0);
         const lower = rect_pos.vec;
-        const higher = rect_pos.vec + origin_dist;
+        const higher = rect_pos.vec.add(rect.dim);
 
-        const closest = zm.clamp(circle_pos.vec, lower, higher);
-        const distance = circle_pos.vec - closest;
+        const closest = circle_pos.vec.clamp(lower, higher);
+        const distance = circle_pos.vec.subtract(closest);
 
-        return zm.length2(distance)[0] < circle.radius;
+        return distance.length() < circle.radius;
     }
 
     pub fn circleAndRectResolve(
@@ -92,21 +86,24 @@ pub const Intersection = struct {
         circle_pos: components.Position,
         rect: components.RectangleCollider,
         rect_pos: components.Position,
-    ) ?zm.Vec {
-        const origin_dist = zm.f32x4(rect.width, rect.height, 0, 0);
+    ) ?rl.Vector2 {
         const lower = rect_pos.vec;
-        const higher = rect_pos.vec + origin_dist;
+        const higher = rect_pos.vec.add(rect.dim);
 
-        const closest = zm.clamp(circle_pos.vec, lower, higher);
-        const distance = circle_pos.vec - closest;
-        const distance_length = zm.length2(distance)[0];
+        const closest = circle_pos.vec.clamp(lower, higher);
+        const distance = circle_pos.vec.subtract(closest);
+        const distance_length = distance.length();
 
         // if circle point is inside rectangle, missing handling as distance vector will be (0,0)
         std.debug.assert(distance_length != 0);
 
-        if (distance_length < circle.radius) {
-            return (zm.normalize3(distance) * @as(zm.Vec, @splat(circle.radius - distance_length))) * nudge;
-        } else return null;
+        if (distance_length >= circle.radius) {
+            return null;
+        }
+
+        const resolve_dist = (circle.radius - distance_length) * nudge.x;
+        const resolve_vec = rl.Vector2.init(resolve_dist, resolve_dist);
+        return distance.normalize().multiply(resolve_vec);
     }
 
     pub fn circleAndCircle(
@@ -115,7 +112,7 @@ pub const Intersection = struct {
         b: components.CircleCollider,
         b_pos: components.Position,
     ) bool {
-        const distance = zm.length2(b_pos.vec - a_pos.vec)[0];
+        const distance = b_pos.vec.subtract(a_pos.vec).length();
         return distance < (b.radius + a.radius);
     }
 
@@ -124,39 +121,41 @@ pub const Intersection = struct {
         a_pos: components.Position,
         b: components.CircleCollider,
         b_pos: components.Position,
-    ) ?zm.Vec {
-        const from_a_to_b = b_pos.vec - a_pos.vec;
-        const distance = zm.length2(from_a_to_b)[0];
+    ) ?rl.Vector2 {
+        const from_a_to_b = b_pos.vec.subtract(a_pos.vec);
+        const distance = from_a_to_b.length();
 
         if (distance < b.radius + a.radius) {
-            return zm.normalize3(from_a_to_b) * @as(zm.Vec, @splat(b.radius + a.radius - distance)) * nudge;
+            const resolve_dist = (b.radius + a.radius - distance) * nudge.x;
+            const resolve_vec = rl.Vector2.init(resolve_dist, resolve_dist);
+            return from_a_to_b.normalize().multiply(resolve_vec);
         } else return null;
     }
 };
 
 test "rectAndRectResolve detect simple case" {
-    const a = components.RectangleCollider{
-        .width = 2,
-        .height = 2,
-    };
+    const a = components.RectangleCollider{ .dim = rl.Vector2{
+        .x = 2,
+        .y = 2,
+    } };
     const a_pos = components.Position{
-        .vec = zm.f32x4(-1, 0, 0, 0),
+        .vec = rl.Vector2.init(-1, 0),
     };
 
-    const b = components.RectangleCollider{
-        .width = 2,
-        .height = 2,
-    };
+    const b = components.RectangleCollider{ .dim = rl.Vector2{
+        .x = 2,
+        .y = 2,
+    } };
     const b_pos = components.Position{
-        .vec = zm.f32x4(0.95, -1, 0, 0),
+        .vec = rl.Vector2.init(0.95, -1),
     };
 
     try std.testing.expect(Intersection.rectAndRect(a, a_pos, b, b_pos));
 
     const intersection = try (Intersection.rectAndRectResolve(a, a_pos, b, b_pos) orelse error.MissingIntersection);
-    try std.testing.expect(intersection[0] <= -0.05);
-    try std.testing.expect(intersection[0] > -0.06);
-    try std.testing.expectEqual(intersection[1], 0);
+    try std.testing.expect(intersection.x <= -0.05);
+    try std.testing.expect(intersection.x > -0.06);
+    try std.testing.expectEqual(intersection.y, 0);
 }
 
 test "circleAndRect detect simple case" {
@@ -166,23 +165,23 @@ test "circleAndRect detect simple case" {
         .radius = 1,
     };
     const circle_pos = components.Position{
-        .vec = zm.f32x4(2.25, 0, 0, 0),
+        .vec = rl.Vector2.init(2.25, 0),
     };
 
-    const rect = components.RectangleCollider{
-        .width = 2,
-        .height = 2,
-    };
+    const rect = components.RectangleCollider{ .dim = rl.Vector2{
+        .x = 2,
+        .y = 2,
+    } };
     const rect_pos = components.Position{
-        .vec = zm.f32x4(0, 0, 0, 0),
+        .vec = rl.Vector2.init(0, 0),
     };
 
     try std.testing.expect(Intersection.circleAndRect(circle, circle_pos, rect, rect_pos));
 
     const intersection = try (Intersection.circleAndRectResolve(circle, circle_pos, rect, rect_pos) orelse error.MissingIntersection);
-    try std.testing.expect(intersection[0] >= 0.825);
-    try std.testing.expect(intersection[0] < 0.9);
-    try std.testing.expectEqual(intersection[1], 0);
+    try std.testing.expect(intersection.x >= 0.825);
+    try std.testing.expect(intersection.x < 0.9);
+    try std.testing.expectEqual(intersection.y, 0);
 }
 
 test "circleAndCircleResolve detect simple case" {
@@ -192,7 +191,7 @@ test "circleAndCircleResolve detect simple case" {
         .radius = 1,
     };
     const a_pos = components.Position{
-        .vec = zm.f32x4(1, 0, 0, 0),
+        .vec = rl.Vector2.init(1, 0),
     };
 
     const b = components.CircleCollider{
@@ -201,14 +200,14 @@ test "circleAndCircleResolve detect simple case" {
         .radius = 1,
     };
     const b_pos = components.Position{
-        .vec = zm.f32x4(2, 0, 0, 0),
+        .vec = rl.Vector2.init(2, 0),
     };
 
     try std.testing.expect(Intersection.circleAndCircle(a, a_pos, b, b_pos));
 
     const intersection = try (Intersection.circleAndCircleResolve(a, a_pos, b, b_pos) orelse error.MissingIntersection);
     _ = intersection; // autofix
-    // try std.testing.expect(intersection[0] <= -1);
-    // try std.testing.expect(intersection[0] > -1.2);
-    // try std.testing.expectEqual(intersection[1], 0);
+    // try std.testing.expect(intersection.x <= -1);
+    // try std.testing.expect(intersection.x > -1.2);
+    // try std.testing.expectEqual(intersection.y, 0);
 }

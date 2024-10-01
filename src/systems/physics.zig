@@ -1,6 +1,6 @@
 const std = @import("std");
 const tracy = @import("ztracy");
-const zm = @import("zmath");
+const rl = @import("raylib");
 
 const physics = @import("../physics_2d.zig");
 const components = @import("../components.zig");
@@ -49,9 +49,8 @@ pub fn Create(Storage: type) type {
                     );
                     if (maybe_collision) |collision| {
                         // TODO: reflect
-                        movable.vel.vec += collision;
-
-                        movable.pos.vec += collision;
+                        movable.vel.vec = movable.vel.vec.add(collision);
+                        movable.pos.vec = movable.pos.vec.add(collision);
                     }
                 }
             }
@@ -81,13 +80,13 @@ pub fn Create(Storage: type) type {
                         other.pos.*,
                     );
                     if (maybe_collision) |collision| {
-                        const half_col = collision * @as(@TypeOf(collision), @splat(0.5));
+                        const half_col = collision.multiply(rl.Vector2.init(0.5, 0.5));
                         // TODO: reflect
-                        this.vel.vec += half_col;
-                        this.pos.vec += half_col;
+                        this.vel.vec = this.vel.vec.add(half_col);
+                        this.pos.vec = this.pos.vec.add(half_col);
 
-                        other.vel.vec -= half_col;
-                        other.pos.vec -= half_col;
+                        other.vel.vec = other.vel.vec.subtract(half_col);
+                        other.pos.vec = other.pos.vec.subtract(half_col);
                     }
                 }
             }
@@ -106,8 +105,8 @@ pub fn Create(Storage: type) type {
 
             while (rot_vel_iter.next()) |item| {
                 item.rot.value = std.math.radiansToDegrees(std.math.atan2(
-                    item.vel.vec[1],
-                    item.vel.vec[0],
+                    item.vel.vec.y,
+                    item.vel.vec.x,
                 ));
             }
         }
@@ -125,13 +124,13 @@ pub fn Create(Storage: type) type {
             defer zone.End();
 
             while (update_vel.next()) |item| {
-                const vel_dir = zm.normalize2(item.vel.vec);
+                const vel_dir = item.vel.vec.normalize();
                 // if max speed has been reached or npc want to move in another direction
-                if (zm.length2(item.vel.vec)[0] < item.move_speed.max or zm.dot2(item.move_dir.vec, vel_dir)[0] < 0.6) {
-                    item.vel.vec += item.move_dir.vec * @as(zm.Vec, @splat(item.move_speed.accelerate));
+                if (item.vel.vec.length() < item.move_speed.max or item.move_dir.vec.dotProduct(vel_dir) < 0.6) {
+                    item.vel.vec = item.vel.vec.add(item.move_dir.vec.multiply(rl.Vector2.init(item.move_speed.accelerate, item.move_speed.accelerate)));
                 }
 
-                item.move_dir.vec = zm.f32x4s(0);
+                item.move_dir.vec = rl.Vector2.zero();
             }
         }
 
@@ -146,8 +145,9 @@ pub fn Create(Storage: type) type {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
+            const dt = rl.Vector2.init(Context.delta_time, Context.delta_time);
             while (update_pos.next()) |item| {
-                item.pos.vec += item.vel.vec * @as(zm.Vec, @splat(Context.delta_time));
+                item.pos.vec = item.pos.vec.add(item.vel.vec.multiply(dt));
             }
         }
 
@@ -163,7 +163,8 @@ pub fn Create(Storage: type) type {
             defer zone.End();
 
             while (update_vel.next()) |item| {
-                item.vel.vec = item.vel.vec * @as(zm.Vec, @splat(item.drag.value));
+                const drag = rl.Vector2.init(item.drag.value, item.drag.value);
+                item.vel.vec = item.vel.vec.multiply(drag);
             }
         }
     };

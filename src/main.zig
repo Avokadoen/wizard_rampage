@@ -1,6 +1,5 @@
 const std = @import("std");
 const rl = @import("raylib");
-const zm = @import("zmath");
 const ecez = @import("ecez");
 
 const input = @import("input.zig");
@@ -43,7 +42,7 @@ const Scheduler = ecez.CreateScheduler(
             Combat.projectileHitKillable,
             Combat.hostileMeleePlayer,
             Combat.registerDead,
-            Misc.updateCamera,
+            Misc.cameraFollowPlayer,
             Misc.orientTexture,
             Misc.animateTexture,
             Misc.orientationBasedDrawOrder,
@@ -54,11 +53,18 @@ const Scheduler = ecez.CreateScheduler(
 const Input = input.CreateInput(Storage);
 
 // Some hard-coded values for now! :D
-const player_scale: f32 = 0.4;
-const player_hit_box_width = @as(f32, @floatFromInt(65)) * player_scale;
-const player_hit_box_height = @as(f32, @floatFromInt(70)) * player_scale;
-const player_part_offset_x = -player_hit_box_width * 1.4;
-const player_part_offset_y = -player_hit_box_height * 1.6;
+const player_scale = rl.Vector2{
+    .x = 0.4,
+    .y = 0.4,
+};
+const player_hit_box = rl.Vector2{
+    .x = @as(f32, @floatFromInt(65)) * player_scale.x,
+    .y = @as(f32, @floatFromInt(70)) * player_scale.y,
+};
+const player_part_offset = rl.Vector2{
+    .x = -player_hit_box.x * 1.4,
+    .y = -player_hit_box.y * 1.6,
+};
 
 const max_farmers: u16 = 400;
 const farmer_spawn_timer: u64 = 10;
@@ -354,11 +360,9 @@ pub fn main() anyerror!void {
                 var scheduler = try Scheduler.init(allocator, .{});
                 defer scheduler.deinit();
 
-                const room_center = zm.f32x4(
+                const room_center = rl.Vector2.init(
                     window_width * @as(f32, 0.5),
                     window_width * @as(f32, 0.5),
-                    0,
-                    0,
                 );
 
                 // Create camera
@@ -370,15 +374,12 @@ pub fn main() anyerror!void {
                     };
 
                     break :create_camera_blk storage.createEntity(Camera{
-                        .pos = components.Position{ .vec = zm.f32x4s(0) },
-                        .scale = components.Scale{
-                            .x = 2,
-                            .y = 2,
-                        },
-                        .camera = components.Camera{
-                            .width = window_width,
-                            .height = window_height,
-                        },
+                        .pos = components.Position{ .vec = rl.Vector2.zero() },
+                        .scale = components.Scale{ .vec = rl.Vector2.init(2, 2) },
+                        .camera = components.Camera{ .resolution = rl.Vector2{
+                            .x = window_width,
+                            .y = window_height,
+                        } },
                     });
                 };
 
@@ -399,20 +400,15 @@ pub fn main() anyerror!void {
                     while (i < arena_width) : (i += hor_fence_width) {
                         // South
                         _ = try storage.createEntity(LevelBoundary{
-                            .pos = components.Position{ .vec = zm.f32x4(
+                            .pos = components.Position{ .vec = rl.Vector2.init(
                                 @floatFromInt(i),
                                 arena_height - room_boundary_thickness,
-                                0,
-                                0,
                             ) },
-                            .scale = components.Scale{
-                                .x = 1,
-                                .y = 1,
-                            },
-                            .collider = components.RectangleCollider{
-                                .width = @floatFromInt(hor_fence_width),
-                                .height = @floatFromInt(hor_fence_height),
-                            },
+                            .scale = components.Scale{ .vec = rl.Vector2.init(1, 1) },
+                            .collider = components.RectangleCollider{ .dim = .{
+                                .x = @floatFromInt(hor_fence_width),
+                                .y = @floatFromInt(hor_fence_height),
+                            } },
                             .texture = components.Texture{
                                 .draw_order = .o1,
                                 .type = @intFromEnum(GameTextureRepo.texture_type.country),
@@ -421,20 +417,15 @@ pub fn main() anyerror!void {
                         });
                         // North
                         _ = try storage.createEntity(LevelBoundary{
-                            .pos = components.Position{ .vec = zm.f32x4(
+                            .pos = components.Position{ .vec = rl.Vector2.init(
                                 @floatFromInt(i),
                                 0,
-                                0,
-                                0,
                             ) },
-                            .scale = components.Scale{
-                                .x = 1,
-                                .y = 1,
-                            },
-                            .collider = components.RectangleCollider{
-                                .width = @floatFromInt(hor_fence_width),
-                                .height = @floatFromInt(hor_fence_height),
-                            },
+                            .scale = components.Scale{ .vec = rl.Vector2.init(1, 1) },
+                            .collider = components.RectangleCollider{ .dim = .{
+                                .x = @floatFromInt(hor_fence_width),
+                                .y = @floatFromInt(hor_fence_height),
+                            } },
                             .texture = components.Texture{
                                 .draw_order = .o1,
                                 .type = @intFromEnum(GameTextureRepo.texture_type.country),
@@ -449,20 +440,17 @@ pub fn main() anyerror!void {
                     while (i < arena_width - vert_fence_height) : (i += vert_fence_height) {
                         // West
                         _ = try storage.createEntity(LevelBoundary{
-                            .pos = components.Position{ .vec = zm.f32x4(
+                            .pos = components.Position{ .vec = rl.Vector2.init(
                                 0,
                                 @floatFromInt(i),
-                                0,
-                                0,
                             ) },
                             .scale = components.Scale{
-                                .x = 1,
-                                .y = 1,
+                                .vec = rl.Vector2.init(1, 1),
                             },
-                            .collider = components.RectangleCollider{
-                                .width = @floatFromInt(vert_fence_width),
-                                .height = @floatFromInt(vert_fence_height),
-                            },
+                            .collider = components.RectangleCollider{ .dim = .{
+                                .x = @floatFromInt(vert_fence_width),
+                                .y = @floatFromInt(vert_fence_height),
+                            } },
                             .texture = components.Texture{
                                 .draw_order = .o1,
                                 .type = @intFromEnum(GameTextureRepo.texture_type.country),
@@ -471,20 +459,17 @@ pub fn main() anyerror!void {
                         });
                         // East
                         _ = try storage.createEntity(LevelBoundary{
-                            .pos = components.Position{ .vec = zm.f32x4(
+                            .pos = components.Position{ .vec = rl.Vector2.init(
                                 arena_width,
                                 @floatFromInt(i),
-                                0,
-                                0,
                             ) },
                             .scale = components.Scale{
-                                .x = 1,
-                                .y = 1,
+                                .vec = rl.Vector2.init(1, 1),
                             },
-                            .collider = components.RectangleCollider{
-                                .width = @floatFromInt(vert_fence_width),
-                                .height = @floatFromInt(vert_fence_height),
-                            },
+                            .collider = components.RectangleCollider{ .dim = .{
+                                .x = @floatFromInt(vert_fence_width),
+                                .y = @floatFromInt(vert_fence_height),
+                            } },
                             .texture = components.Texture{
                                 .draw_order = .o1,
                                 .type = @intFromEnum(GameTextureRepo.texture_type.country),
@@ -504,15 +489,15 @@ pub fn main() anyerror!void {
                         const pos_x = -arena_width * 0.5 + random.float(f32) * arena_width * 1.5;
                         const pos_y = -arena_height * 0.5 + random.float(f32) * arena_height * 1.5;
                         _ = try storage.createEntity(GroundClutter{
-                            .pos = components.Position{ .vec = zm.f32x4(
+                            .pos = components.Position{ .vec = rl.Vector2.init(
                                 pos_x,
                                 pos_y,
-                                0,
-                                0,
                             ) },
                             .scale = components.Scale{
-                                .x = 4 + random.float(f32) * 2,
-                                .y = 4 + random.float(f32) * 2,
+                                .vec = rl.Vector2.init(
+                                    4 + random.float(f32) * 2,
+                                    4 + random.float(f32) * 2,
+                                ),
                             },
                             .texture = components.Texture{
                                 .draw_order = .o0,
@@ -526,15 +511,15 @@ pub fn main() anyerror!void {
                         const pos_y = -arena_height * 0.5 + random.float(f32) * arena_height * 1.5;
 
                         _ = try storage.createEntity(GroundClutter{
-                            .pos = components.Position{ .vec = zm.f32x4(
+                            .pos = components.Position{ .vec = rl.Vector2.init(
                                 pos_x,
                                 pos_y,
-                                0,
-                                0,
                             ) },
                             .scale = components.Scale{
-                                .x = 1 + random.float(f32),
-                                .y = 1 + random.float(f32),
+                                .vec = rl.Vector2.init(
+                                    1 + random.float(f32),
+                                    1 + random.float(f32),
+                                ),
                             },
                             .texture = components.Texture{
                                 .draw_order = .o0,
@@ -548,16 +533,14 @@ pub fn main() anyerror!void {
                         const pos_y = random.float(f32) * arena_height * 1.5;
                         const texture = if (random.boolean()) @intFromEnum(GameTextureRepo.which_decor.Daisies) else @intFromEnum(GameTextureRepo.which_decor.Rocks);
                         _ = try storage.createEntity(GroundClutter{
-                            .pos = components.Position{ .vec = zm.f32x4(
+                            .pos = components.Position{ .vec = rl.Vector2.init(
                                 pos_x,
                                 pos_y,
-                                0,
-                                0,
                             ) },
-                            .scale = components.Scale{
+                            .scale = components.Scale{ .vec = rl.Vector2{
                                 .x = 0.1 + random.float(f32),
                                 .y = 0.1 + random.float(f32),
-                            },
+                            } },
                             .texture = components.Texture{
                                 .draw_order = .o0,
                                 .type = @intFromEnum(GameTextureRepo.texture_type.decor),
@@ -583,18 +566,14 @@ pub fn main() anyerror!void {
                     };
 
                     const player = try storage.createEntity(Player{
-                        .pos = components.Position{ .vec = zm.f32x4(
-                            room_center[0] - player_hit_box_width,
-                            room_center[1] - player_hit_box_height,
-                            0,
-                            0,
-                        ) },
+                        .pos = components.Position{
+                            .vec = room_center.subtract(player_hit_box),
+                        },
                         .scale = components.Scale{
-                            .x = player_scale,
-                            .y = player_scale,
+                            .vec = player_scale,
                         },
                         .vel = components.Velocity{
-                            .vec = zm.f32x4s(0),
+                            .vec = rl.Vector2.zero(),
                         },
                         .drag = components.Drag{ .value = 0.8 },
                         .mv_speed = components.MoveSpeed{
@@ -603,11 +582,10 @@ pub fn main() anyerror!void {
                             .accelerate = 100,
                         },
                         .move_dir = components.DesiredMovedDir{
-                            .vec = zm.f32x4s(0),
+                            .vec = rl.Vector2.zero(),
                         },
                         .col = components.RectangleCollider{
-                            .width = player_hit_box_width,
-                            .height = player_hit_box_height,
+                            .dim = player_hit_box,
                         },
                         .rec_tag = components.DrawRectangleTag{},
                         .player_tag = components.PlayerTag{},
@@ -633,13 +611,10 @@ pub fn main() anyerror!void {
                     };
                     // Cloak
                     _ = try storage.createEntity(PlayerParts{
-                        .pos = components.Position{ .vec = zm.f32x4s(0) },
-                        .scale = components.Scale{
-                            .x = player_scale,
-                            .y = player_scale,
-                        },
+                        .pos = components.Position{ .vec = rl.Vector2.zero() },
+                        .scale = components.Scale{ .vec = player_scale },
                         .vel = components.Velocity{
-                            .vec = zm.f32x4s(0),
+                            .vec = rl.Vector2.zero(),
                         },
                         .texture = components.Texture{
                             .type = @intFromEnum(GameTextureRepo.texture_type.player),
@@ -651,19 +626,15 @@ pub fn main() anyerror!void {
                         },
                         .child_of = components.ChildOf{
                             .parent = player,
-                            .offset_x = player_part_offset_x,
-                            .offset_y = player_part_offset_y,
+                            .offset = player_part_offset,
                         },
                     });
                     // Head
                     _ = try storage.createEntity(PlayerParts{
-                        .pos = components.Position{ .vec = zm.f32x4s(0) },
-                        .scale = components.Scale{
-                            .x = player_scale,
-                            .y = player_scale,
-                        },
+                        .pos = components.Position{ .vec = rl.Vector2.zero() },
+                        .scale = components.Scale{ .vec = player_scale },
                         .vel = components.Velocity{
-                            .vec = zm.f32x4s(0),
+                            .vec = rl.Vector2.zero(),
                         },
                         .texture = components.Texture{
                             .type = @intFromEnum(GameTextureRepo.texture_type.player),
@@ -675,19 +646,15 @@ pub fn main() anyerror!void {
                         },
                         .child_of = components.ChildOf{
                             .parent = player,
-                            .offset_x = player_part_offset_x,
-                            .offset_y = player_part_offset_y,
+                            .offset = player_part_offset,
                         },
                     });
                     // Hat
                     _ = try storage.createEntity(PlayerParts{
-                        .pos = components.Position{ .vec = zm.f32x4s(0) },
-                        .scale = components.Scale{
-                            .x = player_scale,
-                            .y = player_scale,
-                        },
+                        .pos = components.Position{ .vec = rl.Vector2.zero() },
+                        .scale = components.Scale{ .vec = player_scale },
                         .vel = components.Velocity{
-                            .vec = zm.f32x4s(0),
+                            .vec = rl.Vector2.zero(),
                         },
                         .texture = components.Texture{
                             .type = @intFromEnum(GameTextureRepo.texture_type.player),
@@ -699,8 +666,7 @@ pub fn main() anyerror!void {
                         },
                         .child_of = components.ChildOf{
                             .parent = player,
-                            .offset_x = player_part_offset_x,
-                            .offset_y = player_part_offset_y,
+                            .offset = player_part_offset,
                         },
                     });
 
@@ -715,13 +681,10 @@ pub fn main() anyerror!void {
                     };
                     // Left hand
                     _ = try storage.createEntity(Hand{
-                        .pos = components.Position{ .vec = zm.f32x4s(0) },
-                        .scale = components.Scale{
-                            .x = player_scale,
-                            .y = player_scale,
-                        },
+                        .pos = components.Position{ .vec = rl.Vector2.zero() },
+                        .scale = components.Scale{ .vec = player_scale },
                         .vel = components.Velocity{
-                            .vec = zm.f32x4s(0),
+                            .vec = rl.Vector2.zero(),
                         },
                         .texture = components.Texture{
                             .type = @intFromEnum(GameTextureRepo.texture_type.player),
@@ -745,19 +708,15 @@ pub fn main() anyerror!void {
                         },
                         .child_of = components.ChildOf{
                             .parent = player,
-                            .offset_x = player_part_offset_x,
-                            .offset_y = player_part_offset_y,
+                            .offset = player_part_offset,
                         },
                     });
                     // Right hand
                     _ = try storage.createEntity(Hand{
-                        .pos = components.Position{ .vec = zm.f32x4s(0) },
-                        .scale = components.Scale{
-                            .x = player_scale,
-                            .y = player_scale,
-                        },
+                        .pos = components.Position{ .vec = rl.Vector2.zero() },
+                        .scale = components.Scale{ .vec = player_scale },
                         .vel = components.Velocity{
-                            .vec = zm.f32x4s(0),
+                            .vec = rl.Vector2.zero(),
                         },
                         .texture = components.Texture{
                             .type = @intFromEnum(GameTextureRepo.texture_type.player),
@@ -781,8 +740,7 @@ pub fn main() anyerror!void {
                         },
                         .child_of = components.ChildOf{
                             .parent = player,
-                            .offset_x = player_part_offset_x,
-                            .offset_y = player_part_offset_y,
+                            .offset = player_part_offset,
                         },
                     });
 
@@ -802,38 +760,39 @@ pub fn main() anyerror!void {
                         staff: components.Staff,
                     };
 
-                    var staff = components.Staff{
-                        .slot_capacity = 8,
-                        .used_slots = 4,
-                        .slot_cursor = 0,
-                        .slots = undefined,
+                    const staff = comptime init_staff_blk: {
+                        var stf = components.Staff{
+                            .slot_capacity = 8,
+                            .used_slots = 4,
+                            .slot_cursor = 0,
+                            .slots = undefined,
+                        };
+
+                        stf.slots[0] = components.Staff.Slot{ .projectile = .{
+                            .type = .bolt,
+                            .attrs = .{
+                                .dmg = 15,
+                                .weight = 300,
+                            },
+                        } };
+                        stf.slots[1] = components.Staff.Slot{ .modifier = .dmg_amp };
+                        stf.slots[2] = components.Staff.Slot{ .modifier = .piercing };
+                        stf.slots[3] = components.Staff.Slot{ .projectile = .{
+                            .type = .red_gem,
+                            .attrs = .{
+                                .dmg = 30,
+                                .weight = 3000,
+                            },
+                        } };
+
+                        break :init_staff_blk stf;
                     };
 
-                    staff.slots[0] = components.Staff.Slot{ .projectile = .{
-                        .type = .bolt,
-                        .attrs = .{
-                            .dmg = 15,
-                            .weight = 300,
-                        },
-                    } };
-                    staff.slots[1] = components.Staff.Slot{ .modifier = .dmg_amp };
-                    staff.slots[2] = components.Staff.Slot{ .modifier = .piercing };
-                    staff.slots[3] = components.Staff.Slot{ .projectile = .{
-                        .type = .red_gem,
-                        .attrs = .{
-                            .dmg = 30,
-                            .weight = 3000,
-                        },
-                    } };
-
                     break :create_player_staff_blk try storage.createEntity(Staff{
-                        .pos = components.Position{ .vec = zm.f32x4s(0) },
-                        .scale = components.Scale{
-                            .x = player_scale,
-                            .y = player_scale,
-                        },
+                        .pos = components.Position{ .vec = rl.Vector2.zero() },
+                        .scale = components.Scale{ .vec = player_scale },
                         .vel = components.Velocity{
-                            .vec = zm.f32x4s(0),
+                            .vec = rl.Vector2.zero(),
                         },
                         .texture = components.Texture{
                             .type = @intFromEnum(GameTextureRepo.texture_type.player),
@@ -861,14 +820,13 @@ pub fn main() anyerror!void {
                         },
                         .child_of = components.ChildOf{
                             .parent = player_entity,
-                            .offset_x = player_part_offset_x,
-                            .offset_y = player_part_offset_y,
+                            .offset = player_part_offset,
                         },
                         .staff = staff,
                     });
                 };
 
-                // NOTE 2: Defining null for vertex shader forces usage of internal default vertex shader
+                // NOTE: Defining null for vertex shader forces usage of internal default vertex shader
                 const shader_cauldron = rl.loadShader(null, "resources/shaders/glsl330/cauldron_hp.fs");
                 defer rl.unloadShader(shader_cauldron);
 
@@ -917,15 +875,15 @@ pub fn main() anyerror!void {
 
                         if ((max_farmers > nr_farmers) and spawn_cooldown >= farmer_spawn_timer) {
                             const farmer_pos = randomPointOnCircle(arena_height / 3, rl.Vector2{ .x = arena_height / 2, .y = arena_width / 2 }, random);
-                            _ = try createFarmer(&storage, zm.f32x4(farmer_pos.x, farmer_pos.y, 0, 0), player_scale);
+                            _ = try createFarmer(&storage, farmer_pos, player_scale);
                             nr_farmers += 1;
                             spawn_cooldown = 0;
                         }
 
                         if (farmer_kill_count >= farmers_to_kill_before_wife_spawns and the_wife_spawned == false) {
                             the_wife_spawned = true;
-                            const farmer_pos = randomPointOnCircle(arena_height / 3, rl.Vector2{ .x = arena_height / 2, .y = arena_width / 2 }, random);
-                            _ = try createTheFarmersWife(&storage, zm.f32x4(farmer_pos.x, farmer_pos.y, 0, 0), player_scale);
+                            const wife_pos = randomPointOnCircle(arena_height / 3, rl.Vector2{ .x = arena_height / 2, .y = arena_width / 2 }, random);
+                            _ = try createTheFarmersWife(&storage, wife_pos, player_scale.scale(1.3));
                         }
 
                         // Update
@@ -982,12 +940,9 @@ pub fn main() anyerror!void {
                                         .x = 0,
                                         .y = 0,
                                     },
-                                    .target = rl.Vector2{
-                                        .x = camera_pos.vec[0],
-                                        .y = camera_pos.vec[1],
-                                    },
+                                    .target = camera_pos.vec,
                                     .rotation = 0,
-                                    .zoom = camera_zoom.x,
+                                    .zoom = camera_zoom.vec.x,
                                 };
                             };
 
@@ -1016,12 +971,18 @@ pub fn main() anyerror!void {
                                     pos: components.Position,
                                     texture: components.Texture,
                                 }, .{components.InactiveTag});
-
                                 inline for (@typeInfo(components.Texture.DrawOrder).Enum.fields) |order| {
                                     var texture_iter = TextureDrawQuery.submit(&storage);
 
                                     while (texture_iter.next()) |texture| {
-                                        staticTextureDraw(@enumFromInt(order.value), texture.entity, texture.pos, texture.texture, simple_texture_repo, storage);
+                                        staticTextureDraw(
+                                            @enumFromInt(order.value),
+                                            texture.entity,
+                                            texture.pos,
+                                            texture.texture,
+                                            simple_texture_repo,
+                                            storage,
+                                        );
                                     }
                                 }
                             }
@@ -1039,10 +1000,10 @@ pub fn main() anyerror!void {
                                     var rect_iter = RectangleDrawQuery.submit(&storage);
                                     while (rect_iter.next()) |rect| {
                                         const draw_rectangle = rl.Rectangle{
-                                            .x = rect.pos.vec[0],
-                                            .y = rect.pos.vec[1],
-                                            .width = rect.col.width,
-                                            .height = rect.col.height,
+                                            .x = rect.pos.vec.x,
+                                            .y = rect.pos.vec.y,
+                                            .width = rect.col.dim.x,
+                                            .height = rect.col.dim.y,
                                         };
 
                                         rl.drawRectanglePro(draw_rectangle, rl.Vector2.init(0, 0), 0, rl.Color.red);
@@ -1061,11 +1022,14 @@ pub fn main() anyerror!void {
                                     var circle_iter = CircleDrawQuery.submit(&storage);
 
                                     while (circle_iter.next()) |circle| {
-                                        const offset = zm.f32x4(@floatCast(circle.col.x), @floatCast(circle.col.y), 0, 0);
+                                        const offset = rl.Vector2{
+                                            .x = circle.col.x,
+                                            .y = @floatCast(circle.col.y),
+                                        };
 
                                         rl.drawCircle(
-                                            @intFromFloat(circle.pos.vec[0] + @as(f32, @floatCast(offset[0]))),
-                                            @intFromFloat(circle.pos.vec[1] + @as(f32, @floatCast(offset[1]))),
+                                            @intFromFloat(circle.pos.vec.x + @as(f32, @floatCast(offset.x))),
+                                            @intFromFloat(circle.pos.vec.y + @as(f32, @floatCast(offset.y))),
                                             circle.col.radius,
                                             rl.Color.blue,
                                         );
@@ -1178,8 +1142,8 @@ pub fn main() anyerror!void {
                                     };
 
                                     const pos = rl.Vector2{
-                                        .x = item.pos.vec[0],
-                                        .y = item.pos.vec[1],
+                                        .x = item.pos.vec.x,
+                                        .y = item.pos.vec.y,
                                     };
                                     rl.drawTextureRec(texture, item_rect, pos, rl.Color.white);
 
@@ -1198,8 +1162,10 @@ pub fn main() anyerror!void {
                                             const offset_x = -item_rect.width * 0.5;
                                             try storage.setComponents(item.entity, .{
                                                 components.AttachToCursor{
-                                                    .offset_x = offset_x,
-                                                    .offset_y = 0,
+                                                    .offset = rl.Vector2{
+                                                        .x = offset_x,
+                                                        .y = 0,
+                                                    },
                                                 },
                                                 components.OldSlot{ .type = .{
                                                     .inventory_pos = item.pos,
@@ -1335,13 +1301,13 @@ pub fn main() anyerror!void {
                                                     .type = .{ .staff_index = @intCast(i) },
                                                 };
                                                 unused_grabbed_item.inv_item.item = grab_item;
-                                                unused_grabbed_item.attach_to_cursor.offset_x = grab_offset_x;
+                                                unused_grabbed_item.attach_to_cursor.offset.x = grab_offset_x;
 
                                                 storage.unsetComponents(unused_grabbed_item.entity, .{components.InactiveTag});
                                             } else {
                                                 _ = try storage.createEntity(GrabbedItem{
                                                     .pos = components.Position{
-                                                        .vec = zm.f32x4s(0), // set later
+                                                        .vec = rl.Vector2.zero(), // set later
                                                     },
                                                     .old_slot = components.OldSlot{
                                                         .type = .{ .staff_index = @intCast(i) },
@@ -1349,10 +1315,10 @@ pub fn main() anyerror!void {
                                                     .inv_item = components.InventoryItem{
                                                         .item = grab_item,
                                                     },
-                                                    .attach_to_cursor = components.AttachToCursor{
-                                                        .offset_x = grab_offset_x,
-                                                        .offset_y = 0,
-                                                    },
+                                                    .attach_to_cursor = components.AttachToCursor{ .offset = rl.Vector2{
+                                                        .x = grab_offset_x,
+                                                        .y = 0,
+                                                    } },
                                                 });
                                             }
                                         }
@@ -1401,12 +1367,7 @@ pub fn main() anyerror!void {
                                 if (rl.isMouseButtonReleased(rl.MouseButton.mouse_button_left) and in_inventory) {
                                     const is_inventory_hovered = rl.checkCollisionPointRec(mouse_pos, inventory_rect);
                                     if (is_inventory_hovered) {
-                                        grabbed.pos.vec = zm.f32x4(
-                                            mouse_pos.x + grabbed.attach_to_cursor.offset_x,
-                                            mouse_pos.y + grabbed.attach_to_cursor.offset_y,
-                                            0,
-                                            0,
-                                        );
+                                        grabbed.pos.vec = mouse_pos.add(grabbed.attach_to_cursor.offset);
 
                                         storage.unsetComponents(grabbed.entity, .{
                                             components.OldSlot,
@@ -1434,8 +1395,8 @@ pub fn main() anyerror!void {
                                     }
                                 } else {
                                     const pos = rl.Vector2{
-                                        .x = mouse_pos.x + grabbed.attach_to_cursor.offset_x,
-                                        .y = mouse_pos.y + grabbed.attach_to_cursor.offset_y,
+                                        .x = mouse_pos.x + grabbed.attach_to_cursor.offset.x,
+                                        .y = mouse_pos.y + grabbed.attach_to_cursor.offset.y,
                                     };
 
                                     const gem_texture = switch (grabbed.inv_item.item) {
@@ -1580,18 +1541,13 @@ pub fn main() anyerror!void {
 
                                 var inventory_iter = InInvenventoryQuery.submit(&storage);
                                 while (inventory_iter.next()) |inv_item| {
-                                    const pos = rl.Vector2{
-                                        .x = inv_item.pos.vec[0],
-                                        .y = inv_item.pos.vec[1],
-                                    };
-
                                     var buf: [256]u8 = undefined;
                                     const txt = switch (inv_item.inv_item.item) {
                                         .projectile => |proj| try std.fmt.bufPrintZ(&buf, "{s}\nDamage: {d}\nKnockback: {d}", .{ @tagName(proj.type), proj.attrs.dmg, proj.attrs.weight }),
                                         .modifier => |mod| try std.fmt.bufPrintZ(&buf, "{s}", .{@tagName(mod)}),
                                     };
 
-                                    if (drawTooltip(texture_slot, item_rect, mouse_pos, pos, txt)) {
+                                    if (drawTooltip(texture_slot, item_rect, mouse_pos, inv_item.pos.vec, txt)) {
                                         break :draw_tooltip_blk;
                                     }
                                 }
@@ -1720,7 +1676,7 @@ pub fn main() anyerror!void {
 }
 
 // TODO: Body parts can be generic for player, farmer and wife
-fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!ecez.Entity {
+fn createFarmer(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) error{OutOfMemory}!ecez.Entity {
     const zone = tracy.ZoneN(@src(), @src().fn_name);
     defer zone.End();
 
@@ -1743,9 +1699,11 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
 
     const farmer = try storage.createEntity(Farmer{
         .pos = components.Position{ .vec = pos },
-        .scale = components.Scale{ .x = scale, .y = scale },
+        .scale = components.Scale{
+            .vec = scale,
+        },
         .vel = components.Velocity{
-            .vec = zm.f32x4s(0),
+            .vec = rl.Vector2.zero(),
         },
         .drag = components.Drag{ .value = 0.7 },
         .mv_speed = components.MoveSpeed{
@@ -1753,11 +1711,10 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
             .accelerate = 40,
         },
         .move_dir = components.DesiredMovedDir{
-            .vec = zm.f32x4s(0),
+            .vec = rl.Vector2.zero(),
         },
         .col = components.RectangleCollider{
-            .width = player_hit_box_width,
-            .height = player_hit_box_height,
+            .dim = player_hit_box,
         },
         .rec_tag = components.DrawRectangleTag{},
         .attack_rate = components.AttackRate{
@@ -1792,10 +1749,10 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
     };
     // Cloak
     _ = try storage.createEntity(FarmerParts{
-        .pos = components.Position{ .vec = zm.f32x4s(0) },
-        .scale = components.Scale{ .x = 1, .y = 1 },
+        .pos = components.Position{ .vec = rl.Vector2.zero() },
+        .scale = components.Scale{ .vec = rl.Vector2{ .x = 1, .y = 1 } },
         .vel = components.Velocity{
-            .vec = zm.f32x4s(0),
+            .vec = rl.Vector2.zero(),
         },
         .texture = components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.farmer),
@@ -1807,16 +1764,17 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
         },
         .child_of = components.ChildOf{
             .parent = farmer,
-            .offset_x = player_part_offset_x,
-            .offset_y = player_part_offset_y,
+            .offset = player_part_offset,
         },
     });
     // Head
     _ = try storage.createEntity(FarmerParts{
-        .pos = components.Position{ .vec = zm.f32x4s(0) },
-        .scale = components.Scale{ .x = 1, .y = 1 },
+        .pos = components.Position{ .vec = rl.Vector2.zero() },
+        .scale = components.Scale{
+            .vec = rl.Vector2{ .x = 1, .y = 1 },
+        },
         .vel = components.Velocity{
-            .vec = zm.f32x4s(0),
+            .vec = rl.Vector2.zero(),
         },
         .texture = components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.farmer),
@@ -1828,16 +1786,17 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
         },
         .child_of = components.ChildOf{
             .parent = farmer,
-            .offset_x = player_part_offset_x,
-            .offset_y = player_part_offset_y,
+            .offset = player_part_offset,
         },
     });
     // Hat
     _ = try storage.createEntity(FarmerParts{
-        .pos = components.Position{ .vec = zm.f32x4s(0) },
-        .scale = components.Scale{ .x = 1, .y = 1 },
+        .pos = components.Position{ .vec = rl.Vector2.zero() },
+        .scale = components.Scale{
+            .vec = rl.Vector2{ .x = 1, .y = 1 },
+        },
         .vel = components.Velocity{
-            .vec = zm.f32x4s(0),
+            .vec = rl.Vector2.zero(),
         },
         .texture = components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.farmer),
@@ -1849,8 +1808,7 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
         },
         .child_of = components.ChildOf{
             .parent = farmer,
-            .offset_x = player_part_offset_x,
-            .offset_y = player_part_offset_y,
+            .offset = player_part_offset,
         },
     });
 
@@ -1865,10 +1823,12 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
     };
     // Left hand
     _ = try storage.createEntity(Hand{
-        .pos = components.Position{ .vec = zm.f32x4s(0) },
-        .scale = components.Scale{ .x = 1, .y = 1 },
+        .pos = components.Position{ .vec = rl.Vector2.zero() },
+        .scale = components.Scale{
+            .vec = rl.Vector2{ .x = 1, .y = 1 },
+        },
         .vel = components.Velocity{
-            .vec = zm.f32x4s(0),
+            .vec = rl.Vector2.zero(),
         },
         .texture = components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.farmer),
@@ -1892,16 +1852,17 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
         },
         .child_of = components.ChildOf{
             .parent = farmer,
-            .offset_x = player_part_offset_x,
-            .offset_y = player_part_offset_y,
+            .offset = player_part_offset,
         },
     });
     // Right hand
     _ = try storage.createEntity(Hand{
-        .pos = components.Position{ .vec = zm.f32x4s(0) },
-        .scale = components.Scale{ .x = 1, .y = 1 },
+        .pos = components.Position{ .vec = rl.Vector2.zero() },
+        .scale = components.Scale{
+            .vec = rl.Vector2{ .x = 1, .y = 1 },
+        },
         .vel = components.Velocity{
-            .vec = zm.f32x4s(0),
+            .vec = rl.Vector2.zero(),
         },
         .texture = components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.farmer),
@@ -1925,8 +1886,7 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
         },
         .child_of = components.ChildOf{
             .parent = farmer,
-            .offset_x = player_part_offset_x,
-            .offset_y = player_part_offset_y,
+            .offset = player_part_offset,
         },
     });
 
@@ -1934,7 +1894,7 @@ fn createFarmer(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!e
 }
 
 // TODO: Body parts can be generic for player, farmer and wife
-fn createTheFarmersWife(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfMemory}!ecez.Entity {
+fn createTheFarmersWife(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) error{OutOfMemory}!ecez.Entity {
     const zone = tracy.ZoneN(@src(), @src().fn_name);
     defer zone.End();
 
@@ -1957,9 +1917,9 @@ fn createTheFarmersWife(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfM
 
     const the_wife = try storage.createEntity(Wife{
         .pos = components.Position{ .vec = pos },
-        .scale = components.Scale{ .x = scale, .y = scale },
+        .scale = components.Scale{ .vec = scale },
         .vel = components.Velocity{
-            .vec = zm.f32x4s(0),
+            .vec = rl.Vector2.zero(),
         },
         .drag = components.Drag{
             .value = 0.7,
@@ -1969,11 +1929,10 @@ fn createTheFarmersWife(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfM
             .accelerate = 45,
         },
         .move_dir = components.DesiredMovedDir{
-            .vec = zm.f32x4s(0),
+            .vec = rl.Vector2.zero(),
         },
         .col = components.RectangleCollider{
-            .width = player_hit_box_width * 1.5,
-            .height = player_hit_box_height * 1.5,
+            .dim = player_hit_box.scale(2.3),
         },
         .rec_tag = components.DrawRectangleTag{},
         .attack_rate = components.AttackRate{
@@ -2008,10 +1967,12 @@ fn createTheFarmersWife(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfM
     };
     // Chest
     _ = try storage.createEntity(WifeParts{
-        .pos = components.Position{ .vec = zm.f32x4s(0) },
-        .scale = components.Scale{ .x = 1, .y = 1 },
+        .pos = components.Position{ .vec = rl.Vector2.zero() },
+        .scale = components.Scale{
+            .vec = rl.Vector2{ .x = 1, .y = 1 },
+        },
         .vel = components.Velocity{
-            .vec = zm.f32x4s(0),
+            .vec = rl.Vector2.zero(),
         },
         .texture = components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.wife),
@@ -2023,16 +1984,17 @@ fn createTheFarmersWife(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfM
         },
         .child_of = components.ChildOf{
             .parent = the_wife,
-            .offset_x = player_part_offset_x,
-            .offset_y = player_part_offset_y,
+            .offset = player_part_offset,
         },
     });
     // Head
     _ = try storage.createEntity(WifeParts{
-        .pos = components.Position{ .vec = zm.f32x4s(0) },
-        .scale = components.Scale{ .x = 1, .y = 1 },
+        .pos = components.Position{ .vec = rl.Vector2.zero() },
+        .scale = components.Scale{
+            .vec = rl.Vector2{ .x = 1, .y = 1 },
+        },
         .vel = components.Velocity{
-            .vec = zm.f32x4s(0),
+            .vec = rl.Vector2.zero(),
         },
         .texture = components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.wife),
@@ -2044,8 +2006,7 @@ fn createTheFarmersWife(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfM
         },
         .child_of = components.ChildOf{
             .parent = the_wife,
-            .offset_x = player_part_offset_x,
-            .offset_y = player_part_offset_y,
+            .offset = player_part_offset,
         },
     });
 
@@ -2060,10 +2021,12 @@ fn createTheFarmersWife(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfM
     };
     // Left hand
     _ = try storage.createEntity(Hand{
-        .pos = components.Position{ .vec = zm.f32x4s(0) },
-        .scale = components.Scale{ .x = 1, .y = 1 },
+        .pos = components.Position{ .vec = rl.Vector2.zero() },
+        .scale = components.Scale{
+            .vec = rl.Vector2{ .x = 1, .y = 1 },
+        },
         .vel = components.Velocity{
-            .vec = zm.f32x4s(0),
+            .vec = rl.Vector2.zero(),
         },
         .texture = components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.wife),
@@ -2087,16 +2050,17 @@ fn createTheFarmersWife(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfM
         },
         .child_of = components.ChildOf{
             .parent = the_wife,
-            .offset_x = player_part_offset_x,
-            .offset_y = player_part_offset_y,
+            .offset = player_part_offset,
         },
     });
     // Right hand
     _ = try storage.createEntity(Hand{
-        .pos = components.Position{ .vec = zm.f32x4s(0) },
-        .scale = components.Scale{ .x = 1, .y = 1 },
+        .pos = components.Position{ .vec = rl.Vector2.zero() },
+        .scale = components.Scale{
+            .vec = rl.Vector2{ .x = 1, .y = 1 },
+        },
         .vel = components.Velocity{
-            .vec = zm.f32x4s(0),
+            .vec = rl.Vector2.zero(),
         },
         .texture = components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.wife),
@@ -2120,8 +2084,7 @@ fn createTheFarmersWife(storage: *Storage, pos: zm.Vec, scale: f32) error{OutOfM
         },
         .child_of = components.ChildOf{
             .parent = the_wife,
-            .offset_x = player_part_offset_x,
-            .offset_y = player_part_offset_y,
+            .offset = player_part_offset,
         },
     });
 
@@ -2196,11 +2159,19 @@ pub fn spawnBloodSplatter(
     const camera = camera_iter.next().?;
 
     while (died_this_frame_iter.next()) |dead_this_frame| {
-        const scale = storage.getComponent(dead_this_frame.entity, components.Scale) catch components.Scale{ .x = 1, .y = 1 };
-        const splatter_offset = zm.f32x4(-100 * scale.x, -100 * scale.y, 0, 0);
+        const default_scale = components.Scale{
+            .vec = rl.Vector2{
+                .x = 1,
+                .y = 1,
+            },
+        };
+
+        const scale = storage.getComponent(dead_this_frame.entity, components.Scale) catch default_scale;
+
+        const splatter_offset = rl.Vector2.init(-100 * scale.vec.x, -100 * scale.vec.y);
 
         const position = components.Position{
-            .vec = dead_this_frame.pos.vec + splatter_offset,
+            .vec = dead_this_frame.pos.vec.add(splatter_offset),
         };
 
         const blood_splatterlifetime: f32 = 6;
@@ -2234,9 +2205,12 @@ pub fn spawnBloodSplatter(
             .value = @as(f32, @floatFromInt(anim.frame_count)) * @as(f32, @floatFromInt(anim.frames_per_frame)) / 60.0,
         };
 
-        const gore_scale = components.Scale{ .x = scale.x * 2, .y = scale.y * 2 }; // gore should be larger than blood
+        // gore should be larger than blood
+        const gore_scale = components.Scale{
+            .vec = rl.Vector2{ .x = scale.vec.x * 2, .y = scale.vec.y * 2 },
+        };
         const gore_pos = components.Position{
-            .vec = position.vec + zm.f32x4(-50, -40, 0, 0),
+            .vec = position.vec.add(rl.Vector2{ .x = -50, .y = -40 }),
         };
         if (inactive_gore_iter.next()) |inactive_gore| {
             storage.unsetComponents(inactive_gore.entity, .{components.InactiveTag});
@@ -2248,7 +2222,7 @@ pub fn spawnBloodSplatter(
             const splatter_index = rng.intRangeAtMost(u8, @intFromEnum(GameSoundRepo.which_effects.Splatter_01), @intFromEnum(GameSoundRepo.which_effects.Splatter_03));
             const splatter_sound = sound_repo.effects[splatter_index];
 
-            const pan = ((gore_pos.vec - camera.pos.vec)[0] * camera.scale.x) / camera.cam.width;
+            const pan = ((gore_pos.vec.x - camera.pos.vec.x) * camera.scale.vec.x) / camera.cam.resolution.x;
             rl.setSoundPan(splatter_sound, pan);
             rl.playSound(splatter_sound);
 
@@ -2284,8 +2258,12 @@ pub fn staticTextureDraw(
 
     if (static_texture.draw_order != order) return;
 
+    const default_scale = components.Scale{
+        .vec = rl.Vector2{ .x = 1, .y = 1 },
+    };
+
     const rotation = storage.getComponent(entity, components.Rotation) catch components.Rotation{ .value = 0 };
-    const scale = storage.getComponent(entity, components.Scale) catch components.Scale{ .x = 1, .y = 1 };
+    const scale = storage.getComponent(entity, components.Scale) catch default_scale;
     const texture = texture_repo[static_texture.type][static_texture.index];
 
     const rect_texture = rl.Rectangle{
@@ -2295,10 +2273,10 @@ pub fn staticTextureDraw(
         .width = @floatFromInt(texture.width),
     };
     const rect_render_target = rl.Rectangle{
-        .x = pos.vec[0],
-        .y = pos.vec[1],
-        .height = @as(f32, @floatFromInt(texture.height)) * scale.x,
-        .width = @as(f32, @floatFromInt(texture.width)) * scale.y,
+        .x = pos.vec.x,
+        .y = pos.vec.y,
+        .height = @as(f32, @floatFromInt(texture.height)) * scale.vec.x,
+        .width = @as(f32, @floatFromInt(texture.width)) * scale.vec.y,
     };
     const center = rl.Vector2{ .x = 0, .y = 0 };
 

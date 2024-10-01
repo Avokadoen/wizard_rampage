@@ -1,4 +1,4 @@
-const zm = @import("zmath");
+const rl = @import("raylib");
 const ecez = @import("ecez");
 
 pub const all = .{
@@ -42,7 +42,7 @@ pub const all = .{
 };
 
 pub const Position = struct {
-    vec: zm.Vec,
+    vec: rl.Vector2,
 };
 
 pub const Rotation = struct {
@@ -50,16 +50,15 @@ pub const Rotation = struct {
 };
 
 pub const Scale = struct {
-    x: f32,
-    y: f32,
+    vec: rl.Vector2,
 };
 
 pub const Velocity = struct {
-    vec: zm.Vec,
+    vec: rl.Vector2,
 };
 
 pub const DesiredMovedDir = struct {
-    vec: zm.Vec,
+    vec: rl.Vector2,
 };
 
 pub const MoveSpeed = struct {
@@ -71,9 +70,8 @@ pub const Drag = struct {
     value: f32,
 };
 
-pub const RectangleCollider = packed struct {
-    width: f32,
-    height: f32,
+pub const RectangleCollider = struct {
+    dim: rl.Vector2,
 };
 
 pub const CircleCollider = packed struct {
@@ -83,8 +81,8 @@ pub const CircleCollider = packed struct {
 };
 
 pub const Collision = struct {
-    this_point: zm.Vec,
-    other_point: zm.Vec,
+    this_point: rl.Vector2,
+    other_point: rl.Vector2,
 };
 
 pub const DrawRectangleTag = struct {};
@@ -120,8 +118,7 @@ pub const AnimTexture = struct {
 };
 
 pub const Camera = struct {
-    width: f32,
-    height: f32,
+    resolution: rl.Vector2,
 };
 pub const AttackRate = struct {
     cooldown: u8,
@@ -136,8 +133,7 @@ pub const InactiveTag = struct {};
 
 pub const ChildOf = struct {
     parent: ecez.Entity,
-    offset_x: f32,
-    offset_y: f32,
+    offset: rl.Vector2,
 };
 
 pub const HostileTag = struct {};
@@ -219,9 +215,9 @@ pub const Health = struct {
 pub const DiedThisFrameTag = struct {};
 pub const BloodSplatterGroundTag = struct {};
 pub const BloodGoreGroundTag = struct {};
+
 pub const AttachToCursor = struct {
-    offset_x: f32,
-    offset_y: f32,
+    offset: rl.Vector2,
 };
 
 pub const Vocals = struct {

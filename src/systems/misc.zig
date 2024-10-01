@@ -1,6 +1,6 @@
 const tracy = @import("ztracy");
 const ecez = @import("ecez");
-const zm = @import("zmath");
+const rl = @import("raylib");
 
 const components = @import("../components.zig");
 const Context = @import("Context.zig");
@@ -45,7 +45,7 @@ pub fn Create(Storage: type) type {
             },
             .read_and_write,
         );
-        pub fn updateCamera(
+        pub fn cameraFollowPlayer(
             camera_update_view: *CameraUpdateView,
             player_view: *PlayerCamView,
             context: Context,
@@ -67,13 +67,11 @@ pub fn Create(Storage: type) type {
                 col: components.RectangleCollider,
             }) catch @panic("player entity missing");
 
-            const camera_offset = zm.f32x4(
-                (camera.cam.width * 0.5 - player.col.width * 0.5) / camera.scale.x,
-                (camera.cam.height * 0.5 - player.col.height * 0.5) / camera.scale.y,
-                0,
-                0,
+            const camera_offset = rl.Vector2.init(
+                (camera.cam.resolution.x * 0.5 - player.col.dim.x * 0.5) / camera.scale.vec.x,
+                (camera.cam.resolution.y * 0.5 - player.col.dim.y * 0.5) / camera.scale.vec.y,
             );
-            camera.pos.vec = player.pos.vec - camera_offset;
+            camera.pos.vec = player.pos.vec.subtract(camera_offset);
         }
 
         const OrientTextureQuery = Storage.Query(struct {
@@ -85,30 +83,31 @@ pub fn Create(Storage: type) type {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
+            const direction_vectors = [_]rl.Vector2{
+                rl.Vector2.init(0, -1),
+                rl.Vector2.init(-0.5, -0.5),
+                rl.Vector2.init(-1, 0),
+                rl.Vector2.init(-0.5, 0.5),
+                rl.Vector2.init(0, 1),
+                rl.Vector2.init(0.5, 0.5),
+                rl.Vector2.init(1, 0),
+                rl.Vector2.init(0.5, -0.5),
+            };
+
             while (orient_textures.next()) |item| {
                 {
                     // early out if velocity is none
-                    const speed_estimate = zm.lengthSq2(item.velocity.vec)[0];
+                    const speed_estimate = item.velocity.vec.lengthSqr();
                     if (speed_estimate > -0.05 and speed_estimate < 0.05) {
                         continue;
                     }
                 }
 
+                const move_dir = item.velocity.vec.normalize();
                 var smalled_index: usize = 0;
                 var smallest_dist = @import("std").math.floatMax(f32);
-                for (&[_][2]f32{
-                    .{ 0, -1 },
-                    .{ -0.5, -0.5 },
-                    .{ -1, 0 },
-                    .{ -0.5, 0.5 },
-                    .{ 0, 1 },
-                    .{ 0.5, 0.5 },
-                    .{ 1, 0 },
-                    .{ 0.5, -0.5 },
-                }, 0..) |direction_values, index| {
-                    const move_dir = zm.normalize2(item.velocity.vec);
-                    const direction = zm.f32x4(direction_values[0], direction_values[1], 0, 0);
-                    const dist = zm.lengthSq2(move_dir - direction)[0];
+                for (&direction_vectors, 0..) |direction, index| {
+                    const dist = move_dir.subtract(direction).lengthSqr();
                     if (dist < smallest_dist) {
                         smallest_dist = dist;
                         smalled_index = index;

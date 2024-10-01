@@ -54,13 +54,10 @@ pub fn build(b: *std.Build) void {
         exe.linkLibrary(raylib_artifact);
         exe.root_module.addImport("raylib", raylib);
         exe.root_module.addImport("raygui", raygui);
-    }
 
-    // link zmath
-    {
-        const zmath = b.dependency("zmath", .{});
-        exe.root_module.addImport("zmath", zmath.module("root"));
-        exe_unit_tests.root_module.addImport("zmath", zmath.module("root"));
+        exe_unit_tests.linkLibrary(raylib_artifact);
+        exe_unit_tests.root_module.addImport("raylib", raylib);
+        exe_unit_tests.root_module.addImport("raygui", raygui);
     }
 
     // link ecez and ztracy

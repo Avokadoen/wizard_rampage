@@ -1,7 +1,6 @@
 const rl = @import("raylib");
 const tracy = @import("ztracy");
 const ecez = @import("ecez");
-const zm = @import("zmath");
 
 const physics = @import("../physics_2d.zig");
 const components = @import("../components.zig");
@@ -71,7 +70,7 @@ pub fn Create(Storage: type) type {
             const player_circle = components.CircleCollider{
                 .x = 0,
                 .y = 0,
-                .radius = player_r.col.width,
+                .radius = player_r.col.dim.x,
             };
 
             while (hostile_iter.next()) |hostile| {
@@ -154,14 +153,12 @@ pub fn Create(Storage: type) type {
             while (proj_iter.next()) |projectile| {
                 defer killable_iter.reset();
 
-                const offset = zm.f32x4(
+                const offset = rl.Vector2.init(
                     @floatCast(projectile.circle.x),
                     @floatCast(projectile.circle.y),
-                    0,
-                    0,
                 );
                 const proj_pos = components.Position{
-                    .vec = projectile.pos.vec + offset,
+                    .vec = projectile.pos.vec.add(offset),
                 };
 
                 var extra_dmg: i32 = 0;
@@ -172,7 +169,7 @@ pub fn Create(Storage: type) type {
                         .dmg_amp => extra_dmg += 10,
                     }
                 }
-                const pan = ((projectile.pos.vec - camera.pos.vec)[0] + 0.5) / camera.cam.width;
+                const pan = ((projectile.pos.vec.x - camera.pos.vec.x) + 0.5) / camera.cam.resolution.x;
 
                 while (killable_iter.next()) |killable| {
                     if (physics.Intersection.circleAndRect(
@@ -195,7 +192,9 @@ pub fn Create(Storage: type) type {
 
                         const maybe_vel = write_view.getComponent(killable.entity, *components.Velocity) catch null;
                         if (maybe_vel) |kill_vel| {
-                            kill_vel.vec += zm.normalize2(projectile.vel.vec) * @as(zm.Vec, @splat(projectile.proj.weight));
+                            const proj_dir = projectile.vel.vec.normalize();
+                            const proj_impact = rl.Vector2.init(projectile.proj.weight, projectile.proj.weight);
+                            kill_vel.vec = kill_vel.vec.add(proj_dir.multiply(proj_impact));
                         }
 
                         killable.health.value -= projectile.proj.dmg + extra_dmg;
@@ -261,7 +260,7 @@ pub fn Create(Storage: type) type {
                         const pitch = 1 - (context.rng.float(f32) - 0.5) * pitch_range;
                         rl.setSoundPitch(on_death_sound, pitch);
 
-                        const pan = ((camera.pos.vec - item.pos.vec)[0] * camera.scale.x) - 0.5 / camera.cam.width;
+                        const pan = ((camera.pos.vec.x - item.pos.vec.x) * camera.scale.vec.x) - 0.5 / camera.cam.resolution.x;
                         rl.setSoundPan(on_death_sound, pan);
 
                         rl.playSound(on_death_sound);
@@ -312,10 +311,10 @@ pub fn Create(Storage: type) type {
             ) catch @panic("missing player entity");
 
             while (hostile_iter.next()) |item| {
-                const moving_in_dir = zm.normalize2(player.pos.vec - item.pos.vec);
+                const moving_in_dir = player.pos.vec.subtract(item.pos.vec).normalize();
 
-                const target_or_flee_vector = if (context.the_wife_kill_count.* >= 1) @as(zm.Vec, @splat(-1)) else @as(zm.Vec, @splat(1));
-                item.mov_dir.vec = moving_in_dir * target_or_flee_vector;
+                const target_or_flee_vector = if (context.the_wife_kill_count.* >= 1) rl.Vector2.init(-1, -1) else rl.Vector2.init(1, 1);
+                item.mov_dir.vec = moving_in_dir.multiply(target_or_flee_vector).normalize();
             }
         }
 

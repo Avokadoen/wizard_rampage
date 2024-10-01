@@ -24,7 +24,6 @@
             .hash = "1220793fbb6e6312bb007b9da2f108e4455d2da6b3faacf8e402385327ef79a4e26b",
         },
         .ztracy = .{ .path = "deps/ztracy" },
-        .zmath = .{ .path = "deps/zmath" },
     },
     .paths = .{
         "build.zig",

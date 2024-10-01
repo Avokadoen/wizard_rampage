@@ -2,7 +2,6 @@ const std = @import("std");
 
 const rl = @import("raylib");
 const ecez = @import("ecez");
-const zm = @import("zmath");
 
 const components = @import("components.zig");
 const GameTextureRepo = @import("GameTextureRepo.zig");
@@ -14,76 +13,56 @@ pub fn CreateInput(Storage: type) type {
         fn moveUp(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             _ = staff_entity;
             const move_dir = storage.getComponent(player_entity, *components.DesiredMovedDir) catch unreachable;
-            move_dir.vec[1] += -1;
+            move_dir.vec.y += -1;
         }
 
         fn moveDown(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             _ = staff_entity;
             const move_dir = storage.getComponent(player_entity, *components.DesiredMovedDir) catch unreachable;
-            move_dir.vec[1] += 1;
+            move_dir.vec.y += 1;
         }
 
         fn moveRight(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             _ = staff_entity;
             const move_dir = storage.getComponent(player_entity, *components.DesiredMovedDir) catch unreachable;
-            move_dir.vec[0] += 1;
+            move_dir.vec.x += 1;
         }
 
         fn moveLeft(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             _ = staff_entity;
             const move_dir = storage.getComponent(player_entity, *components.DesiredMovedDir) catch unreachable;
-            move_dir.vec[0] -= 1;
+            move_dir.vec.x -= 1;
         }
 
         fn shootUp(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             const vel = storage.getComponent(player_entity, components.Velocity) catch unreachable;
 
-            const projectile_vel = vel.vec + zm.f32x4(
-                0,
-                -1000,
-                0,
-                0,
-            );
+            const projectile_vel = vel.vec.subtract(rl.Vector2{ .x = 0, .y = 1000 });
             fireProjectile(projectile_vel, storage, player_entity, staff_entity);
         }
 
         fn shootDown(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             const vel = storage.getComponent(player_entity, components.Velocity) catch unreachable;
 
-            const projectile_vel = vel.vec + zm.f32x4(
-                0,
-                1000,
-                0,
-                0,
-            );
+            const projectile_vel = vel.vec.add(rl.Vector2{ .x = 0, .y = 1000 });
             fireProjectile(projectile_vel, storage, player_entity, staff_entity);
         }
 
         fn shootRight(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             const vel = storage.getComponent(player_entity, components.Velocity) catch unreachable;
 
-            const projectile_vel = vel.vec + zm.f32x4(
-                1000,
-                0,
-                0,
-                0,
-            );
+            const projectile_vel = vel.vec.add(rl.Vector2{ .x = 1000, .y = 0 });
             fireProjectile(projectile_vel, storage, player_entity, staff_entity);
         }
 
         fn shootLeft(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             const vel = storage.getComponent(player_entity, components.Velocity) catch unreachable;
 
-            const projectile_vel = vel.vec + zm.f32x4(
-                -1000,
-                0,
-                0,
-                0,
-            );
+            const projectile_vel = vel.vec.subtract(rl.Vector2{ .x = 1000, .y = 0 });
             fireProjectile(projectile_vel, storage, player_entity, staff_entity);
         }
 
-        fn fireProjectile(vel: zm.Vec, storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
+        fn fireProjectile(vel: rl.Vector2, storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             const Projectile = struct {
                 pos: components.Position,
                 rot: components.Rotation,
@@ -128,19 +107,19 @@ pub fn CreateInput(Storage: type) type {
                     },
                 };
 
-                const norm_vel = zm.normalize2(vel);
-                const rotation = std.math.atan2(norm_vel[1], norm_vel[0]);
+                const norm_vel = vel.normalize();
+                const rotation = std.math.atan2(norm_vel.y, norm_vel.x);
                 const collider_offset_x: f32 = 50;
                 const collider_offset_y: f32 = 33;
 
                 const cs = @cos(rotation);
                 const sn = @sin(rotation);
 
-                const proj_offset = zm.normalize2(vel) * @as(zm.Vec, @splat(15));
+                const proj_offset = norm_vel.multiply(rl.Vector2.init(15, 15));
 
                 var projectile_iter = ProjectileQuery.submit(storage);
                 if (projectile_iter.next()) |projectile| {
-                    projectile.pos.* = components.Position{ .vec = pos.vec + proj_offset };
+                    projectile.pos.* = components.Position{ .vec = pos.vec.add(proj_offset) };
                     projectile.rot.* = components.Rotation{ .value = 0 };
                     projectile.vel.* = components.Velocity{ .vec = vel };
                     projectile.drag.* = components.Drag{ .value = 0.98 };
@@ -169,7 +148,9 @@ pub fn CreateInput(Storage: type) type {
                     storage.unsetComponents(projectile.entity, .{components.InactiveTag});
                 } else {
                     _ = storage.createEntity(Projectile{
-                        .pos = components.Position{ .vec = pos.vec + proj_offset },
+                        .pos = components.Position{
+                            .vec = pos.vec.add(proj_offset),
+                        },
                         .rot = components.Rotation{ .value = 0 },
                         .vel = components.Velocity{ .vec = vel },
                         .drag = components.Drag{ .value = 0.98 },

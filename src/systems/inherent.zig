@@ -1,6 +1,6 @@
 const tracy = @import("ztracy");
 const ecez = @import("ecez");
-const zm = @import("zmath");
+const rl = @import("raylib");
 
 const components = @import("../components.zig");
 
@@ -22,7 +22,7 @@ pub fn Create(Storage: type) type {
             defer zone.End();
 
             while (inherent_vel.next()) |item| {
-                const parent_vel = parent_vel_view.getComponent(item.child_of.parent, components.Velocity) catch return;
+                const parent_vel = parent_vel_view.getComponent(item.child_of.parent, components.Velocity) catch continue;
                 item.vel.* = parent_vel;
             }
         }
@@ -43,9 +43,8 @@ pub fn Create(Storage: type) type {
             defer zone.End();
 
             while (inherent_pos.next()) |item| {
-                const parent_pos = parent_pos_view.getComponent(item.child_of.parent, components.Position) catch return;
-                const offset = zm.f32x4(item.child_of.offset_x, item.child_of.offset_y, 0, 0);
-                item.pos.vec = parent_pos.vec + offset;
+                const parent_pos = parent_pos_view.getComponent(item.child_of.parent, components.Position) catch continue;
+                item.pos.vec = parent_pos.vec.add(item.child_of.offset);
             }
         }
 
@@ -65,8 +64,8 @@ pub fn Create(Storage: type) type {
             defer zone.End();
 
             while (inherent_scale.next()) |item| {
-                const parent_scale = parent_scale_view.getComponent(item.child_of.parent, components.Scale) catch return;
-                item.scale.* = parent_scale;
+                const parent_scale = parent_scale_view.getComponent(item.child_of.parent, components.Scale) catch continue;
+                item.scale.vec = parent_scale.vec;
             }
         }
 
@@ -86,8 +85,9 @@ pub fn Create(Storage: type) type {
             defer zone.End();
 
             while (inherent_inactive.next()) |item| {
-                const parent_tag = write_view.getComponent(item.child_of.parent, components.InactiveTag) catch continue;
-                write_view.setComponents(item.entity, .{parent_tag}) catch @panic("inherentInactiveFromParent: oom");
+                if (write_view.hasComponents(item.child_of.parent, .{components.InactiveTag})) {
+                    write_view.setComponents(item.entity, .{components.InactiveTag{}}) catch @panic("inherentInactiveFromParent: oom");
+                }
             }
         }
 
@@ -108,9 +108,9 @@ pub fn Create(Storage: type) type {
             defer zone.End();
 
             while (inherent_active.next()) |item| {
-                _ = write_view.getComponent(item.child_of.parent, components.InactiveTag) catch {
+                if (write_view.hasComponents(item.child_of.parent, .{components.InactiveTag}) == false) {
                     write_view.unsetComponents(item.entity, .{components.InactiveTag});
-                };
+                }
             }
         }
     };
