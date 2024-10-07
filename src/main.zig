@@ -367,16 +367,10 @@ pub fn main() anyerror!void {
 
                 // Create camera
                 const camera_entity = try create_camera_blk: {
-                    const Camera = struct {
-                        pos: components.Position,
-                        scale: components.Scale,
-                        camera: components.Camera,
-                    };
-
-                    break :create_camera_blk storage.createEntity(Camera{
-                        .pos = components.Position{ .vec = rl.Vector2.zero() },
-                        .scale = components.Scale{ .vec = rl.Vector2.init(2, 2) },
-                        .camera = components.Camera{ .resolution = rl.Vector2{
+                    break :create_camera_blk storage.createEntity(.{
+                        components.Position{ .vec = rl.Vector2.zero() },
+                        components.Scale{ .vec = rl.Vector2.init(2, 2) },
+                        components.Camera{ .resolution = rl.Vector2{
                             .x = window_width,
                             .y = window_height,
                         } },
@@ -385,52 +379,46 @@ pub fn main() anyerror!void {
 
                 // Create level boundaries
                 {
-                    const room_boundary_thickness = 100;
-                    const LevelBoundary = struct {
-                        pos: components.Position,
-                        scale: components.Scale,
-                        collider: components.RectangleCollider,
-                        texture: components.Texture,
-                    };
-
                     const horizontal_fence = texture_repo.country[@intFromEnum(GameTextureRepo.which_country_side.Fence_Horizontal)];
                     const hor_fence_height: u32 = @intCast(horizontal_fence.height);
                     const hor_fence_width: u32 = @intCast(horizontal_fence.width);
                     var i: u32 = 0;
                     while (i < arena_width) : (i += hor_fence_width) {
                         // South
-                        _ = try storage.createEntity(LevelBoundary{
-                            .pos = components.Position{ .vec = rl.Vector2.init(
+                        _ = try storage.createEntity(.{
+                            components.Position{ .vec = rl.Vector2.init(
                                 @floatFromInt(i),
-                                arena_height - room_boundary_thickness,
+                                arena_height - @as(f32, @floatFromInt(hor_fence_height)),
                             ) },
-                            .scale = components.Scale{ .vec = rl.Vector2.init(1, 1) },
-                            .collider = components.RectangleCollider{ .dim = .{
+                            components.Scale{ .vec = rl.Vector2.init(1, 1) },
+                            components.RectangleCollider{ .dim = .{
                                 .x = @floatFromInt(hor_fence_width),
                                 .y = @floatFromInt(hor_fence_height),
                             } },
-                            .texture = components.Texture{
+                            components.Texture{
                                 .draw_order = .o1,
                                 .type = @intFromEnum(GameTextureRepo.texture_type.country),
                                 .index = @intFromEnum(GameTextureRepo.which_country_side.Fence_Horizontal),
                             },
+                            components.DrawRectangleTag{},
                         });
                         // North
-                        _ = try storage.createEntity(LevelBoundary{
-                            .pos = components.Position{ .vec = rl.Vector2.init(
+                        _ = try storage.createEntity(.{
+                            components.Position{ .vec = rl.Vector2.init(
                                 @floatFromInt(i),
-                                0,
+                                1,
                             ) },
-                            .scale = components.Scale{ .vec = rl.Vector2.init(1, 1) },
-                            .collider = components.RectangleCollider{ .dim = .{
+                            components.Scale{ .vec = rl.Vector2.init(1, 1) },
+                            components.RectangleCollider{ .dim = .{
                                 .x = @floatFromInt(hor_fence_width),
                                 .y = @floatFromInt(hor_fence_height),
                             } },
-                            .texture = components.Texture{
+                            components.Texture{
                                 .draw_order = .o1,
                                 .type = @intFromEnum(GameTextureRepo.texture_type.country),
                                 .index = @intFromEnum(GameTextureRepo.which_country_side.Fence_Horizontal),
                             },
+                            components.DrawRectangleTag{},
                         });
                     }
                     const vertical_fence = texture_repo.country[@intFromEnum(GameTextureRepo.which_country_side.Fence_Vertical)];
@@ -439,56 +427,53 @@ pub fn main() anyerror!void {
                     i = 0;
                     while (i < arena_width - vert_fence_height) : (i += vert_fence_height) {
                         // West
-                        _ = try storage.createEntity(LevelBoundary{
-                            .pos = components.Position{ .vec = rl.Vector2.init(
+                        _ = try storage.createEntity(.{
+                            components.Position{ .vec = rl.Vector2.init(
                                 0,
                                 @floatFromInt(i),
                             ) },
-                            .scale = components.Scale{
+                            components.Scale{
                                 .vec = rl.Vector2.init(1, 1),
                             },
-                            .collider = components.RectangleCollider{ .dim = .{
+                            components.RectangleCollider{ .dim = .{
                                 .x = @floatFromInt(vert_fence_width),
                                 .y = @floatFromInt(vert_fence_height),
                             } },
-                            .texture = components.Texture{
+                            components.Texture{
                                 .draw_order = .o1,
                                 .type = @intFromEnum(GameTextureRepo.texture_type.country),
                                 .index = @intFromEnum(GameTextureRepo.which_country_side.Fence_Vertical),
                             },
+                            components.DrawRectangleTag{},
                         });
                         // East
-                        _ = try storage.createEntity(LevelBoundary{
-                            .pos = components.Position{ .vec = rl.Vector2.init(
-                                arena_width,
+                        _ = try storage.createEntity(.{
+                            components.Position{ .vec = rl.Vector2.init(
+                                arena_width - @as(f32, @floatFromInt(vert_fence_width + 1)),
                                 @floatFromInt(i),
                             ) },
-                            .scale = components.Scale{
+                            components.Scale{
                                 .vec = rl.Vector2.init(1, 1),
                             },
-                            .collider = components.RectangleCollider{ .dim = .{
+                            components.RectangleCollider{ .dim = .{
                                 .x = @floatFromInt(vert_fence_width),
                                 .y = @floatFromInt(vert_fence_height),
                             } },
-                            .texture = components.Texture{
+                            components.Texture{
                                 .draw_order = .o1,
                                 .type = @intFromEnum(GameTextureRepo.texture_type.country),
                                 .index = @intFromEnum(GameTextureRepo.which_country_side.Fence_Vertical),
                             },
+                            components.DrawRectangleTag{},
                         });
                     }
                 }
 
                 {
-                    const GroundClutter = struct {
-                        pos: components.Position,
-                        scale: components.Scale,
-                        texture: components.Texture,
-                    };
                     for (0..150) |_| {
                         const pos_x = -arena_width * 0.5 + random.float(f32) * arena_width * 1.5;
                         const pos_y = -arena_height * 0.5 + random.float(f32) * arena_height * 1.5;
-                        _ = try storage.createEntity(GroundClutter{
+                        _ = try storage.createEntity(.{
                             .pos = components.Position{ .vec = rl.Vector2.init(
                                 pos_x,
                                 pos_y,
@@ -510,7 +495,7 @@ pub fn main() anyerror!void {
                         const pos_x = -arena_width * 0.5 + random.float(f32) * arena_width * 1.5;
                         const pos_y = -arena_height * 0.5 + random.float(f32) * arena_height * 1.5;
 
-                        _ = try storage.createEntity(GroundClutter{
+                        _ = try storage.createEntity(.{
                             .pos = components.Position{ .vec = rl.Vector2.init(
                                 pos_x,
                                 pos_y,
@@ -532,7 +517,7 @@ pub fn main() anyerror!void {
                         const pos_x = random.float(f32) * arena_width * 1.5;
                         const pos_y = random.float(f32) * arena_height * 1.5;
                         const texture = if (random.boolean()) @intFromEnum(GameTextureRepo.which_decor.Daisies) else @intFromEnum(GameTextureRepo.which_decor.Rocks);
-                        _ = try storage.createEntity(GroundClutter{
+                        _ = try storage.createEntity(.{
                             .pos = components.Position{ .vec = rl.Vector2.init(
                                 pos_x,
                                 pos_y,
@@ -551,49 +536,35 @@ pub fn main() anyerror!void {
                 }
 
                 const player_entity = create_player_blk: {
-                    const Player = struct {
-                        pos: components.Position,
-                        scale: components.Scale,
-                        vel: components.Velocity,
-                        drag: components.Drag,
-                        mv_speed: components.MoveSpeed,
-                        move_dir: components.DesiredMovedDir,
-                        col: components.RectangleCollider,
-                        rec_tag: components.DrawRectangleTag,
-                        player_tag: components.PlayerTag,
-                        health: components.Health,
-                        vocals: components.Vocals,
-                    };
-
-                    const player = try storage.createEntity(Player{
-                        .pos = components.Position{
+                    const player = try storage.createEntity(.{
+                        components.Position{
                             .vec = room_center.subtract(player_hit_box),
                         },
-                        .scale = components.Scale{
+                        components.Scale{
                             .vec = player_scale,
                         },
-                        .vel = components.Velocity{
+                        components.Velocity{
                             .vec = rl.Vector2.zero(),
                         },
-                        .drag = components.Drag{ .value = 0.8 },
-                        .mv_speed = components.MoveSpeed{
+                        components.Drag{ .value = 0.8 },
+                        components.MoveSpeed{
                             // TODO: this will make players with smaller res move faster.
                             .max = 500,
                             .accelerate = 100,
                         },
-                        .move_dir = components.DesiredMovedDir{
+                        components.DesiredMovedDir{
                             .vec = rl.Vector2.zero(),
                         },
-                        .col = components.RectangleCollider{
+                        components.RectangleCollider{
                             .dim = player_hit_box,
                         },
-                        .rec_tag = components.DrawRectangleTag{},
-                        .player_tag = components.PlayerTag{},
-                        .health = components.Health{
+                        components.DrawRectangleTag{},
+                        components.PlayerTag{},
+                        components.Health{
                             .max = 100,
                             .value = 100,
                         },
-                        .vocals = components.Vocals{
+                        components.Vocals{
                             .on_death_start = @intFromEnum(GameSoundRepo.which_effects.Kill),
                             .on_death_end = @intFromEnum(GameSoundRepo.which_effects.Kill),
                             .on_dmg_start = @intFromEnum(GameSoundRepo.which_effects.Player_Damage_01),
@@ -601,97 +572,80 @@ pub fn main() anyerror!void {
                         },
                     });
 
-                    const PlayerParts = struct {
-                        pos: components.Position,
-                        scale: components.Scale,
-                        vel: components.Velocity,
-                        texture: components.Texture,
-                        orientation_texture: components.OrientationTexture,
-                        child_of: components.ChildOf,
-                    };
                     // Cloak
-                    _ = try storage.createEntity(PlayerParts{
-                        .pos = components.Position{ .vec = rl.Vector2.zero() },
-                        .scale = components.Scale{ .vec = player_scale },
-                        .vel = components.Velocity{
+                    _ = try storage.createEntity(.{
+                        components.Position{ .vec = rl.Vector2.zero() },
+                        components.Scale{ .vec = player_scale },
+                        components.Velocity{
                             .vec = rl.Vector2.zero(),
                         },
-                        .texture = components.Texture{
+                        components.Texture{
                             .type = @intFromEnum(GameTextureRepo.texture_type.player),
                             .index = @intFromEnum(GameTextureRepo.which_player.Cloak0001),
                             .draw_order = .o0,
                         },
-                        .orientation_texture = components.OrientationTexture{
+                        components.OrientationTexture{
                             .start_texture_index = @intFromEnum(GameTextureRepo.which_player.Cloak0001),
                         },
-                        .child_of = components.ChildOf{
+                        components.ChildOf{
                             .parent = player,
                             .offset = player_part_offset,
                         },
                     });
                     // Head
-                    _ = try storage.createEntity(PlayerParts{
-                        .pos = components.Position{ .vec = rl.Vector2.zero() },
-                        .scale = components.Scale{ .vec = player_scale },
-                        .vel = components.Velocity{
+                    _ = try storage.createEntity(.{
+                        components.Position{ .vec = rl.Vector2.zero() },
+                        components.Scale{ .vec = player_scale },
+                        components.Velocity{
                             .vec = rl.Vector2.zero(),
                         },
-                        .texture = components.Texture{
+                        components.Texture{
                             .type = @intFromEnum(GameTextureRepo.texture_type.player),
                             .index = @intFromEnum(GameTextureRepo.which_player.Head0001),
                             .draw_order = .o1,
                         },
-                        .orientation_texture = components.OrientationTexture{
+                        components.OrientationTexture{
                             .start_texture_index = @intFromEnum(GameTextureRepo.which_player.Head0001),
                         },
-                        .child_of = components.ChildOf{
+                        components.ChildOf{
                             .parent = player,
                             .offset = player_part_offset,
                         },
                     });
                     // Hat
-                    _ = try storage.createEntity(PlayerParts{
-                        .pos = components.Position{ .vec = rl.Vector2.zero() },
-                        .scale = components.Scale{ .vec = player_scale },
-                        .vel = components.Velocity{
+                    _ = try storage.createEntity(.{
+                        components.Position{ .vec = rl.Vector2.zero() },
+                        components.Scale{ .vec = player_scale },
+                        components.Velocity{
                             .vec = rl.Vector2.zero(),
                         },
-                        .texture = components.Texture{
+                        components.Texture{
                             .type = @intFromEnum(GameTextureRepo.texture_type.player),
                             .index = @intFromEnum(GameTextureRepo.which_player.Hat0001),
                             .draw_order = .o2,
                         },
-                        .orientation_texture = components.OrientationTexture{
+                        components.OrientationTexture{
                             .start_texture_index = @intFromEnum(GameTextureRepo.which_player.Hat0001),
                         },
-                        .child_of = components.ChildOf{
+                        components.ChildOf{
                             .parent = player,
                             .offset = player_part_offset,
                         },
                     });
 
-                    const Hand = struct {
-                        pos: components.Position,
-                        scale: components.Scale,
-                        vel: components.Velocity,
-                        texture: components.Texture,
-                        orientation_based_draw_order: components.OrientationBasedDrawOrder,
-                        orientation_texture: components.OrientationTexture,
-                        child_of: components.ChildOf,
-                    };
                     // Left hand
-                    _ = try storage.createEntity(Hand{
-                        .pos = components.Position{ .vec = rl.Vector2.zero() },
-                        .scale = components.Scale{ .vec = player_scale },
-                        .vel = components.Velocity{
+                    _ = try storage.createEntity(.{
+                        components.Position{ .vec = rl.Vector2.zero() },
+                        components.Scale{ .vec = player_scale },
+                        components.Velocity{
                             .vec = rl.Vector2.zero(),
                         },
-                        .texture = components.Texture{
+                        components.Texture{
                             .type = @intFromEnum(GameTextureRepo.texture_type.player),
                             .index = @intFromEnum(GameTextureRepo.which_player.Hand_L0001),
                             .draw_order = .o3,
                         },
-                        .orientation_based_draw_order = components.OrientationBasedDrawOrder{
+                        components.OrientationBasedDrawOrder{
                             .draw_orders = [8]components.Texture.DrawOrder{
                                 .o1, // up
                                 .o3, // up_left
@@ -703,27 +657,27 @@ pub fn main() anyerror!void {
                                 .o1, // up_right
                             },
                         },
-                        .orientation_texture = components.OrientationTexture{
+                        components.OrientationTexture{
                             .start_texture_index = @intFromEnum(GameTextureRepo.which_player.Hand_L0001),
                         },
-                        .child_of = components.ChildOf{
+                        components.ChildOf{
                             .parent = player,
                             .offset = player_part_offset,
                         },
                     });
                     // Right hand
-                    _ = try storage.createEntity(Hand{
-                        .pos = components.Position{ .vec = rl.Vector2.zero() },
-                        .scale = components.Scale{ .vec = player_scale },
-                        .vel = components.Velocity{
+                    _ = try storage.createEntity(.{
+                        components.Position{ .vec = rl.Vector2.zero() },
+                        components.Scale{ .vec = player_scale },
+                        components.Velocity{
                             .vec = rl.Vector2.zero(),
                         },
-                        .texture = components.Texture{
+                        components.Texture{
                             .type = @intFromEnum(GameTextureRepo.texture_type.player),
                             .index = @intFromEnum(GameTextureRepo.which_player.Hand_R0001),
                             .draw_order = .o3,
                         },
-                        .orientation_based_draw_order = components.OrientationBasedDrawOrder{
+                        components.OrientationBasedDrawOrder{
                             .draw_orders = [8]components.Texture.DrawOrder{
                                 .o2, // up
                                 .o1, // up_left
@@ -735,10 +689,10 @@ pub fn main() anyerror!void {
                                 .o3, // up_right
                             },
                         },
-                        .orientation_texture = components.OrientationTexture{
+                        components.OrientationTexture{
                             .start_texture_index = @intFromEnum(GameTextureRepo.which_player.Hand_R0001),
                         },
-                        .child_of = components.ChildOf{
+                        components.ChildOf{
                             .parent = player,
                             .offset = player_part_offset,
                         },
@@ -748,18 +702,6 @@ pub fn main() anyerror!void {
                 };
 
                 const player_staff_entity = create_player_staff_blk: {
-                    const Staff = struct {
-                        pos: components.Position,
-                        scale: components.Scale,
-                        vel: components.Velocity,
-                        texture: components.Texture,
-                        orientation_based_draw_order: components.OrientationBasedDrawOrder,
-                        orientation_texture: components.OrientationTexture,
-                        fire_rate: components.AttackRate,
-                        child_of: components.ChildOf,
-                        staff: components.Staff,
-                    };
-
                     const staff = comptime init_staff_blk: {
                         var stf = components.Staff{
                             .slot_capacity = 8,
@@ -788,18 +730,18 @@ pub fn main() anyerror!void {
                         break :init_staff_blk stf;
                     };
 
-                    break :create_player_staff_blk try storage.createEntity(Staff{
-                        .pos = components.Position{ .vec = rl.Vector2.zero() },
-                        .scale = components.Scale{ .vec = player_scale },
-                        .vel = components.Velocity{
+                    break :create_player_staff_blk try storage.createEntity(.{
+                        components.Position{ .vec = rl.Vector2.zero() },
+                        components.Scale{ .vec = player_scale },
+                        components.Velocity{
                             .vec = rl.Vector2.zero(),
                         },
-                        .texture = components.Texture{
+                        components.Texture{
                             .type = @intFromEnum(GameTextureRepo.texture_type.player),
                             .index = @intFromEnum(GameTextureRepo.which_player.Staff0001),
                             .draw_order = .o1,
                         },
-                        .orientation_based_draw_order = components.OrientationBasedDrawOrder{
+                        components.OrientationBasedDrawOrder{
                             .draw_orders = [8]components.Texture.DrawOrder{
                                 .o1, // up
                                 .o0, // up_left
@@ -811,18 +753,18 @@ pub fn main() anyerror!void {
                                 .o2, // up_right
                             },
                         },
-                        .orientation_texture = components.OrientationTexture{
+                        components.OrientationTexture{
                             .start_texture_index = @intFromEnum(GameTextureRepo.which_player.Staff0001),
                         },
-                        .fire_rate = components.AttackRate{
+                        components.AttackRate{
                             .cooldown = 10,
                             .active_cooldown = 0,
                         },
-                        .child_of = components.ChildOf{
+                        components.ChildOf{
                             .parent = player_entity,
                             .offset = player_part_offset,
                         },
-                        .staff = staff,
+                        staff,
                     });
                 };
 
@@ -1040,13 +982,6 @@ pub fn main() anyerror!void {
 
                         // UI Drawing
                         {
-                            const GrabbedItem = struct {
-                                pos: components.Position,
-                                old_slot: components.OldSlot,
-                                inv_item: components.InventoryItem,
-                                attach_to_cursor: components.AttachToCursor,
-                            };
-
                             const GrabbedItemQuery = Storage.Query(struct {
                                 entity: ecez.Entity,
                                 pos: *components.Position,
@@ -1063,11 +998,6 @@ pub fn main() anyerror!void {
                                 inv_item: *components.InventoryItem,
                                 attach_to_cursor: *components.AttachToCursor,
                             }, .{});
-
-                            const InInventoryItem = struct {
-                                pos: components.Position,
-                                inv_item: components.InventoryItem,
-                            };
 
                             const InInvenventoryQuery = Storage.Query(struct {
                                 entity: ecez.Entity,
@@ -1254,9 +1184,9 @@ pub fn main() anyerror!void {
                                                         },
                                                         .inventory_pos => |inv_pos| {
                                                             // TODO: query unused before create
-                                                            _ = try storage.createEntity(InInventoryItem{
-                                                                .pos = inv_pos,
-                                                                .inv_item = components.InventoryItem{
+                                                            _ = try storage.createEntity(.{
+                                                                inv_pos,
+                                                                components.InventoryItem{
                                                                     .item = grabbable_item,
                                                                 },
                                                             });
@@ -1305,17 +1235,17 @@ pub fn main() anyerror!void {
 
                                                 storage.unsetComponents(unused_grabbed_item.entity, .{components.InactiveTag});
                                             } else {
-                                                _ = try storage.createEntity(GrabbedItem{
-                                                    .pos = components.Position{
+                                                _ = try storage.createEntity(.{
+                                                    components.Position{
                                                         .vec = rl.Vector2.zero(), // set later
                                                     },
-                                                    .old_slot = components.OldSlot{
+                                                    components.OldSlot{
                                                         .type = .{ .staff_index = @intCast(i) },
                                                     },
-                                                    .inv_item = components.InventoryItem{
+                                                    components.InventoryItem{
                                                         .item = grab_item,
                                                     },
-                                                    .attach_to_cursor = components.AttachToCursor{ .offset = rl.Vector2{
+                                                    components.AttachToCursor{ .offset = rl.Vector2{
                                                         .x = grab_offset_x,
                                                         .y = 0,
                                                     } },
@@ -1680,58 +1610,41 @@ fn createFarmer(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) error{Out
     const zone = tracy.ZoneN(@src(), @src().fn_name);
     defer zone.End();
 
-    const Farmer = struct {
-        pos: components.Position,
-        scale: components.Scale,
-        vel: components.Velocity,
-        drag: components.Drag,
-        mv_speed: components.MoveSpeed,
-        move_dir: components.DesiredMovedDir,
-        col: components.RectangleCollider,
-        rec_tag: components.DrawRectangleTag,
-        attack_rate: components.AttackRate,
-        hostile_tag: components.HostileTag,
-        farmer_tag: components.FarmerTag,
-        melee: components.Melee,
-        health: components.Health,
-        vocals: components.Vocals,
-    };
-
-    const farmer = try storage.createEntity(Farmer{
-        .pos = components.Position{ .vec = pos },
-        .scale = components.Scale{
+    const farmer = try storage.createEntity(.{
+        components.Position{ .vec = pos },
+        components.Scale{
             .vec = scale,
         },
-        .vel = components.Velocity{
+        components.Velocity{
             .vec = rl.Vector2.zero(),
         },
-        .drag = components.Drag{ .value = 0.7 },
-        .mv_speed = components.MoveSpeed{
+        components.Drag{ .value = 0.7 },
+        components.MoveSpeed{
             .max = 240,
             .accelerate = 40,
         },
-        .move_dir = components.DesiredMovedDir{
+        components.DesiredMovedDir{
             .vec = rl.Vector2.zero(),
         },
-        .col = components.RectangleCollider{
+        components.RectangleCollider{
             .dim = player_hit_box,
         },
-        .rec_tag = components.DrawRectangleTag{},
-        .attack_rate = components.AttackRate{
+        components.DrawRectangleTag{},
+        components.AttackRate{
             .active_cooldown = 0,
             .cooldown = 60 * 3,
         },
-        .hostile_tag = components.HostileTag{},
-        .farmer_tag = components.FarmerTag{},
-        .melee = components.Melee{
+        components.HostileTag{},
+        components.FarmerTag{},
+        components.Melee{
             .dmg = 5,
             .range = 50,
         },
-        .health = components.Health{
+        components.Health{
             .max = 50,
             .value = 50,
         },
-        .vocals = components.Vocals{
+        components.Vocals{
             .on_death_start = @intFromEnum(GameSoundRepo.which_effects.Kill),
             .on_death_end = @intFromEnum(GameSoundRepo.which_effects.Kill),
             .on_dmg_start = @intFromEnum(GameSoundRepo.which_effects.Player_Damage_01),
@@ -1739,103 +1652,86 @@ fn createFarmer(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) error{Out
         },
     });
 
-    const FarmerParts = struct {
-        pos: components.Position,
-        scale: components.Scale,
-        vel: components.Velocity,
-        texture: components.Texture,
-        orientation_texture: components.OrientationTexture,
-        child_of: components.ChildOf,
-    };
     // Cloak
-    _ = try storage.createEntity(FarmerParts{
-        .pos = components.Position{ .vec = rl.Vector2.zero() },
-        .scale = components.Scale{ .vec = rl.Vector2{ .x = 1, .y = 1 } },
-        .vel = components.Velocity{
+    _ = try storage.createEntity(.{
+        components.Position{ .vec = rl.Vector2.zero() },
+        components.Scale{ .vec = rl.Vector2{ .x = 1, .y = 1 } },
+        components.Velocity{
             .vec = rl.Vector2.zero(),
         },
-        .texture = components.Texture{
+        components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.farmer),
             .index = @intFromEnum(GameTextureRepo.which_farmer.Farmer_Body0001),
             .draw_order = .o0,
         },
-        .orientation_texture = components.OrientationTexture{
+        components.OrientationTexture{
             .start_texture_index = @intFromEnum(GameTextureRepo.which_farmer.Farmer_Body0001),
         },
-        .child_of = components.ChildOf{
+        components.ChildOf{
             .parent = farmer,
             .offset = player_part_offset,
         },
     });
     // Head
-    _ = try storage.createEntity(FarmerParts{
-        .pos = components.Position{ .vec = rl.Vector2.zero() },
-        .scale = components.Scale{
+    _ = try storage.createEntity(.{
+        components.Position{ .vec = rl.Vector2.zero() },
+        components.Scale{
             .vec = rl.Vector2{ .x = 1, .y = 1 },
         },
-        .vel = components.Velocity{
+        components.Velocity{
             .vec = rl.Vector2.zero(),
         },
-        .texture = components.Texture{
+        components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.farmer),
             .index = @intFromEnum(GameTextureRepo.which_farmer.Farmer_Head0001),
             .draw_order = .o1,
         },
-        .orientation_texture = components.OrientationTexture{
+        components.OrientationTexture{
             .start_texture_index = @intFromEnum(GameTextureRepo.which_farmer.Farmer_Head0001),
         },
-        .child_of = components.ChildOf{
+        components.ChildOf{
             .parent = farmer,
             .offset = player_part_offset,
         },
     });
     // Hat
-    _ = try storage.createEntity(FarmerParts{
-        .pos = components.Position{ .vec = rl.Vector2.zero() },
-        .scale = components.Scale{
+    _ = try storage.createEntity(.{
+        components.Position{ .vec = rl.Vector2.zero() },
+        components.Scale{
             .vec = rl.Vector2{ .x = 1, .y = 1 },
         },
-        .vel = components.Velocity{
+        components.Velocity{
             .vec = rl.Vector2.zero(),
         },
-        .texture = components.Texture{
+        components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.farmer),
             .index = @intFromEnum(GameTextureRepo.which_farmer.Farmer_Hat0001),
             .draw_order = .o2,
         },
-        .orientation_texture = components.OrientationTexture{
+        components.OrientationTexture{
             .start_texture_index = @intFromEnum(GameTextureRepo.which_farmer.Farmer_Hat0001),
         },
-        .child_of = components.ChildOf{
+        components.ChildOf{
             .parent = farmer,
             .offset = player_part_offset,
         },
     });
 
-    const Hand = struct {
-        pos: components.Position,
-        scale: components.Scale,
-        vel: components.Velocity,
-        texture: components.Texture,
-        orientation_based_draw_order: components.OrientationBasedDrawOrder,
-        orientation_texture: components.OrientationTexture,
-        child_of: components.ChildOf,
-    };
     // Left hand
-    _ = try storage.createEntity(Hand{
-        .pos = components.Position{ .vec = rl.Vector2.zero() },
-        .scale = components.Scale{
+    _ = try storage.createEntity(.{
+        components.Position{ .vec = rl.Vector2.zero() },
+        components.Scale{
             .vec = rl.Vector2{ .x = 1, .y = 1 },
         },
-        .vel = components.Velocity{
+        components.Velocity{
             .vec = rl.Vector2.zero(),
         },
-        .texture = components.Texture{
+        components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.farmer),
             .index = @intFromEnum(GameTextureRepo.which_farmer.Farmer_Hand_L0001),
             .draw_order = .o3,
         },
-        .orientation_based_draw_order = components.OrientationBasedDrawOrder{
+        components.OrientationBasedDrawOrder{
             .draw_orders = [8]components.Texture.DrawOrder{
                 .o1, // up
                 .o3, // up_left
@@ -1847,29 +1743,29 @@ fn createFarmer(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) error{Out
                 .o1, // up_right
             },
         },
-        .orientation_texture = components.OrientationTexture{
+        components.OrientationTexture{
             .start_texture_index = @intFromEnum(GameTextureRepo.which_farmer.Farmer_Hand_L0001),
         },
-        .child_of = components.ChildOf{
+        components.ChildOf{
             .parent = farmer,
             .offset = player_part_offset,
         },
     });
     // Right hand
-    _ = try storage.createEntity(Hand{
-        .pos = components.Position{ .vec = rl.Vector2.zero() },
-        .scale = components.Scale{
+    _ = try storage.createEntity(.{
+        components.Position{ .vec = rl.Vector2.zero() },
+        components.Scale{
             .vec = rl.Vector2{ .x = 1, .y = 1 },
         },
-        .vel = components.Velocity{
+        components.Velocity{
             .vec = rl.Vector2.zero(),
         },
-        .texture = components.Texture{
+        components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.farmer),
             .index = @intFromEnum(GameTextureRepo.which_farmer.Farmer_Hand_R0001),
             .draw_order = .o3,
         },
-        .orientation_based_draw_order = components.OrientationBasedDrawOrder{
+        components.OrientationBasedDrawOrder{
             .draw_orders = [8]components.Texture.DrawOrder{
                 .o2, // up
                 .o1, // up_left
@@ -1881,10 +1777,10 @@ fn createFarmer(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) error{Out
                 .o3, // up_right
             },
         },
-        .orientation_texture = components.OrientationTexture{
+        components.OrientationTexture{
             .start_texture_index = @intFromEnum(GameTextureRepo.which_farmer.Farmer_Hand_R0001),
         },
-        .child_of = components.ChildOf{
+        components.ChildOf{
             .parent = farmer,
             .offset = player_part_offset,
         },
@@ -1898,58 +1794,41 @@ fn createTheFarmersWife(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) e
     const zone = tracy.ZoneN(@src(), @src().fn_name);
     defer zone.End();
 
-    const Wife = struct {
-        pos: components.Position,
-        scale: components.Scale,
-        vel: components.Velocity,
-        drag: components.Drag,
-        mv_speed: components.MoveSpeed,
-        move_dir: components.DesiredMovedDir,
-        col: components.RectangleCollider,
-        rec_tag: components.DrawRectangleTag,
-        attack_rate: components.AttackRate,
-        hostile_tag: components.HostileTag,
-        wife_tag: components.FarmersWifeTag,
-        melee: components.Melee,
-        health: components.Health,
-        vocals: components.Vocals,
-    };
-
-    const the_wife = try storage.createEntity(Wife{
-        .pos = components.Position{ .vec = pos },
-        .scale = components.Scale{ .vec = scale },
-        .vel = components.Velocity{
+    const the_wife = try storage.createEntity(.{
+        components.Position{ .vec = pos },
+        components.Scale{ .vec = scale },
+        components.Velocity{
             .vec = rl.Vector2.zero(),
         },
-        .drag = components.Drag{
+        components.Drag{
             .value = 0.7,
         },
-        .mv_speed = components.MoveSpeed{
+        components.MoveSpeed{
             .max = 300,
             .accelerate = 45,
         },
-        .move_dir = components.DesiredMovedDir{
+        components.DesiredMovedDir{
             .vec = rl.Vector2.zero(),
         },
-        .col = components.RectangleCollider{
+        components.RectangleCollider{
             .dim = player_hit_box.scale(2.3),
         },
-        .rec_tag = components.DrawRectangleTag{},
-        .attack_rate = components.AttackRate{
+        components.DrawRectangleTag{},
+        components.AttackRate{
             .active_cooldown = 0,
             .cooldown = 60 * 3,
         },
-        .hostile_tag = components.HostileTag{},
-        .wife_tag = components.FarmersWifeTag{},
-        .health = components.Health{
+        components.HostileTag{},
+        components.FarmersWifeTag{},
+        components.Health{
             .max = 500,
             .value = 500,
         },
-        .melee = components.Melee{
+        components.Melee{
             .dmg = 10,
             .range = 80,
         },
-        .vocals = components.Vocals{
+        components.Vocals{
             .on_death_start = @intFromEnum(GameSoundRepo.which_effects.Kill),
             .on_death_end = @intFromEnum(GameSoundRepo.which_effects.Kill),
             .on_dmg_start = @intFromEnum(GameSoundRepo.which_effects.Player_Damage_01),
@@ -1957,83 +1836,66 @@ fn createTheFarmersWife(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) e
         },
     });
 
-    const WifeParts = struct {
-        pos: components.Position,
-        scale: components.Scale,
-        vel: components.Velocity,
-        texture: components.Texture,
-        orientation_texture: components.OrientationTexture,
-        child_of: components.ChildOf,
-    };
     // Chest
-    _ = try storage.createEntity(WifeParts{
-        .pos = components.Position{ .vec = rl.Vector2.zero() },
-        .scale = components.Scale{
+    _ = try storage.createEntity(.{
+        components.Position{ .vec = rl.Vector2.zero() },
+        components.Scale{
             .vec = rl.Vector2{ .x = 1, .y = 1 },
         },
-        .vel = components.Velocity{
+        components.Velocity{
             .vec = rl.Vector2.zero(),
         },
-        .texture = components.Texture{
+        components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.wife),
             .index = @intFromEnum(GameTextureRepo.which_wife.Wife_Idle_Body0001),
             .draw_order = .o0,
         },
-        .orientation_texture = components.OrientationTexture{
+        components.OrientationTexture{
             .start_texture_index = @intFromEnum(GameTextureRepo.which_wife.Wife_Idle_Body0001),
         },
-        .child_of = components.ChildOf{
+        components.ChildOf{
             .parent = the_wife,
             .offset = player_part_offset,
         },
     });
     // Head
-    _ = try storage.createEntity(WifeParts{
-        .pos = components.Position{ .vec = rl.Vector2.zero() },
-        .scale = components.Scale{
+    _ = try storage.createEntity(.{
+        components.Position{ .vec = rl.Vector2.zero() },
+        components.Scale{
             .vec = rl.Vector2{ .x = 1, .y = 1 },
         },
-        .vel = components.Velocity{
+        components.Velocity{
             .vec = rl.Vector2.zero(),
         },
-        .texture = components.Texture{
+        components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.wife),
             .index = @intFromEnum(GameTextureRepo.which_wife.Wife_Idle_Head0001),
             .draw_order = .o1,
         },
-        .orientation_texture = components.OrientationTexture{
+        components.OrientationTexture{
             .start_texture_index = @intFromEnum(GameTextureRepo.which_wife.Wife_Idle_Head0001),
         },
-        .child_of = components.ChildOf{
+        components.ChildOf{
             .parent = the_wife,
             .offset = player_part_offset,
         },
     });
 
-    const Hand = struct {
-        pos: components.Position,
-        scale: components.Scale,
-        vel: components.Velocity,
-        texture: components.Texture,
-        orientation_based_draw_order: components.OrientationBasedDrawOrder,
-        orientation_texture: components.OrientationTexture,
-        child_of: components.ChildOf,
-    };
     // Left hand
-    _ = try storage.createEntity(Hand{
-        .pos = components.Position{ .vec = rl.Vector2.zero() },
-        .scale = components.Scale{
+    _ = try storage.createEntity(.{
+        components.Position{ .vec = rl.Vector2.zero() },
+        components.Scale{
             .vec = rl.Vector2{ .x = 1, .y = 1 },
         },
-        .vel = components.Velocity{
+        components.Velocity{
             .vec = rl.Vector2.zero(),
         },
-        .texture = components.Texture{
+        components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.wife),
             .index = @intFromEnum(GameTextureRepo.which_wife.Wife_Idle_Hand_L0001),
             .draw_order = .o3,
         },
-        .orientation_based_draw_order = components.OrientationBasedDrawOrder{
+        components.OrientationBasedDrawOrder{
             .draw_orders = [8]components.Texture.DrawOrder{
                 .o1, // up
                 .o3, // up_left
@@ -2045,29 +1907,29 @@ fn createTheFarmersWife(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) e
                 .o1, // up_right
             },
         },
-        .orientation_texture = components.OrientationTexture{
+        components.OrientationTexture{
             .start_texture_index = @intFromEnum(GameTextureRepo.which_wife.Wife_Idle_Hand_L0001),
         },
-        .child_of = components.ChildOf{
+        components.ChildOf{
             .parent = the_wife,
             .offset = player_part_offset,
         },
     });
     // Right hand
-    _ = try storage.createEntity(Hand{
-        .pos = components.Position{ .vec = rl.Vector2.zero() },
-        .scale = components.Scale{
+    _ = try storage.createEntity(.{
+        components.Position{ .vec = rl.Vector2.zero() },
+        components.Scale{
             .vec = rl.Vector2{ .x = 1, .y = 1 },
         },
-        .vel = components.Velocity{
+        components.Velocity{
             .vec = rl.Vector2.zero(),
         },
-        .texture = components.Texture{
+        components.Texture{
             .type = @intFromEnum(GameTextureRepo.texture_type.wife),
             .index = @intFromEnum(GameTextureRepo.which_wife.Wife_Idle_Hand_R0001),
             .draw_order = .o3,
         },
-        .orientation_based_draw_order = components.OrientationBasedDrawOrder{
+        components.OrientationBasedDrawOrder{
             .draw_orders = [8]components.Texture.DrawOrder{
                 .o2, // up
                 .o1, // up_left
@@ -2079,10 +1941,10 @@ fn createTheFarmersWife(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) e
                 .o3, // up_right
             },
         },
-        .orientation_texture = components.OrientationTexture{
+        components.OrientationTexture{
             .start_texture_index = @intFromEnum(GameTextureRepo.which_wife.Wife_Idle_Hand_R0001),
         },
-        .child_of = components.ChildOf{
+        components.ChildOf{
             .parent = the_wife,
             .offset = player_part_offset,
         },
@@ -2099,15 +1961,6 @@ pub fn spawnBloodSplatter(
     const zone = tracy.ZoneN(@src(), @src().fn_name);
     defer zone.End();
 
-    const GoreSplatter = struct {
-        pos: components.Position,
-        rot: components.Rotation,
-        scale: components.Scale,
-        texture: components.Texture,
-        anim: components.AnimTexture,
-        lifetime: components.LifeTime,
-        blood_gore_tag: components.BloodGoreGroundTag,
-    };
     const InactiveGoreSplatterQuery = Storage.Query(struct {
         entity: ecez.Entity,
         pos: *components.Position,
@@ -2121,13 +1974,6 @@ pub fn spawnBloodSplatter(
     }, .{});
     var inactive_gore_iter = InactiveGoreSplatterQuery.submit(storage);
 
-    const BloodSplatter = struct {
-        pos: components.Position,
-        scale: components.Scale,
-        texture: components.Texture,
-        lifetime: components.LifeTime,
-        blood_splatter_tag: components.BloodSplatterGroundTag,
-    };
     const InactiveBloodSplatterQuery = Storage.Query(struct {
         entity: ecez.Entity,
         pos: *components.Position,
@@ -2181,16 +2027,16 @@ pub fn spawnBloodSplatter(
             inactive_blood_splatter.scale.* = scale;
             inactive_blood_splatter.lifetime.* = components.LifeTime{ .value = blood_splatterlifetime };
         } else {
-            _ = try storage.createEntity(BloodSplatter{
-                .pos = position,
-                .scale = scale,
-                .texture = components.Texture{
+            _ = try storage.createEntity(.{
+                position,
+                scale,
+                components.Texture{
                     .type = @intFromEnum(GameTextureRepo.texture_type.blood_splatter),
                     .index = @intFromEnum(GameTextureRepo.which_bloodsplat.Blood_Splat),
                     .draw_order = .o0,
                 },
-                .blood_splatter_tag = .{},
-                .lifetime = components.LifeTime{ .value = blood_splatterlifetime },
+                components.BloodSplatterGroundTag{},
+                components.LifeTime{ .value = blood_splatterlifetime },
             });
         }
 
@@ -2226,18 +2072,18 @@ pub fn spawnBloodSplatter(
             rl.setSoundPan(splatter_sound, pan);
             rl.playSound(splatter_sound);
 
-            _ = try storage.createEntity(GoreSplatter{
-                .pos = gore_pos,
-                .rot = components.Rotation{ .value = 0 },
-                .scale = gore_scale,
-                .texture = components.Texture{
+            _ = try storage.createEntity(.{
+                gore_pos,
+                components.Rotation{ .value = 0 },
+                gore_scale,
+                components.Texture{
                     .type = @intFromEnum(GameTextureRepo.texture_type.blood_splatter),
                     .index = @intFromEnum(GameTextureRepo.which_bloodsplat.Blood_Splat0001),
                     .draw_order = .o1,
                 },
-                .anim = anim,
-                .lifetime = lifetime_comp,
-                .blood_gore_tag = .{},
+                anim,
+                lifetime_comp,
+                components.BloodGoreGroundTag{},
             });
         }
 

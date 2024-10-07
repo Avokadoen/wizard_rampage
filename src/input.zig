@@ -63,19 +63,6 @@ pub fn CreateInput(Storage: type) type {
         }
 
         fn fireProjectile(vel: rl.Vector2, storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
-            const Projectile = struct {
-                pos: components.Position,
-                rot: components.Rotation,
-                vel: components.Velocity,
-                drag: components.Drag,
-                collider: components.CircleCollider,
-                texture: components.Texture,
-                anim: components.AnimTexture,
-                tag: components.DrawCircleTag,
-                life_time: components.LifeTime,
-                projectile: components.Projectile,
-            };
-
             const ProjectileQuery = Storage.Query(struct {
                 entity: ecez.Entity,
                 pos: *components.Position,
@@ -147,35 +134,35 @@ pub fn CreateInput(Storage: type) type {
 
                     storage.unsetComponents(projectile.entity, .{components.InactiveTag});
                 } else {
-                    _ = storage.createEntity(Projectile{
-                        .pos = components.Position{
+                    _ = storage.createEntity(.{
+                        components.Position{
                             .vec = pos.vec.add(proj_offset),
                         },
-                        .rot = components.Rotation{ .value = 0 },
-                        .vel = components.Velocity{ .vec = vel },
-                        .drag = components.Drag{ .value = 0.98 },
-                        .collider = components.CircleCollider{
+                        components.Rotation{ .value = 0 },
+                        components.Velocity{ .vec = vel },
+                        components.Drag{ .value = 0.98 },
+                        components.CircleCollider{
                             .x = @floatCast(collider_offset_x * cs - collider_offset_y * sn),
                             .y = @floatCast(collider_offset_x * sn + collider_offset_y * cs),
                             .radius = 10,
                         },
-                        .texture = components.Texture{
+                        components.Texture{
                             .type = @intFromEnum(GameTextureRepo.texture_type.projectile),
                             .index = start_frame,
                             .draw_order = .o3,
                         },
-                        .anim = components.AnimTexture{
+                        components.AnimTexture{
                             .start_frame = start_frame,
                             .current_frame = 0,
                             .frame_count = frame_count,
                             .frames_per_frame = 4,
                             .frames_drawn_current_frame = 0,
                         },
-                        .tag = components.DrawCircleTag{},
-                        .life_time = components.LifeTime{
+                        components.DrawCircleTag{},
+                        components.LifeTime{
                             .value = 1.3,
                         },
-                        .projectile = next_projectile.proj,
+                        next_projectile.proj,
                     }) catch (@panic("rip projectiles"));
                 }
 
