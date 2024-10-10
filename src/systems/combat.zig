@@ -4,10 +4,12 @@ const ecez = @import("ecez");
 
 const physics = @import("../physics_2d.zig");
 const components = @import("../components.zig");
-const Context = @import("Context.zig");
+const ctx = @import("context.zig");
 
 pub fn Create(Storage: type) type {
     return struct {
+        const Context = ctx.ContextType(Storage);
+
         const PlayerReadView = Storage.Subset(
             .{
                 components.Position,

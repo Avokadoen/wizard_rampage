@@ -6,6 +6,7 @@ const input = @import("input.zig");
 const systems = @import("systems.zig");
 const components = @import("components.zig");
 const physics = @import("physics_2d.zig");
+const quad_tree = @import("quad_tree.zig");
 const GameTextureRepo = @import("GameTextureRepo.zig");
 const MainTextureRepo = @import("MainTextureRepo.zig");
 const GameSoundRepo = @import("GameSoundRepo.zig");
@@ -32,8 +33,7 @@ const Scheduler = ecez.CreateScheduler(
             Physics.updatePositionBasedOnVelocity,
             Physics.updateVelocityBasedOnDrag,
             Physics.rotateAfterVelocity,
-            Physics.movableToImmovableRecToRecCollisionResolve,
-            Physics.movableToMovableRecToRecCollisionResolve,
+            Physics.recToRecCollisionResolve,
             Inherent.velocity,
             Inherent.position,
             Inherent.scale,
@@ -49,6 +49,8 @@ const Scheduler = ecez.CreateScheduler(
         }),
     },
 );
+
+const QuadTree = quad_tree.CreateQuadTree(Storage);
 
 const Input = input.CreateInput(Storage);
 
@@ -768,6 +770,16 @@ pub fn main() anyerror!void {
                     });
                 };
 
+                var collision_as = try QuadTree.init(
+                    allocator,
+                    rl.Vector2{ .x = arena_width * 2, .y = arena_height * 2 },
+                    128,
+                    128,
+                );
+                defer collision_as.deinit(allocator);
+
+                try collision_as.insertImmovableEntities(allocator, &storage);
+
                 // NOTE: Defining null for vertex shader forces usage of internal default vertex shader
                 const shader_cauldron = rl.loadShader(null, "resources/shaders/glsl330/cauldron_hp.fs");
                 defer rl.unloadShader(shader_cauldron);
@@ -839,8 +851,10 @@ pub fn main() anyerror!void {
                                 }
                             }
 
+                            try collision_as.updateMovableEntities(allocator, &storage);
+
                             // system update dispatch
-                            const update_context = systems.Context{
+                            const update_context = systems.ctx.ContextType(Storage){
                                 .sound_repo = &sound_repo.effects,
                                 .rng = random,
                                 .farmer_kill_count = &farmer_kill_count,
@@ -849,6 +863,7 @@ pub fn main() anyerror!void {
                                 .cursor_position = mouse_pos,
                                 .camera_entity = camera_entity,
                                 .player_entity = player_entity,
+                                .collision_as = &collision_as,
                             };
                             scheduler.dispatchEvent(&storage, .game_update, update_context);
                             scheduler.waitEvent(.game_update);
@@ -964,19 +979,25 @@ pub fn main() anyerror!void {
                                     var circle_iter = CircleDrawQuery.submit(&storage);
 
                                     while (circle_iter.next()) |circle| {
-                                        const offset = rl.Vector2{
+                                        const pos = circle.pos.vec.add(rl.Vector2{
                                             .x = circle.col.x,
-                                            .y = @floatCast(circle.col.y),
-                                        };
+                                            .y = circle.col.y,
+                                        });
 
                                         rl.drawCircle(
-                                            @intFromFloat(circle.pos.vec.x + @as(f32, @floatCast(offset.x))),
-                                            @intFromFloat(circle.pos.vec.y + @as(f32, @floatCast(offset.y))),
+                                            @intFromFloat(pos.x),
+                                            @intFromFloat(pos.y),
                                             circle.col.radius,
                                             rl.Color.blue,
                                         );
                                     }
                                 }
+
+                                collision_as.debugDrawTree(
+                                    collision_as.node_storage.items[0],
+                                    rl.Vector2{ .x = 0, .y = 0 },
+                                    0,
+                                );
                             }
                         }
 

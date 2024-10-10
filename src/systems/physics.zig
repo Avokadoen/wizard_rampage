@@ -4,89 +4,92 @@ const rl = @import("raylib");
 
 const physics = @import("../physics_2d.zig");
 const components = @import("../components.zig");
-const Context = @import("Context.zig");
+const ctx = @import("context.zig");
 
 pub fn Create(Storage: type) type {
     return struct {
-        const WriteMovableRecColliders = Storage.Query(
-            struct {
-                pos: *components.Position,
-                vel: *components.Velocity,
-                col: components.RectangleCollider,
+        const Context = ctx.ContextType(Storage);
+
+        const RecCollisionResolveWriteSubset = Storage.Subset(
+            .{
+                components.Position,
+                components.Velocity,
             },
-            // exclude type
-            .{ components.InactiveTag, components.Projectile },
+            .read_and_write,
         );
-        const ImmovableRecColliders = Storage.Query(
-            struct {
-                pos: components.Position,
-                col: components.RectangleCollider,
-            },
-            // exclude type
-            .{ components.Velocity, components.InactiveTag },
+        const RecCollisionResolveReadOnlySubset = Storage.Subset(
+            .{components.RectangleCollider},
+            .read_only,
         );
-        pub fn movableToImmovableRecToRecCollisionResolve(
-            movable_iter: *WriteMovableRecColliders,
-            immovable_iter: *ImmovableRecColliders,
+        pub fn recToRecCollisionResolve(
+            write_subset: *RecCollisionResolveWriteSubset,
+            read_subset: *RecCollisionResolveReadOnlySubset,
+            context: Context,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
-            var movable_index: u32 = 0;
-            while (movable_iter.next()) |movable| {
-                defer {
-                    immovable_iter.reset();
-                    immovable_iter.skip(movable_index);
-                    movable_index += 1;
+            // for each leaf, check
+            leaf_loop: for (context.collision_as.leaf_node_storage.items) |leaf_node| {
+                if (leaf_node.isActive() == false) {
+                    continue :leaf_loop;
                 }
 
-                while (immovable_iter.next()) |immovable| {
-                    const maybe_collision = physics.Intersection.rectAndRectResolve(
-                        movable.col,
-                        movable.pos.*,
-                        immovable.col,
-                        immovable.pos,
-                    );
-                    if (maybe_collision) |collision| {
-                        // TODO: reflect
-                        movable.vel.vec = movable.vel.vec.add(collision);
-                        movable.pos.vec = movable.pos.vec.add(collision);
-                    }
-                }
-            }
-        }
+                movable_loop: for (leaf_node.rect_movable_entities.items, 0..) |a, a_index| {
+                    const a_rect = .{
+                        .pos = write_subset.getComponent(a, *components.Position) catch unreachable,
+                        .vel = write_subset.getComponent(a, *components.Velocity) catch unreachable,
+                        .col = read_subset.getComponent(a, components.RectangleCollider) catch unreachable,
+                    };
 
-        pub fn movableToMovableRecToRecCollisionResolve(
-            this_movable_iter: *WriteMovableRecColliders,
-            other_movable_iter: *WriteMovableRecColliders,
-        ) void {
-            const zone = tracy.ZoneN(@src(), @src().fn_name);
-            defer zone.End();
+                    const immovable_value = 0;
+                    const movable_value = 1;
+                    inline for (0..2) |moveable_immovable| {
 
-            var movable_index: u32 = 0;
-            while (this_movable_iter.next()) |this| {
-                defer {
-                    other_movable_iter.reset();
-                    movable_index += 1;
-                }
+                        // If we are checking agains other movable
+                        if (moveable_immovable == movable_value) {
+                            // if we are the last movable, nothing to do.
+                            const is_last_movable = a_index == leaf_node.rect_movable_entities.items.len - 1;
+                            if (is_last_movable) {
+                                continue :movable_loop;
+                            }
+                        }
 
-                other_movable_iter.skip(movable_index + 1); // skip self + all previous
+                        const container = if (moveable_immovable == immovable_value)
+                            leaf_node.immovable_entities.items
+                        else
+                            leaf_node.rect_movable_entities.items[a_index + 1 ..];
 
-                while (other_movable_iter.next()) |other| {
-                    const maybe_collision = physics.Intersection.rectAndRectResolve(
-                        this.col,
-                        this.pos.*,
-                        other.col,
-                        other.pos.*,
-                    );
-                    if (maybe_collision) |collision| {
-                        const half_col = collision.multiply(rl.Vector2.init(0.5, 0.5));
-                        // TODO: reflect
-                        this.vel.vec = this.vel.vec.add(half_col);
-                        this.pos.vec = this.pos.vec.add(half_col);
+                        // Check a with all other
+                        for (container) |b| {
+                            const b_rect = .{
+                                .pos = write_subset.getComponent(b, *components.Position) catch unreachable,
+                                .col = read_subset.getComponent(b, components.RectangleCollider) catch unreachable,
+                            };
 
-                        other.vel.vec = other.vel.vec.subtract(half_col);
-                        other.pos.vec = other.pos.vec.subtract(half_col);
+                            const maybe_collision = physics.Intersection.rectAndRectResolve(
+                                a_rect.col,
+                                a_rect.pos.*,
+                                b_rect.col,
+                                b_rect.pos.*,
+                            );
+                            if (maybe_collision) |collision| {
+                                if (moveable_immovable == immovable_value) {
+                                    // TODO: reflect
+                                    a_rect.vel.vec = a_rect.vel.vec.add(collision);
+                                    a_rect.pos.vec = a_rect.pos.vec.add(collision);
+                                } else {
+                                    const half_col = collision.multiply(rl.Vector2.init(0.5, 0.5));
+                                    // TODO: reflect
+                                    a_rect.vel.vec = a_rect.vel.vec.add(half_col);
+                                    a_rect.pos.vec = a_rect.pos.vec.add(half_col);
+
+                                    const b_vel = write_subset.getComponent(b, *components.Velocity) catch unreachable;
+                                    b_vel.vec = b_vel.vec.subtract(half_col);
+                                    b_rect.pos.vec = b_rect.pos.vec.subtract(half_col);
+                                }
+                            }
+                        }
                     }
                 }
             }

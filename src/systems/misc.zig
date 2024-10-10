@@ -3,10 +3,12 @@ const ecez = @import("ecez");
 const rl = @import("raylib");
 
 const components = @import("../components.zig");
-const Context = @import("Context.zig");
+const ctx = @import("context.zig");
 
 pub fn Create(Storage: type) type {
     return struct {
+        const Context = ctx.ContextType(Storage);
+
         const LifeTimetWriteView = Storage.Subset(
             .{components.InactiveTag},
             .read_and_write,

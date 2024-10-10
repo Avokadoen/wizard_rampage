@@ -1,4 +1,4 @@
-pub const Context = @import("systems/Context.zig");
+pub const ctx = @import("systems/context.zig");
 
 pub const combat = @import("systems/combat.zig");
 pub const inherent = @import("systems/inherent.zig");
