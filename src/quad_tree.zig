@@ -151,8 +151,7 @@ pub fn CreateQuadTree(comptime Storage: type) type {
 
                     // Remove leaf node from parent node
                     var parent_index: u16 = leaf.parent_index;
-                    var parent_node = &self.node_storage.items[parent_index];
-                    for (&parent_node.child_node_indices) |*child_index| {
+                    for (&self.node_storage.items[parent_index].child_node_indices) |*child_index| {
                         if (child_index.* == leaf_index) {
                             child_index.* = null_index;
                         }
@@ -167,7 +166,7 @@ pub fn CreateQuadTree(comptime Storage: type) type {
 
                         // Count parent children
                         var child_count: u8 = 0;
-                        for (parent_node.child_node_indices) |child_index| {
+                        for (self.node_storage.items[parent_index].child_node_indices) |child_index| {
                             if (child_index != null_index) {
                                 child_count += 1;
                             }
@@ -185,9 +184,8 @@ pub fn CreateQuadTree(comptime Storage: type) type {
 
                         // Re-assign parent, remove current from parent children list
                         const current_index = parent_index;
-                        parent_index = parent_node.parent_index;
-                        parent_node = &self.node_storage.items[parent_node.parent_index];
-                        for (&parent_node.child_node_indices) |*child_index| {
+                        parent_index = self.node_storage.items[parent_index].parent_index;
+                        for (&self.node_storage.items[parent_index].child_node_indices) |*child_index| {
                             if (child_index.* == current_index) {
                                 child_index.* = null_index;
                             }
@@ -233,7 +231,6 @@ pub fn CreateQuadTree(comptime Storage: type) type {
             std.debug.assert(pos.y >= 0 and pos.y < self.outer_bounds.y);
 
             var local_pos = pos.divide(self.outer_bounds);
-            var current_node = &self.node_storage.items[0];
             var current_node_index: u16 = 0;
 
             for (0..tree_depth - 1) |_| {
@@ -245,7 +242,7 @@ pub fn CreateQuadTree(comptime Storage: type) type {
 
                     const child_index: usize = @intFromFloat(@floor(cell_coord.x) + @floor(cell_coord.y) * 2);
 
-                    var next_index = current_node.child_node_indices[child_index];
+                    var next_index = self.node_storage.items[current_node_index].child_node_indices[child_index];
 
                     // If node does not exist, create node
                     if (null_index == next_index) {
@@ -263,7 +260,7 @@ pub fn CreateQuadTree(comptime Storage: type) type {
                             });
                         }
 
-                        current_node.child_node_indices[child_index] = next_index;
+                        self.node_storage.items[current_node_index].child_node_indices[child_index] = next_index;
                     }
 
                     local_pos = rl.Vector2{
@@ -274,13 +271,12 @@ pub fn CreateQuadTree(comptime Storage: type) type {
                     break :calc_next_index_blk next_index;
                 };
 
-                current_node = &self.node_storage.items[next_node_index];
                 current_node_index = next_node_index;
             }
 
             const cell_coord = local_pos.scale(2);
             const child_index: usize = @intFromFloat(@floor(cell_coord.x) + @floor(cell_coord.y) * 2);
-            var next_index = current_node.child_node_indices[child_index];
+            var next_index = self.node_storage.items[current_node_index].child_node_indices[child_index];
 
             // If leaf node does not exist, create leaf node
             if (null_index == next_index) {
@@ -297,11 +293,10 @@ pub fn CreateQuadTree(comptime Storage: type) type {
                     });
                 }
 
-                current_node.child_node_indices[child_index] = next_index;
+                self.node_storage.items[current_node_index].child_node_indices[child_index] = next_index;
             }
 
             var leaf_node = &self.leaf_node_storage.items[next_index];
-
             switch (entity_type) {
                 .circle_movable => try leaf_node.circle_movable_entities.append(allocator, entity),
                 .rect_movable => try leaf_node.rect_movable_entities.append(allocator, entity),
