@@ -10,20 +10,15 @@ pub fn Create(Storage: type) type {
     return struct {
         const Context = ctx.ContextType(Storage);
 
-        const RecCollisionResolveWriteSubset = Storage.Subset(
+        const RecCollisionResolveSubset = Storage.Subset(
             .{
-                components.Position,
-                components.Velocity,
+                *components.Position,
+                *components.Velocity,
+                components.RectangleCollider,
             },
-            .read_and_write,
-        );
-        const RecCollisionResolveReadOnlySubset = Storage.Subset(
-            .{components.RectangleCollider},
-            .read_only,
         );
         pub fn recToRecCollisionResolve(
-            write_subset: *RecCollisionResolveWriteSubset,
-            read_subset: *RecCollisionResolveReadOnlySubset,
+            subset: *RecCollisionResolveSubset,
             context: Context,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
@@ -36,11 +31,11 @@ pub fn Create(Storage: type) type {
                 }
 
                 movable_loop: for (leaf_node.rect_movable_entities.items, 0..) |a, a_index| {
-                    const a_rect = .{
-                        .pos = write_subset.getComponent(a, *components.Position) catch unreachable,
-                        .vel = write_subset.getComponent(a, *components.Velocity) catch unreachable,
-                        .col = read_subset.getComponent(a, components.RectangleCollider) catch unreachable,
-                    };
+                    const a_rect = subset.getComponents(a, struct {
+                        pos: *components.Position,
+                        vel: *components.Velocity,
+                        col: components.RectangleCollider,
+                    }) catch unreachable;
 
                     const immovable_value = 0;
                     const movable_value = 1;
@@ -62,10 +57,10 @@ pub fn Create(Storage: type) type {
 
                         // Check a with all other
                         for (container) |b| {
-                            const b_rect = .{
-                                .pos = write_subset.getComponent(b, *components.Position) catch unreachable,
-                                .col = read_subset.getComponent(b, components.RectangleCollider) catch unreachable,
-                            };
+                            const b_rect = subset.getComponents(a, struct {
+                                pos: *components.Position,
+                                col: components.RectangleCollider,
+                            }) catch unreachable;
 
                             const maybe_collision = physics.Intersection.rectAndRectResolve(
                                 a_rect.col,
@@ -84,7 +79,7 @@ pub fn Create(Storage: type) type {
                                     a_rect.vel.vec = a_rect.vel.vec.add(half_col);
                                     a_rect.pos.vec = a_rect.pos.vec.add(half_col);
 
-                                    const b_vel = write_subset.getComponent(b, *components.Velocity) catch unreachable;
+                                    const b_vel = subset.getComponent(b, *components.Velocity) catch unreachable;
                                     b_vel.vec = b_vel.vec.subtract(half_col);
                                     b_rect.pos.vec = b_rect.pos.vec.subtract(half_col);
                                 }

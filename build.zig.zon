@@ -20,8 +20,8 @@
             .hash = "1220ff1a9e774784fe3f11ffe71bc0186f9e62eb0fe1727f676d038b62665a5c74c5",
         },
         .ecez = .{
-            .url = "https://github.com/avokadoen/ecez/archive/b33e5fc82ad148ff1c32bd20861dab6b47acc4ef.tar.gz",
-            .hash = "1220793fbb6e6312bb007b9da2f108e4455d2da6b3faacf8e402385327ef79a4e26b",
+            .url = "https://github.com/avokadoen/ecez/archive/4c713bfb1a5a65922bab3bcaabee402bbabb7c85.tar.gz",
+            .hash = "1220b6c1ae2592dcbec47d74ec25d2f78ed375a6076c25886b7df2fd97806024c464",
         },
         .ztracy = .{ .path = "deps/ztracy" },
     },

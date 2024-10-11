@@ -12,20 +12,14 @@ pub fn Create(Storage: type) type {
     return struct {
         const Context = ctx.ContextType(Storage);
 
-        const PlayerReadView = Storage.Subset(
+        const HostileMeleePlayerSubset = Storage.Subset(
             .{
                 components.Position,
                 components.RectangleCollider,
                 components.Vocals,
                 components.InactiveTag,
+                *components.Health,
             },
-            .read_only,
-        );
-        const PlayerWriteView = Storage.Subset(
-            .{
-                components.Health,
-            },
-            .read_and_write,
         );
         const HostileMeleeQuery = Storage.Query(
             struct {
@@ -37,8 +31,7 @@ pub fn Create(Storage: type) type {
             .{components.InactiveTag},
         );
         pub fn hostileMeleePlayer(
-            player_read_view: *PlayerReadView,
-            player_write_view: *PlayerWriteView,
+            subset: *HostileMeleePlayerSubset,
             hostile_iter: *HostileMeleeQuery,
             context: Context,
         ) void {
@@ -50,17 +43,17 @@ pub fn Create(Storage: type) type {
                 return;
             }
 
-            if (player_read_view.hasComponents(context.player_entity, .{components.InactiveTag})) {
+            if (subset.hasComponents(context.player_entity, .{components.InactiveTag})) {
                 return;
             }
 
-            const player_r = player_read_view.getComponents(context.player_entity, struct {
+            const player_r = subset.getComponents(context.player_entity, struct {
                 pos: components.Position,
                 col: components.RectangleCollider,
                 vocals: components.Vocals,
             }) catch @panic("player entity missing");
 
-            const player_w = player_write_view.getComponents(context.player_entity, struct {
+            const player_w = subset.getComponents(context.player_entity, struct {
                 health: *components.Health,
             }) catch unreachable;
 
@@ -103,7 +96,7 @@ pub fn Create(Storage: type) type {
             }
         }
 
-        const ProjectileHitReadView = Storage.Subset(
+        const ProjectileHitKillableSubset = Storage.Subset(
             .{
                 components.Position,
                 components.Scale,
@@ -112,26 +105,19 @@ pub fn Create(Storage: type) type {
                 components.CircleCollider,
                 components.RectangleCollider,
                 components.Projectile,
+                *components.InactiveTag,
+                *components.Velocity,
+                *components.Health,
             },
-            .read_only,
-        );
-        const ProjectileHitWriteView = Storage.Subset(
-            .{
-                components.InactiveTag,
-                components.Velocity,
-                components.Health,
-            },
-            .read_and_write,
         );
         pub fn projectileHitKillable(
-            read_view: *ProjectileHitReadView,
-            write_view: *ProjectileHitWriteView,
+            subset: *ProjectileHitKillableSubset,
             context: Context,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
-            const camera = read_view.getComponents(context.camera_entity, struct {
+            const camera = subset.getComponents(context.camera_entity, struct {
                 pos: components.Position,
                 scale: components.Scale,
                 cam: components.Camera,
@@ -144,14 +130,14 @@ pub fn Create(Storage: type) type {
 
                 proj_loop: for (leaf_node.circle_movable_entities.items) |a| {
                     // We assume all circle colliders in the game is projectiles currently.
-                    std.debug.assert(read_view.hasComponents(a, .{components.Projectile}));
+                    std.debug.assert(subset.hasComponents(a, .{components.Projectile}));
 
-                    const projectile = .{
-                        .pos = read_view.getComponent(a, components.Position) catch unreachable,
-                        .col = read_view.getComponent(a, components.CircleCollider) catch unreachable,
-                        .vel = write_view.getComponent(a, components.Velocity) catch unreachable,
-                        .proj = read_view.getComponent(a, components.Projectile) catch unreachable,
-                    };
+                    const projectile = subset.getComponents(a, struct {
+                        pos: components.Position,
+                        col: components.CircleCollider,
+                        vel: components.Velocity,
+                        proj: components.Projectile,
+                    }) catch unreachable;
 
                     const offset = rl.Vector2.init(
                         @floatCast(projectile.col.x),
@@ -173,10 +159,10 @@ pub fn Create(Storage: type) type {
                     const pan = ((projectile.pos.vec.x - camera.pos.vec.x) + 0.5) / camera.cam.resolution.x;
 
                     for (leaf_node.immovable_entities.items) |b| {
-                        const immovable = .{
-                            .pos = read_view.getComponent(b, components.Position) catch unreachable,
-                            .col = read_view.getComponent(b, components.RectangleCollider) catch unreachable,
-                        };
+                        const immovable = subset.getComponents(b, struct {
+                            pos: components.Position,
+                            col: components.RectangleCollider,
+                        }) catch unreachable;
 
                         if (physics.Intersection.circleAndRect(
                             projectile.col,
@@ -185,18 +171,18 @@ pub fn Create(Storage: type) type {
                             immovable.pos,
                         )) {
                             // Assumption: objects without velocity does not have a health component
-                            write_view.setComponents(a, .{components.InactiveTag{}}) catch @panic("oom");
+                            subset.setComponents(a, .{components.InactiveTag{}}) catch @panic("oom");
                             continue :proj_loop;
                         }
                     }
 
                     for (leaf_node.rect_movable_entities.items) |b| {
                         // Assumption: All movable are killable
-                        const killable = .{
-                            .pos = read_view.getComponent(b, components.Position) catch unreachable,
-                            .col = read_view.getComponent(b, components.RectangleCollider) catch unreachable,
-                            .health = write_view.getComponent(b, *components.Health) catch unreachable,
-                        };
+                        const killable = subset.getComponents(b, struct {
+                            pos: components.Position,
+                            col: components.RectangleCollider,
+                            health: *components.Health,
+                        }) catch unreachable;
 
                         if (physics.Intersection.circleAndRect(
                             projectile.col,
@@ -204,7 +190,7 @@ pub fn Create(Storage: type) type {
                             killable.col,
                             killable.pos,
                         )) {
-                            const maybe_vocals = read_view.getComponent(b, components.Vocals) catch null;
+                            const maybe_vocals = subset.getComponent(b, components.Vocals) catch null;
                             if (maybe_vocals) |vocals| {
                                 const on_dmg_index = context.rng.intRangeAtMost(u8, vocals.on_dmg_start, vocals.on_dmg_end);
                                 const on_dmg_sound = context.sound_repo[on_dmg_index];
@@ -216,7 +202,7 @@ pub fn Create(Storage: type) type {
                                 rl.playSound(on_dmg_sound);
                             }
 
-                            const maybe_vel = write_view.getComponent(b, *components.Velocity) catch null;
+                            const maybe_vel = subset.getComponent(b, *components.Velocity) catch null;
                             if (maybe_vel) |kill_vel| {
                                 const proj_dir = projectile.vel.vec.normalize();
                                 const proj_impact = rl.Vector2.init(projectile.proj.weight, projectile.proj.weight);
@@ -226,7 +212,7 @@ pub fn Create(Storage: type) type {
                             killable.health.value -= projectile.proj.dmg + extra_dmg;
 
                             if (!has_piercing) {
-                                write_view.setComponents(a, .{components.InactiveTag{}}) catch @panic("oom");
+                                subset.setComponents(a, .{components.InactiveTag{}}) catch @panic("oom");
                                 continue :proj_loop;
                             }
                         }
@@ -235,15 +221,10 @@ pub fn Create(Storage: type) type {
             }
         }
 
-        const RegisterDeadWriteView = Storage.Subset(
+        const RegisterDeadSubset = Storage.Subset(
             .{
-                components.InactiveTag,
-                components.DiedThisFrameTag,
-            },
-            .read_and_write,
-        );
-        const RegisterDeadReadView = Storage.Subset(
-            .{
+                *components.InactiveTag,
+                *components.DiedThisFrameTag,
                 components.FarmerTag,
                 components.FarmersWifeTag,
                 components.Camera,
@@ -251,7 +232,6 @@ pub fn Create(Storage: type) type {
                 components.Position,
                 components.Scale,
             },
-            .read_only,
         );
         const MaybeDeadQuery = Storage.Query(
             struct {
@@ -263,14 +243,13 @@ pub fn Create(Storage: type) type {
         );
         pub fn registerDead(
             living: *MaybeDeadQuery,
-            write_view: *RegisterDeadWriteView,
-            read_view: *RegisterDeadReadView,
+            subset: *RegisterDeadSubset,
             context: Context,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
-            const camera = read_view.getComponents(context.camera_entity, struct {
+            const camera = subset.getComponents(context.camera_entity, struct {
                 pos: components.Position,
                 scale: components.Scale,
                 cam: components.Camera,
@@ -278,7 +257,7 @@ pub fn Create(Storage: type) type {
 
             while (living.next()) |item| {
                 if (item.health.value <= 0) {
-                    const maybe_vocals = read_view.getComponent(item.entity, components.Vocals) catch null;
+                    const maybe_vocals = subset.getComponent(item.entity, components.Vocals) catch null;
                     if (maybe_vocals) |vocals| {
                         const on_death_index = context.rng.intRangeAtMost(u8, vocals.on_death_start, vocals.on_death_end);
                         const on_death_sound = context.sound_repo[on_death_index];
@@ -293,13 +272,13 @@ pub fn Create(Storage: type) type {
                         rl.playSound(on_death_sound);
                     }
 
-                    if (read_view.hasComponents(item.entity, .{components.FarmerTag})) {
+                    if (subset.hasComponents(item.entity, .{components.FarmerTag})) {
                         context.farmer_kill_count.* += 1;
-                    } else if (read_view.hasComponents(item.entity, .{components.FarmersWifeTag})) {
+                    } else if (subset.hasComponents(item.entity, .{components.FarmersWifeTag})) {
                         context.the_wife_kill_count.* += 1;
                     }
 
-                    write_view.setComponents(item.entity, .{
+                    subset.setComponents(item.entity, .{
                         components.InactiveTag{},
                         components.DiedThisFrameTag{},
                     }) catch @panic("registerDead: oom");
@@ -311,11 +290,10 @@ pub fn Create(Storage: type) type {
             }
         }
 
-        const PlayerPosView = Storage.Subset(
+        const TargetPlayerOrFleeSubset = Storage.Subset(
             .{
                 components.Position,
             },
-            .read_only,
         );
         const HostileQuery = Storage.Query(struct {
             pos: components.Position,
@@ -324,13 +302,13 @@ pub fn Create(Storage: type) type {
         }, .{components.InactiveTag});
         pub fn targetPlayerOrFlee(
             hostile_iter: *HostileQuery,
-            player_view: *PlayerPosView,
+            subset: *TargetPlayerOrFleeSubset,
             context: Context,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
-            const player = player_view.getComponents(
+            const player = subset.getComponents(
                 context.player_entity,
                 struct {
                     pos: components.Position,

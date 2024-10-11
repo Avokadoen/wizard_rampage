@@ -9,53 +9,44 @@ pub fn Create(Storage: type) type {
     return struct {
         const Context = ctx.ContextType(Storage);
 
-        const LifeTimetWriteView = Storage.Subset(
-            .{components.InactiveTag},
-            .read_and_write,
-        );
+        const LifeTimetSubset = Storage.Subset(.{
+            *components.InactiveTag,
+        });
         const LifetimeQuery = Storage.Query(struct {
             entity: ecez.Entity,
             life_time: *components.LifeTime,
         }, .{components.InactiveTag});
         pub fn lifeTime(
             lifetime: *LifetimeQuery,
-            write_view: *LifeTimetWriteView,
+            subset: *LifeTimetSubset,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
             while (lifetime.next()) |item| {
                 if (item.life_time.value <= 0) {
-                    write_view.setComponents(item.entity, .{components.InactiveTag{}}) catch (@panic("oom"));
+                    subset.setComponents(item.entity, .{components.InactiveTag{}}) catch (@panic("oom"));
                 }
                 item.life_time.value -= Context.delta_time;
             }
         }
 
-        const PlayerCamView = Storage.Subset(
+        const CameraFollowPlayerSubset = Storage.Subset(
             .{
-                components.Position,
+                *components.Position,
                 components.RectangleCollider,
+                *components.Scale,
+                *components.Camera,
             },
-            .read_only,
-        );
-        const CameraUpdateView = Storage.Subset(
-            .{
-                components.Position,
-                components.Scale,
-                components.Camera,
-            },
-            .read_and_write,
         );
         pub fn cameraFollowPlayer(
-            camera_update_view: *CameraUpdateView,
-            player_view: *PlayerCamView,
+            subset: *CameraFollowPlayerSubset,
             context: Context,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
-            const camera = camera_update_view.getComponents(
+            const camera = subset.getComponents(
                 context.camera_entity,
                 struct {
                     pos: *components.Position,
@@ -64,7 +55,7 @@ pub fn Create(Storage: type) type {
                 },
             ) catch @panic("camera missing required comp");
 
-            const player = player_view.getComponents(context.player_entity, struct {
+            const player = subset.getComponents(context.player_entity, struct {
                 pos: components.Position,
                 col: components.RectangleCollider,
             }) catch @panic("player entity missing");

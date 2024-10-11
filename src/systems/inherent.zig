@@ -6,7 +6,9 @@ const components = @import("../components.zig");
 
 pub fn Create(Storage: type) type {
     return struct {
-        const ParentVelView = Storage.Subset(.{components.Velocity}, .read_only);
+        const ParentVelSubset = Storage.Subset(.{
+            components.Velocity,
+        });
         const InherentVelQuery = Storage.Query(
             struct {
                 vel: *components.Velocity,
@@ -16,18 +18,20 @@ pub fn Create(Storage: type) type {
         );
         pub fn velocity(
             inherent_vel: *InherentVelQuery,
-            parent_vel_view: *ParentVelView,
+            subset: *ParentVelSubset,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
             while (inherent_vel.next()) |item| {
-                const parent_vel = parent_vel_view.getComponent(item.child_of.parent, components.Velocity) catch continue;
+                const parent_vel = subset.getComponent(item.child_of.parent, components.Velocity) catch continue;
                 item.vel.* = parent_vel;
             }
         }
 
-        const ParentPosView = Storage.Subset(.{components.Position}, .read_only);
+        const ParentPosSubset = Storage.Subset(.{
+            components.Position,
+        });
         const InherentPosQuery = Storage.Query(
             struct {
                 pos: *components.Position,
@@ -37,18 +41,20 @@ pub fn Create(Storage: type) type {
         );
         pub fn position(
             inherent_pos: *InherentPosQuery,
-            parent_pos_view: *ParentPosView,
+            subset: *ParentPosSubset,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
             while (inherent_pos.next()) |item| {
-                const parent_pos = parent_pos_view.getComponent(item.child_of.parent, components.Position) catch continue;
+                const parent_pos = subset.getComponent(item.child_of.parent, components.Position) catch continue;
                 item.pos.vec = parent_pos.vec.add(item.child_of.offset);
             }
         }
 
-        const ParentScaleView = Storage.Subset(.{components.Scale}, .read_only);
+        const ParentScaleSubset = Storage.Subset(.{
+            components.Scale,
+        });
         const InherentScaleQuery = Storage.Query(
             struct {
                 scale: *components.Scale,
@@ -58,43 +64,41 @@ pub fn Create(Storage: type) type {
         );
         pub fn scale(
             inherent_scale: *InherentScaleQuery,
-            parent_scale_view: *ParentScaleView,
+            subset: *ParentScaleSubset,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
             while (inherent_scale.next()) |item| {
-                const parent_scale = parent_scale_view.getComponent(item.child_of.parent, components.Scale) catch continue;
+                const parent_scale = subset.getComponent(item.child_of.parent, components.Scale) catch continue;
                 item.scale.vec = parent_scale.vec;
             }
         }
 
-        const InherentInactiveFromParentWriteView = Storage.Subset(
-            .{components.InactiveTag},
-            .read_and_write,
-        );
+        const InherentInactiveFromParentSubset = Storage.Subset(.{
+            *components.InactiveTag,
+        });
         const InherentInactiveQuery = Storage.Query(struct {
             entity: ecez.Entity,
             child_of: components.ChildOf,
         }, .{components.InactiveTag});
         pub fn inactive(
             inherent_inactive: *InherentInactiveQuery,
-            write_view: *InherentInactiveFromParentWriteView,
+            subset: *InherentInactiveFromParentSubset,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
             while (inherent_inactive.next()) |item| {
-                if (write_view.hasComponents(item.child_of.parent, .{components.InactiveTag})) {
-                    write_view.setComponents(item.entity, .{components.InactiveTag{}}) catch @panic("inherentInactiveFromParent: oom");
+                if (subset.hasComponents(item.child_of.parent, .{components.InactiveTag})) {
+                    subset.setComponents(item.entity, .{components.InactiveTag{}}) catch @panic("inherentInactiveFromParent: oom");
                 }
             }
         }
 
-        const InherentActiveFromParentWriteView = Storage.Subset(
-            .{components.InactiveTag},
-            .read_and_write,
-        );
+        const InherentActiveFromParentSubset = Storage.Subset(.{
+            *components.InactiveTag,
+        });
         const InherentActiveQuery = Storage.Query(struct {
             entity: ecez.Entity,
             child_of: components.ChildOf,
@@ -102,14 +106,14 @@ pub fn Create(Storage: type) type {
         }, .{});
         pub fn active(
             inherent_active: *InherentActiveQuery,
-            write_view: *InherentActiveFromParentWriteView,
+            subset: *InherentActiveFromParentSubset,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
             while (inherent_active.next()) |item| {
-                if (write_view.hasComponents(item.child_of.parent, .{components.InactiveTag}) == false) {
-                    write_view.unsetComponents(item.entity, .{components.InactiveTag});
+                if (subset.hasComponents(item.child_of.parent, .{components.InactiveTag}) == false) {
+                    subset.unsetComponents(item.entity, .{components.InactiveTag});
                 }
             }
         }
