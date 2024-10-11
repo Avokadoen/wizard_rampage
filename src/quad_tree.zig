@@ -30,7 +30,7 @@ pub fn CreateQuadTree(comptime Storage: type) type {
     return struct {
         const QuadTree = @This();
 
-        const tree_depth = 5;
+        const tree_depth = 6;
 
         outer_bounds: rl.Vector2,
 

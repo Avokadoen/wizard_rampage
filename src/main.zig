@@ -772,7 +772,7 @@ pub fn main() anyerror!void {
 
                 var collision_as = try QuadTree.init(
                     allocator,
-                    rl.Vector2{ .x = arena_width * 2, .y = arena_height * 2 },
+                    rl.Vector2{ .x = arena_width * 1.25, .y = arena_height * 1.25 },
                     128,
                     128,
                 );
