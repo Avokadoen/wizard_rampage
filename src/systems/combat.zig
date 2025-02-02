@@ -25,9 +25,9 @@ pub fn Create(Storage: type) type {
             struct {
                 pos: components.Position,
                 attack_rate: *components.AttackRate,
-                hostile: components.HostileTag,
                 melee: components.Melee,
             },
+            .{components.HostileTag},
             .{components.InactiveTag},
         );
         pub fn hostileMeleePlayer(
@@ -239,6 +239,7 @@ pub fn Create(Storage: type) type {
                 pos: components.Position,
                 health: components.Health,
             },
+            .{},
             .{components.InactiveTag},
         );
         pub fn registerDead(
@@ -295,11 +296,14 @@ pub fn Create(Storage: type) type {
                 components.Position,
             },
         );
-        const HostileQuery = Storage.Query(struct {
-            pos: components.Position,
-            mov_dir: *components.DesiredMovedDir,
-            _: components.HostileTag,
-        }, .{components.InactiveTag});
+        const HostileQuery = Storage.Query(
+            struct {
+                pos: components.Position,
+                mov_dir: *components.DesiredMovedDir,
+            },
+            .{components.HostileTag},
+            .{components.InactiveTag},
+        );
         pub fn targetPlayerOrFlee(
             hostile_iter: *HostileQuery,
             subset: *TargetPlayerOrFleeSubset,
@@ -323,9 +327,13 @@ pub fn Create(Storage: type) type {
             }
         }
 
-        const AttackRateQuery = Storage.Query(struct {
-            attack_rate: *components.AttackRate,
-        }, .{components.InactiveTag});
+        const AttackRateQuery = Storage.Query(
+            struct {
+                attack_rate: *components.AttackRate,
+            },
+            .{},
+            .{components.InactiveTag},
+        );
         pub fn tickAttackRate(attack_rate: *AttackRateQuery) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();

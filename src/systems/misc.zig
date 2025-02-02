@@ -12,10 +12,14 @@ pub fn Create(Storage: type) type {
         const LifeTimetSubset = Storage.Subset(.{
             *components.InactiveTag,
         });
-        const LifetimeQuery = Storage.Query(struct {
-            entity: ecez.Entity,
-            life_time: *components.LifeTime,
-        }, .{components.InactiveTag});
+        const LifetimeQuery = Storage.Query(
+            struct {
+                entity: ecez.Entity,
+                life_time: *components.LifeTime,
+            },
+            .{},
+            .{components.InactiveTag},
+        );
         pub fn lifeTime(
             lifetime: *LifetimeQuery,
             subset: *LifeTimetSubset,
@@ -67,11 +71,15 @@ pub fn Create(Storage: type) type {
             camera.pos.vec = player.pos.vec.subtract(camera_offset);
         }
 
-        const OrientTextureQuery = Storage.Query(struct {
-            velocity: components.Velocity,
-            texture: *components.Texture,
-            orientation_texture: components.OrientationTexture,
-        }, .{components.InactiveTag});
+        const OrientTextureQuery = Storage.Query(
+            struct {
+                velocity: components.Velocity,
+                texture: *components.Texture,
+                orientation_texture: components.OrientationTexture,
+            },
+            .{},
+            .{components.InactiveTag},
+        );
         pub fn orientTexture(orient_textures: *OrientTextureQuery) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
@@ -111,11 +119,15 @@ pub fn Create(Storage: type) type {
             }
         }
 
-        const OrientDrawOrderQuery = Storage.Query(struct {
-            texture: *components.Texture,
-            orientation_draw_order: components.OrientationBasedDrawOrder,
-            orientation_texture: components.OrientationTexture,
-        }, .{components.InactiveTag});
+        const OrientDrawOrderQuery = Storage.Query(
+            struct {
+                texture: *components.Texture,
+                orientation_draw_order: components.OrientationBasedDrawOrder,
+                orientation_texture: components.OrientationTexture,
+            },
+            .{},
+            .{components.InactiveTag},
+        );
         pub fn orientationBasedDrawOrder(orient_draw_order: *OrientDrawOrderQuery) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
@@ -126,10 +138,14 @@ pub fn Create(Storage: type) type {
             }
         }
 
-        const AnimateQuery = Storage.Query(struct {
-            texture: *components.Texture,
-            anim: *components.AnimTexture,
-        }, .{components.InactiveTag});
+        const AnimateQuery = Storage.Query(
+            struct {
+                texture: *components.Texture,
+                anim: *components.AnimTexture,
+            },
+            .{},
+            .{components.InactiveTag},
+        );
         pub fn animateTexture(animate: *AnimateQuery) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();

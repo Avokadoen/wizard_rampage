@@ -57,7 +57,7 @@ pub fn Create(Storage: type) type {
 
                         // Check a with all other
                         for (container) |b| {
-                            const b_rect = subset.getComponents(a, struct {
+                            const b_rect = subset.getComponents(b, struct {
                                 pos: *components.Position,
                                 col: components.RectangleCollider,
                             }) catch unreachable;
@@ -95,6 +95,7 @@ pub fn Create(Storage: type) type {
                 rot: *components.Rotation,
                 vel: components.Velocity,
             },
+            .{},
             .{components.InactiveTag},
         );
         pub fn rotateAfterVelocity(rot_vel_iter: *RotateVelocityQuery) void {
@@ -115,6 +116,7 @@ pub fn Create(Storage: type) type {
                 move_speed: components.MoveSpeed,
                 move_dir: *components.DesiredMovedDir,
             },
+            .{},
             .{},
         );
         pub fn updateVelocityBasedMoveDir(update_vel: *UpdateVelocityQuery) void {
@@ -137,6 +139,7 @@ pub fn Create(Storage: type) type {
                 pos: *components.Position,
                 vel: components.Velocity,
             },
+            .{},
             .{ components.InactiveTag, components.ChildOf },
         );
         pub fn updatePositionBasedOnVelocity(update_pos: *UpdatePosBasedOnVelQuery) void {
@@ -154,6 +157,7 @@ pub fn Create(Storage: type) type {
                 vel: *components.Velocity,
                 drag: components.Drag,
             },
+            .{},
             .{ components.InactiveTag, components.ChildOf },
         );
         pub fn updateVelocityBasedOnDrag(update_vel: *UpdateVelBasedOnDrag) void {

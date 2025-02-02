@@ -63,19 +63,22 @@ pub fn CreateInput(Storage: type) type {
         }
 
         fn fireProjectile(vel: rl.Vector2, storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
-            const ProjectileQuery = Storage.Query(struct {
-                entity: ecez.Entity,
-                pos: *components.Position,
-                rot: *components.Rotation,
-                vel: *components.Velocity,
-                drag: *components.Drag,
-                collider: *components.CircleCollider,
-                texture: *components.Texture,
-                anim: *components.AnimTexture,
-                life_time: *components.LifeTime,
-                _: components.InactiveTag,
-                projectile: *components.Projectile,
-            }, .{});
+            const ProjectileQuery = Storage.QueryAny(
+                struct {
+                    entity: ecez.Entity,
+                    pos: *components.Position,
+                    rot: *components.Rotation,
+                    vel: *components.Velocity,
+                    drag: *components.Drag,
+                    collider: *components.CircleCollider,
+                    texture: *components.Texture,
+                    anim: *components.AnimTexture,
+                    life_time: *components.LifeTime,
+                    projectile: *components.Projectile,
+                },
+                .{components.InactiveTag},
+                .{},
+            );
 
             const fire_rate = storage.getComponent(staff_entity, *components.AttackRate) catch unreachable;
             if (fire_rate.active_cooldown <= 0) {
@@ -104,8 +107,8 @@ pub fn CreateInput(Storage: type) type {
 
                 const proj_offset = norm_vel.multiply(rl.Vector2.init(15, 15));
 
-                var projectile_iter = ProjectileQuery.submit(storage);
-                if (projectile_iter.next()) |projectile| {
+                var projectile_iter = ProjectileQuery.prepare(storage);
+                if (projectile_iter.getAny()) |projectile| {
                     projectile.pos.* = components.Position{ .vec = pos.vec.add(proj_offset) };
                     projectile.rot.* = components.Rotation{ .value = 0 };
                     projectile.vel.* = components.Velocity{ .vec = vel };

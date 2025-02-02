@@ -92,14 +92,18 @@ pub fn CreateQuadTree(comptime Storage: type) type {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
-            const ImmovableRectangleQuery = Storage.Query(struct {
-                entity: ecez.Entity,
-                pos: components.Position,
-                col: components.RectangleCollider,
-            }, .{
-                components.InactiveTag,
-                components.Velocity,
-            });
+            const ImmovableRectangleQuery = Storage.Query(
+                struct {
+                    entity: ecez.Entity,
+                    pos: components.Position,
+                    col: components.RectangleCollider,
+                },
+                .{},
+                .{
+                    components.InactiveTag,
+                    components.Velocity,
+                },
+            );
             try self.genericInsert(allocator, storage, ImmovableRectangleQuery, EntityType.immovable);
         }
 
@@ -114,24 +118,26 @@ pub fn CreateQuadTree(comptime Storage: type) type {
                 }
             }
 
-            const MovableRectangleQuery = Storage.Query(struct {
-                entity: ecez.Entity,
-                pos: components.Position,
-                col: components.RectangleCollider,
-                _: components.Velocity,
-            }, .{
-                components.InactiveTag,
-            });
+            const MovableRectangleQuery = Storage.Query(
+                struct {
+                    entity: ecez.Entity,
+                    pos: components.Position,
+                    col: components.RectangleCollider,
+                },
+                .{components.Velocity},
+                .{components.InactiveTag},
+            );
             try self.genericInsert(allocator, storage, MovableRectangleQuery, EntityType.rect_movable);
 
-            const MovableCircleQuery = Storage.Query(struct {
-                entity: ecez.Entity,
-                pos: components.Position,
-                col: components.CircleCollider,
-                _: components.Velocity,
-            }, .{
-                components.InactiveTag,
-            });
+            const MovableCircleQuery = Storage.Query(
+                struct {
+                    entity: ecez.Entity,
+                    pos: components.Position,
+                    col: components.CircleCollider,
+                },
+                .{components.Velocity},
+                .{components.InactiveTag},
+            );
             try self.genericInsert(allocator, storage, MovableCircleQuery, EntityType.circle_movable);
 
             { // wipe any empty nodes
@@ -359,7 +365,9 @@ pub fn CreateQuadTree(comptime Storage: type) type {
 
             const leaf_size = self.nodeSize(tree_depth);
 
-            var query = Query.submit(storage);
+            var query = try Query.submit(allocator, storage);
+            defer query.deinit(allocator);
+
             while (query.next()) |entity| {
                 // Start by finding pos point
 

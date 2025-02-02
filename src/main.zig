@@ -1,4 +1,5 @@
 const std = @import("std");
+
 const rl = @import("raylib");
 const ecez = @import("ecez");
 
@@ -351,15 +352,16 @@ pub fn main() anyerror!void {
                 const sound_repo = GameSoundRepo.init();
                 defer sound_repo.deinit();
 
-                var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-                defer _ = gpa.deinit();
-
-                const allocator = gpa.allocator();
+                var tracy_allocator = tracy.TracyAllocator.init(std.heap.c_allocator);
+                const allocator = tracy_allocator.allocator();
 
                 var storage = try Storage.init(allocator);
                 defer storage.deinit();
 
-                var scheduler = try Scheduler.init(allocator, .{});
+                var scheduler = try Scheduler.init(.{
+                    .pool_allocator = allocator,
+                    .query_submit_allocator = allocator,
+                });
                 defer scheduler.deinit();
 
                 const room_center = rl.Vector2.init(
@@ -923,13 +925,18 @@ pub fn main() anyerror!void {
                                     &texture_repo.wife,
                                 };
 
-                                const TextureDrawQuery = Storage.Query(struct {
-                                    entity: ecez.Entity,
-                                    pos: components.Position,
-                                    texture: components.Texture,
-                                }, .{components.InactiveTag});
+                                const TextureDrawQuery = Storage.Query(
+                                    struct {
+                                        entity: ecez.Entity,
+                                        pos: components.Position,
+                                        texture: components.Texture,
+                                    },
+                                    .{},
+                                    .{components.InactiveTag},
+                                );
                                 inline for (@typeInfo(components.Texture.DrawOrder).Enum.fields) |order| {
-                                    var texture_iter = TextureDrawQuery.submit(&storage);
+                                    var texture_iter = try TextureDrawQuery.submit(allocator, &storage);
+                                    defer texture_iter.deinit(allocator);
 
                                     while (texture_iter.next()) |texture| {
                                         staticTextureDraw(
@@ -949,12 +956,17 @@ pub fn main() anyerror!void {
                                     const zone = tracy.ZoneN(@src(), "Debug draw rectangle");
                                     defer zone.End();
 
-                                    const RectangleDrawQuery = Storage.Query(struct {
-                                        pos: components.Position,
-                                        col: components.RectangleCollider,
-                                        _: components.DrawRectangleTag,
-                                    }, .{components.InactiveTag});
-                                    var rect_iter = RectangleDrawQuery.submit(&storage);
+                                    const RectangleDrawQuery = Storage.Query(
+                                        struct {
+                                            pos: components.Position,
+                                            col: components.RectangleCollider,
+                                        },
+                                        .{components.DrawRectangleTag},
+                                        .{components.InactiveTag},
+                                    );
+                                    var rect_iter = try RectangleDrawQuery.submit(allocator, &storage);
+                                    defer rect_iter.deinit(allocator);
+
                                     while (rect_iter.next()) |rect| {
                                         const draw_rectangle = rl.Rectangle{
                                             .x = rect.pos.vec.x,
@@ -971,12 +983,16 @@ pub fn main() anyerror!void {
                                     const zone = tracy.ZoneN(@src(), "Debug draw circle");
                                     defer zone.End();
 
-                                    const CircleDrawQuery = Storage.Query(struct {
-                                        pos: components.Position,
-                                        col: components.CircleCollider,
-                                        _: components.DrawCircleTag,
-                                    }, .{components.InactiveTag});
-                                    var circle_iter = CircleDrawQuery.submit(&storage);
+                                    const CircleDrawQuery = Storage.Query(
+                                        struct {
+                                            pos: components.Position,
+                                            col: components.CircleCollider,
+                                        },
+                                        .{components.DrawCircleTag},
+                                        .{components.InactiveTag},
+                                    );
+                                    var circle_iter = try CircleDrawQuery.submit(allocator, &storage);
+                                    defer circle_iter.deinit(allocator);
 
                                     while (circle_iter.next()) |circle| {
                                         const pos = circle.pos.vec.add(rl.Vector2{
@@ -1003,28 +1019,39 @@ pub fn main() anyerror!void {
 
                         // UI Drawing
                         {
-                            const GrabbedItemQuery = Storage.Query(struct {
-                                entity: ecez.Entity,
-                                pos: *components.Position,
-                                old_slot: components.OldSlot,
-                                inv_item: components.InventoryItem,
-                                attach_to_cursor: components.AttachToCursor,
-                            }, .{components.InactiveTag});
+                            const GrabbedItemQuery = Storage.QueryAny(
+                                struct {
+                                    entity: ecez.Entity,
+                                    pos: *components.Position,
+                                    old_slot: components.OldSlot,
+                                    inv_item: components.InventoryItem,
+                                    attach_to_cursor: components.AttachToCursor,
+                                },
+                                .{},
+                                .{components.InactiveTag},
+                            );
 
-                            const UnusedGrabbedItemQuery = Storage.Query(struct {
-                                entity: ecez.Entity,
-                                pos: *components.Position,
-                                _: components.InactiveTag,
-                                old_slot: *components.OldSlot,
-                                inv_item: *components.InventoryItem,
-                                attach_to_cursor: *components.AttachToCursor,
-                            }, .{});
+                            const UnusedGrabbedItemQuery = Storage.QueryAny(
+                                struct {
+                                    entity: ecez.Entity,
+                                    pos: *components.Position,
+                                    old_slot: *components.OldSlot,
+                                    inv_item: *components.InventoryItem,
+                                    attach_to_cursor: *components.AttachToCursor,
+                                },
+                                .{components.InactiveTag},
+                                .{},
+                            );
 
-                            const InInvenventoryQuery = Storage.Query(struct {
-                                entity: ecez.Entity,
-                                pos: components.Position,
-                                inv_item: components.InventoryItem,
-                            }, .{ components.AttachToCursor, components.OldSlot, components.InactiveTag });
+                            const InInvenventoryQuery = Storage.Query(
+                                struct {
+                                    entity: ecez.Entity,
+                                    pos: components.Position,
+                                    inv_item: components.InventoryItem,
+                                },
+                                .{},
+                                .{ components.AttachToCursor, components.OldSlot, components.InactiveTag },
+                            );
 
                             var staff = storage.getComponent(player_staff_entity, *components.Staff) catch unreachable;
                             const index_slot = @intFromEnum(GameTextureRepo.which_inventory.Slot);
@@ -1079,7 +1106,9 @@ pub fn main() anyerror!void {
                                     rl.Color.white,
                                 );
 
-                                var inventory_item_iterator = InInvenventoryQuery.submit(&storage);
+                                var inventory_item_iterator = try InInvenventoryQuery.submit(allocator, &storage);
+                                defer inventory_item_iterator.deinit(allocator);
+
                                 while (inventory_item_iterator.next()) |item| {
                                     const texture = switch (item.inv_item.item) {
                                         .projectile => |proj| switch (proj.type) {
@@ -1098,8 +1127,8 @@ pub fn main() anyerror!void {
                                     };
                                     rl.drawTextureRec(texture, item_rect, pos, rl.Color.white);
 
-                                    var grabbed_query = GrabbedItemQuery.submit(&storage);
-                                    const no_grabbed_item = grabbed_query.next() == null;
+                                    var grabbed_query = GrabbedItemQuery.prepare(&storage);
+                                    const no_grabbed_item = grabbed_query.getAny() == null;
 
                                     if (no_grabbed_item) {
                                         const is_hovered = rl.checkCollisionPointRec(mouse_pos, rl.Rectangle{
@@ -1184,8 +1213,9 @@ pub fn main() anyerror!void {
 
                                     const grab_offset_x = -item_rect.width * 0.5;
 
-                                    var grabbed_item_iter = GrabbedItemQuery.submit(&storage);
-                                    const grabbed_item = grabbed_item_iter.next();
+                                    var grabbed_item_iter = GrabbedItemQuery.prepare(&storage);
+                                    const grabbed_item = grabbed_item_iter.getAny();
+
                                     if (rl.isMouseButtonReleased(.mouse_button_left)) {
                                         if (grabbed_item) |grabbed| {
                                             const add_to_staff_slot_count = swap_with_existing_slot_item_blk: {
@@ -1246,8 +1276,8 @@ pub fn main() anyerror!void {
                                             staff.slots[i] = .none;
                                             staff.used_slots -= 1;
 
-                                            var unused_grabbed_item_iter = UnusedGrabbedItemQuery.submit(&storage);
-                                            if (unused_grabbed_item_iter.next()) |unused_grabbed_item| {
+                                            var unused_grabbed_item_iter = UnusedGrabbedItemQuery.prepare(&storage);
+                                            if (unused_grabbed_item_iter.getAny()) |unused_grabbed_item| {
                                                 unused_grabbed_item.old_slot.* = components.OldSlot{
                                                     .type = .{ .staff_index = @intCast(i) },
                                                 };
@@ -1313,8 +1343,8 @@ pub fn main() anyerror!void {
                                 }
                             }
 
-                            var attached_iter = GrabbedItemQuery.submit(&storage);
-                            if (attached_iter.next()) |grabbed| {
+                            var attached_iter = GrabbedItemQuery.prepare(&storage);
+                            if (attached_iter.getAny()) |grabbed| {
                                 if (rl.isMouseButtonReleased(rl.MouseButton.mouse_button_left) and in_inventory) {
                                     const is_inventory_hovered = rl.checkCollisionPointRec(mouse_pos, inventory_rect);
                                     if (is_inventory_hovered) {
@@ -1490,7 +1520,9 @@ pub fn main() anyerror!void {
                                     }
                                 }
 
-                                var inventory_iter = InInvenventoryQuery.submit(&storage);
+                                var inventory_iter = try InInvenventoryQuery.submit(allocator, &storage);
+                                defer inventory_iter.deinit(allocator);
+
                                 while (inventory_iter.next()) |inv_item| {
                                     var buf: [256]u8 = undefined;
                                     const txt = switch (inv_item.inv_item.item) {
@@ -1982,36 +2014,52 @@ pub fn spawnBloodSplatter(
     const zone = tracy.ZoneN(@src(), @src().fn_name);
     defer zone.End();
 
-    const InactiveGoreSplatterQuery = Storage.Query(struct {
-        entity: ecez.Entity,
-        pos: *components.Position,
-        rot: *components.Rotation,
-        scale: *components.Scale,
-        texture: *components.Texture,
-        anim: *components.AnimTexture,
-        lifetime: *components.LifeTime,
-        inactive_tag: components.InactiveTag,
-        blood_gore_tag: components.BloodGoreGroundTag,
-    }, .{});
-    var inactive_gore_iter = InactiveGoreSplatterQuery.submit(storage);
+    const InactiveGoreSplatterQuery = Storage.Query(
+        struct {
+            entity: ecez.Entity,
+            pos: *components.Position,
+            rot: *components.Rotation,
+            scale: *components.Scale,
+            texture: *components.Texture,
+            anim: *components.AnimTexture,
+            lifetime: *components.LifeTime,
+        },
+        .{
+            components.InactiveTag,
+            components.BloodGoreGroundTag,
+        },
+        .{},
+    );
+    var inactive_gore_iter = try InactiveGoreSplatterQuery.submit(storage.allocator, storage);
+    defer inactive_gore_iter.deinit(storage.allocator);
 
-    const InactiveBloodSplatterQuery = Storage.Query(struct {
-        entity: ecez.Entity,
-        pos: *components.Position,
-        scale: *components.Scale,
-        texture: *components.Texture,
-        lifetime: *components.LifeTime,
-        inactive_tag: components.InactiveTag,
-        blood_splatter_tag: components.BloodSplatterGroundTag,
-    }, .{});
-    var inactive_blood_iter = InactiveBloodSplatterQuery.submit(storage);
+    const InactiveBloodSplatterQuery = Storage.Query(
+        struct {
+            entity: ecez.Entity,
+            pos: *components.Position,
+            scale: *components.Scale,
+            texture: *components.Texture,
+            lifetime: *components.LifeTime,
+        },
+        .{
+            components.InactiveTag,
+            components.BloodSplatterGroundTag,
+        },
+        .{},
+    );
+    var inactive_blood_iter = try InactiveBloodSplatterQuery.submit(storage.allocator, storage);
+    defer inactive_blood_iter.deinit(storage.allocator);
 
-    const DiedThisFrameQuery = Storage.Query(struct {
-        entity: ecez.Entity,
-        pos: components.Position,
-        died: components.DiedThisFrameTag,
-    }, .{});
-    var died_this_frame_iter = DiedThisFrameQuery.submit(storage);
+    const DiedThisFrameQuery = Storage.Query(
+        struct {
+            entity: ecez.Entity,
+            pos: components.Position,
+        },
+        .{components.DiedThisFrameTag},
+        .{},
+    );
+    var died_this_frame_iter = try DiedThisFrameQuery.submit(storage.allocator, storage);
+    defer died_this_frame_iter.deinit(storage.allocator);
 
     const CameraQuery = Storage.Query(
         struct {
@@ -2019,10 +2067,12 @@ pub fn spawnBloodSplatter(
             scale: components.Scale,
             cam: components.Camera,
         },
+        .{},
         // exclude type
         .{components.InactiveTag},
     );
-    var camera_iter = CameraQuery.submit(storage);
+    var camera_iter = try CameraQuery.submit(storage.allocator, storage);
+    defer camera_iter.deinit(storage.allocator);
     const camera = camera_iter.next().?;
 
     while (died_this_frame_iter.next()) |dead_this_frame| {

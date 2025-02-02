@@ -14,6 +14,7 @@ pub fn Create(Storage: type) type {
                 vel: *components.Velocity,
                 child_of: components.ChildOf,
             },
+            .{},
             .{components.InactiveTag},
         );
         pub fn velocity(
@@ -37,6 +38,7 @@ pub fn Create(Storage: type) type {
                 pos: *components.Position,
                 child_of: components.ChildOf,
             },
+            .{},
             .{components.InactiveTag},
         );
         pub fn position(
@@ -60,6 +62,7 @@ pub fn Create(Storage: type) type {
                 scale: *components.Scale,
                 child_of: components.ChildOf,
             },
+            .{},
             .{components.InactiveTag},
         );
         pub fn scale(
@@ -78,10 +81,14 @@ pub fn Create(Storage: type) type {
         const InherentInactiveFromParentSubset = Storage.Subset(.{
             *components.InactiveTag,
         });
-        const InherentInactiveQuery = Storage.Query(struct {
-            entity: ecez.Entity,
-            child_of: components.ChildOf,
-        }, .{components.InactiveTag});
+        const InherentInactiveQuery = Storage.Query(
+            struct {
+                entity: ecez.Entity,
+                child_of: components.ChildOf,
+            },
+            .{},
+            .{components.InactiveTag},
+        );
         pub fn inactive(
             inherent_inactive: *InherentInactiveQuery,
             subset: *InherentInactiveFromParentSubset,
@@ -99,11 +106,14 @@ pub fn Create(Storage: type) type {
         const InherentActiveFromParentSubset = Storage.Subset(.{
             *components.InactiveTag,
         });
-        const InherentActiveQuery = Storage.Query(struct {
-            entity: ecez.Entity,
-            child_of: components.ChildOf,
-            _: components.InactiveTag,
-        }, .{});
+        const InherentActiveQuery = Storage.Query(
+            struct {
+                entity: ecez.Entity,
+                child_of: components.ChildOf,
+            },
+            .{components.InactiveTag},
+            .{},
+        );
         pub fn active(
             inherent_active: *InherentActiveQuery,
             subset: *InherentActiveFromParentSubset,
