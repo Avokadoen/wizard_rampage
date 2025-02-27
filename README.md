@@ -11,7 +11,7 @@ It also uses my ecs library [ecez](https://github.com/Avokadoen/ecez) for the ga
 
 # How to run
 
-You must have git and zig 0.13.0 to run this project.
+You must have git and zig 0.14.0 to run this project.
 
 ```
 git clone https://github.com/Avokadoen/wizard_rampage.git

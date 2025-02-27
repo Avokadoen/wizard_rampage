@@ -2,26 +2,81 @@ const rl = @import("raylib");
 
 const GameTextureRepo = @This();
 
-player: [@typeInfo(which_player).Enum.fields.len]rl.Texture,
-projectile: [@typeInfo(which_projectile).Enum.fields.len]rl.Texture,
-farmer: [@typeInfo(which_farmer).Enum.fields.len]rl.Texture,
-blood_splatter: [@typeInfo(which_bloodsplat).Enum.fields.len]rl.Texture,
-country: [@typeInfo(which_country_side).Enum.fields.len]rl.Texture,
-inventory: [@typeInfo(which_inventory).Enum.fields.len]rl.Texture,
-decor: [@typeInfo(which_decor).Enum.fields.len]rl.Texture,
-wife: [@typeInfo(which_wife).Enum.fields.len]rl.Texture,
-cauldron: [@typeInfo(which_cauldron).Enum.fields.len]rl.Texture,
+player: [@typeInfo(which_player).@"enum".fields.len]rl.Texture,
+projectile: [@typeInfo(which_projectile).@"enum".fields.len]rl.Texture,
+farmer: [@typeInfo(which_farmer).@"enum".fields.len]rl.Texture,
+blood_splatter: [@typeInfo(which_bloodsplat).@"enum".fields.len]rl.Texture,
+country: [@typeInfo(which_country_side).@"enum".fields.len]rl.Texture,
+inventory: [@typeInfo(which_inventory).@"enum".fields.len]rl.Texture,
+decor: [@typeInfo(which_decor).@"enum".fields.len]rl.Texture,
+wife: [@typeInfo(which_wife).@"enum".fields.len]rl.Texture,
+cauldron: [@typeInfo(which_cauldron).@"enum".fields.len]rl.Texture,
 
-pub fn init() GameTextureRepo {
-    const player = loadTextureGroup(which_player, "resources/textures/player/");
-    const projectile = loadTextureGroup(which_projectile, "resources/textures/projectiles/");
-    const farmer = loadTextureGroup(which_farmer, "resources/textures/farmer/");
-    const blood_splatter = loadTextureGroup(which_bloodsplat, "resources/textures/effects/bloodsplat/");
-    const country = loadTextureGroup(which_country_side, "resources/textures/country_side/");
-    const inventory = loadTextureGroup(which_inventory, "resources/textures/inventory/");
-    const decor = loadTextureGroup(which_decor, "resources/textures/decor/");
-    const wife = loadTextureGroup(which_wife, "resources/textures/boss_wife/");
-    const cauldron = loadTextureGroup(which_cauldron, "resources/textures/player/cauldron/");
+pub fn init() !GameTextureRepo {
+    @setEvalBranchQuota(10_000);
+
+    const player = try loadTextureGroup(which_player, "resources/textures/player/");
+    errdefer {
+        inline for (player) |texture| {
+            texture.unload();
+        }
+    }
+
+    const projectile = try loadTextureGroup(which_projectile, "resources/textures/projectiles/");
+    errdefer {
+        inline for (projectile) |texture| {
+            texture.unload();
+        }
+    }
+
+    const farmer = try loadTextureGroup(which_farmer, "resources/textures/farmer/");
+    errdefer {
+        inline for (farmer) |texture| {
+            texture.unload();
+        }
+    }
+
+    const blood_splatter = try loadTextureGroup(which_bloodsplat, "resources/textures/effects/bloodsplat/");
+    errdefer {
+        inline for (blood_splatter) |texture| {
+            texture.unload();
+        }
+    }
+
+    const country = try loadTextureGroup(which_country_side, "resources/textures/country_side/");
+    errdefer {
+        inline for (country) |texture| {
+            texture.unload();
+        }
+    }
+
+    const inventory = try loadTextureGroup(which_inventory, "resources/textures/inventory/");
+    errdefer {
+        inline for (inventory) |texture| {
+            texture.unload();
+        }
+    }
+
+    const decor = try loadTextureGroup(which_decor, "resources/textures/decor/");
+    errdefer {
+        inline for (decor) |texture| {
+            texture.unload();
+        }
+    }
+
+    const wife = try loadTextureGroup(which_wife, "resources/textures/boss_wife/");
+    errdefer {
+        inline for (wife) |texture| {
+            texture.unload();
+        }
+    }
+
+    const cauldron = try loadTextureGroup(which_cauldron, "resources/textures/player/cauldron/");
+    errdefer {
+        inline for (cauldron) |texture| {
+            texture.unload();
+        }
+    }
 
     return GameTextureRepo{
         .player = player,
@@ -67,12 +122,20 @@ pub fn deinit(self: GameTextureRepo) void {
     }
 }
 
-fn loadTextureGroup(comptime TextureEnum: type, comptime texture_group_path: []const u8) [@typeInfo(TextureEnum).Enum.fields.len]rl.Texture {
-    const enum_fields = @typeInfo(TextureEnum).Enum.fields;
+fn loadTextureGroup(comptime TextureEnum: type, comptime texture_group_path: []const u8) ![@typeInfo(TextureEnum).@"enum".fields.len]rl.Texture {
+    const enum_fields = @typeInfo(TextureEnum).@"enum".fields;
 
     var textures: [enum_fields.len]rl.Texture = undefined;
+    var textures_loaded: u32 = 0;
+    errdefer {
+        for (textures[0..textures_loaded]) |texture| {
+            rl.unloadTexture(texture);
+        }
+    }
+
     inline for (enum_fields, &textures) |which_texture, *texture| {
-        texture.* = rl.loadTexture(texture_group_path ++ which_texture.name ++ ".png");
+        texture.* = try rl.loadTexture(texture_group_path ++ which_texture.name ++ ".png");
+        textures_loaded += 1;
     }
 
     return textures;

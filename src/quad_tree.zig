@@ -253,7 +253,7 @@ pub fn CreateQuadTree(comptime Storage: type) type {
                     // If node does not exist, create node
                     if (null_index == next_index) {
                         // if vacant slot available, use that instead of creating new node
-                        if (self.vacant_node_index_storage.popOrNull()) |vacant_node_index| {
+                        if (self.vacant_node_index_storage.pop()) |vacant_node_index| {
                             next_index = vacant_node_index;
                             self.node_storage.items[next_index] = Node{
                                 .parent_index = current_node_index,
@@ -286,7 +286,7 @@ pub fn CreateQuadTree(comptime Storage: type) type {
 
             // If leaf node does not exist, create leaf node
             if (null_index == next_index) {
-                if (self.vacant_leaf_node_index_storage.popOrNull()) |vacant_node_index| {
+                if (self.vacant_leaf_node_index_storage.pop()) |vacant_node_index| {
                     next_index = vacant_node_index;
                     self.leaf_node_storage.items[next_index].parent_index = current_node_index;
                     self.leaf_node_storage.items[next_index].circle_movable_entities.clearRetainingCapacity();

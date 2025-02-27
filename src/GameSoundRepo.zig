@@ -2,13 +2,20 @@ const rl = @import("raylib");
 
 const GameSoundRepo = @This();
 
-effects: [@typeInfo(which_effects).Enum.fields.len]rl.Sound,
+effects: [@typeInfo(which_effects).@"enum".fields.len]rl.Sound,
 
-pub fn init() GameSoundRepo {
-    const enum_fields = @typeInfo(which_effects).Enum.fields;
+pub fn init() !GameSoundRepo {
+    const enum_fields = @typeInfo(which_effects).@"enum".fields;
     var effects: [enum_fields.len]rl.Sound = undefined;
+    var loaded_effects: u32 = 0;
+    errdefer {
+        for (effects[0..loaded_effects]) |effect| {
+            rl.unloadSound(effect);
+        }
+    }
     inline for (enum_fields, &effects) |which_texture, *sound| {
-        sound.* = rl.loadSound("resources/sounds/effects/" ++ which_texture.name ++ ".wav");
+        sound.* = try rl.loadSound("resources/sounds/effects/" ++ which_texture.name ++ ".wav");
+        loaded_effects += 1;
     }
 
     inline for ([_]NormalizeEffect{

@@ -180,35 +180,35 @@ pub fn CreateInput(Storage: type) type {
 
         pub const key_down_actions = [_]action{
             .{
-                .key = .key_w,
+                .key = .w,
                 .callback = moveUp,
             },
             .{
-                .key = .key_s,
+                .key = .s,
                 .callback = moveDown,
             },
             .{
-                .key = .key_d,
+                .key = .d,
                 .callback = moveRight,
             },
             .{
-                .key = .key_a,
+                .key = .a,
                 .callback = moveLeft,
             },
             .{
-                .key = .key_up,
+                .key = .up,
                 .callback = shootUp,
             },
             .{
-                .key = .key_down,
+                .key = .down,
                 .callback = shootDown,
             },
             .{
-                .key = .key_right,
+                .key = .right,
                 .callback = shootRight,
             },
             .{
-                .key = .key_left,
+                .key = .left,
                 .callback = shootLeft,
             },
         };
