@@ -2,6 +2,9 @@ const std = @import("std");
 
 pub const Options = struct {
     linux_display_backend: LinuxDisplayBackend = .X11,
+    enable_ztracy: bool,
+    enable_fibers: bool,
+    on_demand: bool,
 };
 
 pub const LinuxDisplayBackend = enum {
@@ -18,6 +21,21 @@ pub fn build(b: *std.Build) void {
 
     const options = Options{
         .linux_display_backend = b.option(LinuxDisplayBackend, "linux_display_backend", "Linux display backend to use") orelse .X11,
+        .enable_ztracy = b.option(
+            bool,
+            "enable_ztracy",
+            "Enable Tracy profile markers",
+        ) orelse false,
+        .enable_fibers = b.option(
+            bool,
+            "enable_fibers",
+            "Enable Tracy fiber support",
+        ) orelse false,
+        .on_demand = b.option(
+            bool,
+            "on_demand",
+            "Build tracy with TRACY_ON_DEMAND",
+        ) orelse false,
     };
 
     const exe = b.addExecutable(.{
@@ -62,25 +80,27 @@ pub fn build(b: *std.Build) void {
 
     // link ecez and ztracy
     {
-        // let user enable/disable tracy
-        const enable_tracy = b.option(bool, "enable-tracy", "Enable Tracy profiler") orelse false;
+        const ecez = b.dependency("ecez", .{
+            .enable_ztracy = options.enable_ztracy,
+            .enable_fibers = options.enable_fibers,
+            .on_demand = options.on_demand,
+        });
+        const ecez_module = ecez.module("ecez");
 
-        // link ecez
-        {
-            const ecez = b.dependency("ecez", .{ .enable_tracy = false });
-            exe.root_module.addImport("ecez", ecez.module("ecez"));
-            exe_unit_tests.root_module.addImport("ecez", ecez.module("ecez"));
+        exe.root_module.addImport("ecez", ecez_module);
+        exe_unit_tests.root_module.addImport("ecez", ecez_module);
 
-            const ztracy_dep = b.dependency("ztracy", .{
-                .enable_ztracy = enable_tracy,
-            });
+        const ztracy_dep = ecez.builder.dependency("ztracy", .{
+            .enable_ztracy = options.enable_ztracy,
+            .enable_fibers = options.enable_fibers,
+            .on_demand = options.on_demand,
+        });
+        const ztracy_module = ztracy_dep.module("root"); // ecez_module.import_table.get("ztracy").?;
 
-            exe.root_module.addImport("ztracy", ztracy_dep.module("root"));
-            exe_unit_tests.root_module.addImport("ztracy", ztracy_dep.module("root"));
+        exe.root_module.addImport("ztracy", ztracy_module);
+        exe_unit_tests.root_module.addImport("ztracy", ztracy_module);
 
-            if (enable_tracy)
-                exe.linkLibrary(ztracy_dep.artifact("tracy"));
-        }
+        exe.linkLibrary(ztracy_dep.artifact("tracy"));
     }
 
     // This *creates* a Run step in the build graph, to be executed when another

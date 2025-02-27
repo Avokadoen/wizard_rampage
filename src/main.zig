@@ -99,7 +99,7 @@ pub fn main() anyerror!void {
     rl.initAudioDevice();
     defer rl.closeAudioDevice();
 
-    const music = rl.loadMusicStream("resources/music/Gameplay_Loop.wav");
+    const music = try rl.loadMusicStream("resources/music/Gameplay_Loop.wav");
     defer rl.unloadMusicStream(music);
     rl.playMusicStream(music);
     rl.setMusicVolume(music, 0.25);
@@ -133,7 +133,7 @@ pub fn main() anyerror!void {
                 };
                 const main_menu_image = load_anim_blk: {
                     var frame_count: i32 = undefined;
-                    const image_anim = rl.loadImageAnim(
+                    const image_anim = try rl.loadImageAnim(
                         "resources/textures/main_menu/main_menu_background.gif",
                         &frame_count,
                     );
@@ -142,10 +142,10 @@ pub fn main() anyerror!void {
                 };
                 defer rl.unloadImage(main_menu_image);
 
-                const main_menu_texture = rl.loadTextureFromImage(main_menu_image);
+                const main_menu_texture = try rl.loadTextureFromImage(main_menu_image);
                 defer rl.unloadTexture(main_menu_texture);
 
-                const main_menu_texture_repo = MainTextureRepo.init();
+                const main_menu_texture_repo = try MainTextureRepo.init();
                 defer main_menu_texture_repo.deinit();
 
                 load_assets_zone.End();
@@ -321,7 +321,7 @@ pub fn main() anyerror!void {
 
                     // Update
                     {
-                        if (rl.isMouseButtonPressed(.mouse_button_left)) {
+                        if (rl.isMouseButtonPressed(.left)) {
                             switch (button_hovered) {
                                 .none => {},
                                 .start => {
@@ -341,15 +341,15 @@ pub fn main() anyerror!void {
             },
             .game => {
                 const micro_ts = std.time.microTimestamp();
-                var prng = std.rand.DefaultPrng.init(@as(*const u64, @ptrCast(&micro_ts)).*);
+                var prng = std.Random.DefaultPrng.init(@as(*const u64, @ptrCast(&micro_ts)).*);
                 const random = prng.random();
 
                 const load_assets_zone = tracy.ZoneN(@src(), "game load assets and init");
 
-                const texture_repo = GameTextureRepo.init();
+                const texture_repo = try GameTextureRepo.init();
                 defer texture_repo.deinit();
 
-                const sound_repo = GameSoundRepo.init();
+                const sound_repo = try GameSoundRepo.init();
                 defer sound_repo.deinit();
 
                 var tracy_allocator = tracy.TracyAllocator.init(std.heap.c_allocator);
@@ -783,7 +783,7 @@ pub fn main() anyerror!void {
                 try collision_as.insertImmovableEntities(allocator, &storage);
 
                 // NOTE: Defining null for vertex shader forces usage of internal default vertex shader
-                const shader_cauldron = rl.loadShader(null, "resources/shaders/glsl330/cauldron_hp.fs");
+                const shader_cauldron = try rl.loadShader(null, "resources/shaders/glsl330/cauldron_hp.fs");
                 defer rl.unloadShader(shader_cauldron);
 
                 const shader_health_info_location = rl.getShaderLocation(shader_cauldron, "healthRatio");
@@ -823,7 +823,7 @@ pub fn main() anyerror!void {
                     const time_played = rl.getMusicTimePlayed(music) / rl.getMusicTimeLength(music);
                     if (time_played > 1.0) rl.seekMusicStream(music, 27);
 
-                    if (rl.isKeyPressed(rl.KeyboardKey.key_tab)) {
+                    if (rl.isKeyPressed(.tab)) {
                         in_inventory = !in_inventory;
                     }
                     if (!in_inventory) {
@@ -934,7 +934,7 @@ pub fn main() anyerror!void {
                                     .{},
                                     .{components.InactiveTag},
                                 );
-                                inline for (@typeInfo(components.Texture.DrawOrder).Enum.fields) |order| {
+                                inline for (@typeInfo(components.Texture.DrawOrder).@"enum".fields) |order| {
                                     var texture_iter = try TextureDrawQuery.submit(allocator, &storage);
                                     defer texture_iter.deinit(allocator);
 
@@ -1138,7 +1138,7 @@ pub fn main() anyerror!void {
                                             .width = @floatFromInt(texture_slot.width),
                                         });
 
-                                        if (is_hovered and rl.isMouseButtonDown(rl.MouseButton.mouse_button_left)) {
+                                        if (is_hovered and rl.isMouseButtonDown(.left)) {
                                             const offset_x = -item_rect.width * 0.5;
                                             try storage.setComponents(item.entity, .{
                                                 components.AttachToCursor{
@@ -1216,7 +1216,7 @@ pub fn main() anyerror!void {
                                     var grabbed_item_iter = GrabbedItemQuery.prepare(&storage);
                                     const grabbed_item = grabbed_item_iter.getAny();
 
-                                    if (rl.isMouseButtonReleased(.mouse_button_left)) {
+                                    if (rl.isMouseButtonReleased(.left)) {
                                         if (grabbed_item) |grabbed| {
                                             const add_to_staff_slot_count = swap_with_existing_slot_item_blk: {
                                                 // If we are hovering a item in the slot
@@ -1271,7 +1271,7 @@ pub fn main() anyerror!void {
                                     }
 
                                     if (grabbable) |grab_item| {
-                                        if (rl.isMouseButtonDown(rl.MouseButton.mouse_button_left)) {
+                                        if (rl.isMouseButtonDown(rl.MouseButton.left)) {
                                             staff.slot_cursor = 0;
                                             staff.slots[i] = .none;
                                             staff.used_slots -= 1;
@@ -1345,7 +1345,7 @@ pub fn main() anyerror!void {
 
                             var attached_iter = GrabbedItemQuery.prepare(&storage);
                             if (attached_iter.getAny()) |grabbed| {
-                                if (rl.isMouseButtonReleased(rl.MouseButton.mouse_button_left) and in_inventory) {
+                                if (rl.isMouseButtonReleased(rl.MouseButton.left) and in_inventory) {
                                     const is_inventory_hovered = rl.checkCollisionPointRec(mouse_pos, inventory_rect);
                                     if (is_inventory_hovered) {
                                         grabbed.pos.vec = mouse_pos.add(grabbed.attach_to_cursor.offset);
@@ -1436,7 +1436,7 @@ pub fn main() anyerror!void {
                                             shader_cauldron,
                                             shader_health_info_location,
                                             @ptrCast(&health_ratio),
-                                            rl.ShaderUniformDataType.shader_uniform_float,
+                                            .float,
                                         );
                                     }
 
@@ -1457,7 +1457,7 @@ pub fn main() anyerror!void {
                             // Draw tooltip for hovered gems
                             if (in_inventory) draw_tooltip_blk: {
                                 const drawTooltip = struct {
-                                    pub inline fn draw(tooltip_texture: rl.Texture, source_rect: rl.Rectangle, mouse: rl.Vector2, pos: rl.Vector2, txt: [*:0]const u8) bool {
+                                    pub inline fn draw(tooltip_texture: rl.Texture, source_rect: rl.Rectangle, mouse: rl.Vector2, pos: rl.Vector2, txt: [:0]const u8) bool {
                                         const is_hovered = rl.checkCollisionPointRec(mouse, rl.Rectangle{
                                             .x = pos.x,
                                             .y = pos.y,
@@ -1542,16 +1542,16 @@ pub fn main() anyerror!void {
             },
             .end_screen => |end_type| {
                 const load_assets_zone = tracy.ZoneN(@src(), "main menu load assets and init");
-                const image = switch (end_type) {
+                const image = try switch (end_type) {
                     EndScreen.victory => rl.loadImage("resources/textures/end_screen/victory_Screen.png"),
                     EndScreen.dead => rl.loadImage("resources/textures/end_screen/dead_screen.png"),
                 };
                 defer rl.unloadImage(image);
-                const end_texture = rl.loadTextureFromImage(image);
+                const end_texture = try rl.loadTextureFromImage(image);
                 defer rl.unloadTexture(end_texture);
 
                 load_assets_zone.End();
-                const main_menu_texture_repo = MainTextureRepo.init();
+                const main_menu_texture_repo = try MainTextureRepo.init();
                 defer main_menu_texture_repo.deinit();
                 while (true) {
                     tracy.FrameMark();
@@ -1643,7 +1643,7 @@ pub fn main() anyerror!void {
 
                     // Update
                     {
-                        if (rl.isMouseButtonPressed(.mouse_button_left)) {
+                        if (rl.isMouseButtonPressed(.left)) {
                             switch (button_hovered) {
                                 .none => {},
                                 .exit => {

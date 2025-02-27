@@ -4,11 +4,18 @@ const GameTextureRepo = @This();
 
 button: [6]rl.Texture,
 
-pub fn init() GameTextureRepo {
+pub fn init() !GameTextureRepo {
     var button: [6]rl.Texture = undefined;
     const which_button_info = @typeInfo(which_button);
-    inline for (which_button_info.Enum.fields, &button) |which_texture, *texture| {
-        texture.* = rl.loadTexture("resources/textures/main_menu/buttons/" ++ which_texture.name ++ ".png");
+    var textures_loaded: u32 = 0;
+    errdefer {
+        for (button[0..textures_loaded]) |texture| {
+            rl.unloadTexture(texture);
+        }
+    }
+    inline for (which_button_info.@"enum".fields, &button) |which_texture, *texture| {
+        texture.* = try rl.loadTexture("resources/textures/main_menu/buttons/" ++ which_texture.name ++ ".png");
+        textures_loaded += 1;
     }
 
     return GameTextureRepo{
