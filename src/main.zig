@@ -26,28 +26,32 @@ const Physics = systems.physics.Create(Storage);
 
 const Scheduler = ecez.CreateScheduler(
     .{
-        ecez.Event("game_update", .{
-            Combat.targetPlayerOrFlee,
-            Combat.tickAttackRate,
-            Misc.lifeTime,
-            Physics.updateVelocityBasedMoveDir,
-            Physics.updatePositionBasedOnVelocity,
-            Physics.updateVelocityBasedOnDrag,
-            Physics.rotateAfterVelocity,
-            Physics.recToRecCollisionResolve,
-            Inherent.velocity,
-            Inherent.position,
-            Inherent.scale,
-            Inherent.inactive,
-            Inherent.active,
-            Combat.projectileHitKillable,
-            Combat.hostileMeleePlayer,
-            Combat.registerDead,
-            Misc.cameraFollowPlayer,
-            Misc.orientTexture,
-            Misc.animateTexture,
-            Misc.orientationBasedDrawOrder,
-        }),
+        ecez.Event(
+            "game_update",
+            .{
+                Combat.targetPlayerOrFlee,
+                Combat.tickAttackRate,
+                Misc.lifeTime,
+                Physics.updateVelocityBasedMoveDir,
+                Physics.updatePositionBasedOnVelocity,
+                Physics.updateVelocityBasedOnDrag,
+                Physics.rotateAfterVelocity,
+                Physics.recToRecCollisionResolve,
+                Inherent.velocity,
+                Inherent.position,
+                Inherent.scale,
+                Inherent.inactive,
+                Inherent.active,
+                Combat.projectileHitKillable,
+                Combat.hostileMeleePlayer,
+                Combat.registerDead,
+                Misc.cameraFollowPlayer,
+                Misc.orientTexture,
+                Misc.animateTexture,
+                Misc.orientationBasedDrawOrder,
+            },
+            .{},
+        ),
     },
 );
 
@@ -891,8 +895,8 @@ pub fn main() anyerror!void {
                         {
                             // Start gameplay drawing
                             const camera = create_rl_camera_blk: {
-                                const camera_pos = try storage.getComponent(camera_entity, components.Position);
-                                const camera_zoom = try storage.getComponent(camera_entity, components.Scale);
+                                const camera_pos = storage.getComponent(camera_entity, components.Position).?;
+                                const camera_zoom = storage.getComponent(camera_entity, components.Scale).?;
 
                                 break :create_rl_camera_blk rl.Camera2D{
                                     .offset = rl.Vector2{
@@ -925,7 +929,7 @@ pub fn main() anyerror!void {
                                     &texture_repo.wife,
                                 };
 
-                                const TextureDrawQuery = Storage.Query(
+                                const TextureDrawQuery = ecez.Query(
                                     struct {
                                         entity: ecez.Entity,
                                         pos: components.Position,
@@ -956,7 +960,7 @@ pub fn main() anyerror!void {
                                     const zone = tracy.ZoneN(@src(), "Debug draw rectangle");
                                     defer zone.End();
 
-                                    const RectangleDrawQuery = Storage.Query(
+                                    const RectangleDrawQuery = ecez.Query(
                                         struct {
                                             pos: components.Position,
                                             col: components.RectangleCollider,
@@ -983,7 +987,7 @@ pub fn main() anyerror!void {
                                     const zone = tracy.ZoneN(@src(), "Debug draw circle");
                                     defer zone.End();
 
-                                    const CircleDrawQuery = Storage.Query(
+                                    const CircleDrawQuery = ecez.Query(
                                         struct {
                                             pos: components.Position,
                                             col: components.CircleCollider,
@@ -1019,7 +1023,7 @@ pub fn main() anyerror!void {
 
                         // UI Drawing
                         {
-                            const GrabbedItemQuery = Storage.QueryAny(
+                            const GrabbedItemQuery = ecez.QueryAny(
                                 struct {
                                     entity: ecez.Entity,
                                     pos: *components.Position,
@@ -1031,7 +1035,7 @@ pub fn main() anyerror!void {
                                 .{components.InactiveTag},
                             );
 
-                            const UnusedGrabbedItemQuery = Storage.QueryAny(
+                            const UnusedGrabbedItemQuery = ecez.QueryAny(
                                 struct {
                                     entity: ecez.Entity,
                                     pos: *components.Position,
@@ -1043,7 +1047,7 @@ pub fn main() anyerror!void {
                                 .{},
                             );
 
-                            const InInvenventoryQuery = Storage.Query(
+                            const InInvenventoryQuery = ecez.Query(
                                 struct {
                                     entity: ecez.Entity,
                                     pos: components.Position,
@@ -1053,7 +1057,7 @@ pub fn main() anyerror!void {
                                 .{ components.AttachToCursor, components.OldSlot, components.InactiveTag },
                             );
 
-                            var staff = storage.getComponent(player_staff_entity, *components.Staff) catch unreachable;
+                            var staff = storage.getComponent(player_staff_entity, *components.Staff).?;
                             const index_slot = @intFromEnum(GameTextureRepo.which_inventory.Slot);
                             const texture_slot = texture_repo.inventory[index_slot];
 
@@ -1430,7 +1434,7 @@ pub fn main() anyerror!void {
 
                                     rl.setShaderValueTexture(shader_cauldron, shader_blood_texture_location, blood_texture);
                                     {
-                                        const player_health = try storage.getComponent(player_entity, components.Health);
+                                        const player_health = storage.getComponent(player_entity, components.Health).?;
                                         const health_ratio = @as(f32, @floatFromInt(player_health.value)) / @as(f32, @floatFromInt(player_health.max));
                                         rl.setShaderValue(
                                             shader_cauldron,
@@ -2014,7 +2018,7 @@ pub fn spawnBloodSplatter(
     const zone = tracy.ZoneN(@src(), @src().fn_name);
     defer zone.End();
 
-    const InactiveGoreSplatterQuery = Storage.Query(
+    const InactiveGoreSplatterQuery = ecez.Query(
         struct {
             entity: ecez.Entity,
             pos: *components.Position,
@@ -2033,7 +2037,7 @@ pub fn spawnBloodSplatter(
     var inactive_gore_iter = try InactiveGoreSplatterQuery.submit(storage.allocator, storage);
     defer inactive_gore_iter.deinit(storage.allocator);
 
-    const InactiveBloodSplatterQuery = Storage.Query(
+    const InactiveBloodSplatterQuery = ecez.Query(
         struct {
             entity: ecez.Entity,
             pos: *components.Position,
@@ -2050,7 +2054,7 @@ pub fn spawnBloodSplatter(
     var inactive_blood_iter = try InactiveBloodSplatterQuery.submit(storage.allocator, storage);
     defer inactive_blood_iter.deinit(storage.allocator);
 
-    const DiedThisFrameQuery = Storage.Query(
+    const DiedThisFrameQuery = ecez.Query(
         struct {
             entity: ecez.Entity,
             pos: components.Position,
@@ -2061,7 +2065,7 @@ pub fn spawnBloodSplatter(
     var died_this_frame_iter = try DiedThisFrameQuery.submit(storage.allocator, storage);
     defer died_this_frame_iter.deinit(storage.allocator);
 
-    const CameraQuery = Storage.Query(
+    const CameraQuery = ecez.Query(
         struct {
             pos: components.Position,
             scale: components.Scale,
@@ -2083,7 +2087,7 @@ pub fn spawnBloodSplatter(
             },
         };
 
-        const scale = storage.getComponent(dead_this_frame.entity, components.Scale) catch default_scale;
+        const scale = storage.getComponent(dead_this_frame.entity, components.Scale) orelse default_scale;
 
         const splatter_offset = rl.Vector2.init(-100 * scale.vec.x, -100 * scale.vec.y);
 
@@ -2179,8 +2183,8 @@ pub fn staticTextureDraw(
         .vec = rl.Vector2{ .x = 1, .y = 1 },
     };
 
-    const rotation = storage.getComponent(entity, components.Rotation) catch components.Rotation{ .value = 0 };
-    const scale = storage.getComponent(entity, components.Scale) catch default_scale;
+    const rotation = storage.getComponent(entity, components.Rotation) orelse components.Rotation{ .value = 0 };
+    const scale = storage.getComponent(entity, components.Scale) orelse default_scale;
     const texture = texture_repo[static_texture.type][static_texture.index];
 
     const rect_texture = rl.Rectangle{

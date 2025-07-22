@@ -2,6 +2,8 @@ const std = @import("std");
 const tracy = @import("ztracy");
 const rl = @import("raylib");
 
+const ecez = @import("ecez");
+
 const physics = @import("../physics_2d.zig");
 const components = @import("../components.zig");
 const ctx = @import("context.zig");
@@ -35,7 +37,7 @@ pub fn Create(Storage: type) type {
                         pos: *components.Position,
                         vel: *components.Velocity,
                         col: components.RectangleCollider,
-                    }) catch unreachable;
+                    }).?;
 
                     const immovable_value = 0;
                     const movable_value = 1;
@@ -60,7 +62,7 @@ pub fn Create(Storage: type) type {
                             const b_rect = subset.getComponents(b, struct {
                                 pos: *components.Position,
                                 col: components.RectangleCollider,
-                            }) catch unreachable;
+                            }).?;
 
                             const maybe_collision = physics.Intersection.rectAndRectResolve(
                                 a_rect.col,
@@ -79,7 +81,7 @@ pub fn Create(Storage: type) type {
                                     a_rect.vel.vec = a_rect.vel.vec.add(half_col);
                                     a_rect.pos.vec = a_rect.pos.vec.add(half_col);
 
-                                    const b_vel = subset.getComponent(b, *components.Velocity) catch unreachable;
+                                    const b_vel = subset.getComponent(b, *components.Velocity).?;
                                     b_vel.vec = b_vel.vec.subtract(half_col);
                                     b_rect.pos.vec = b_rect.pos.vec.subtract(half_col);
                                 }
@@ -90,7 +92,7 @@ pub fn Create(Storage: type) type {
             }
         }
 
-        const RotateVelocityQuery = Storage.Query(
+        const RotateVelocityQuery = ecez.Query(
             struct {
                 rot: *components.Rotation,
                 vel: components.Velocity,
@@ -110,7 +112,7 @@ pub fn Create(Storage: type) type {
             }
         }
 
-        const UpdateVelocityQuery = Storage.Query(
+        const UpdateVelocityQuery = ecez.Query(
             struct {
                 vel: *components.Velocity,
                 move_speed: components.MoveSpeed,
@@ -134,7 +136,7 @@ pub fn Create(Storage: type) type {
             }
         }
 
-        const UpdatePosBasedOnVelQuery = Storage.Query(
+        const UpdatePosBasedOnVelQuery = ecez.Query(
             struct {
                 pos: *components.Position,
                 vel: components.Velocity,
@@ -152,7 +154,7 @@ pub fn Create(Storage: type) type {
             }
         }
 
-        const UpdateVelBasedOnDrag = Storage.Query(
+        const UpdateVelBasedOnDrag = ecez.Query(
             struct {
                 vel: *components.Velocity,
                 drag: components.Drag,

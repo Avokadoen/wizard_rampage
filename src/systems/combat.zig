@@ -21,7 +21,7 @@ pub fn Create(Storage: type) type {
                 *components.Health,
             },
         );
-        const HostileMeleeQuery = Storage.Query(
+        const HostileMeleeQuery = ecez.Query(
             struct {
                 pos: components.Position,
                 attack_rate: *components.AttackRate,
@@ -51,11 +51,11 @@ pub fn Create(Storage: type) type {
                 pos: components.Position,
                 col: components.RectangleCollider,
                 vocals: components.Vocals,
-            }) catch @panic("player entity missing");
+            }).?;
 
             const player_w = subset.getComponents(context.player_entity, struct {
                 health: *components.Health,
-            }) catch unreachable;
+            }).?;
 
             const on_dmg_index = context.rng.intRangeAtMost(
                 u8,
@@ -121,7 +121,7 @@ pub fn Create(Storage: type) type {
                 pos: components.Position,
                 scale: components.Scale,
                 cam: components.Camera,
-            }) catch unreachable;
+            }).?;
 
             leaf_loop: for (context.collision_as.leaf_node_storage.items) |leaf_node| {
                 if (leaf_node.isActive() == false) {
@@ -137,7 +137,7 @@ pub fn Create(Storage: type) type {
                         col: components.CircleCollider,
                         vel: components.Velocity,
                         proj: components.Projectile,
-                    }) catch unreachable;
+                    }).?;
 
                     const offset = rl.Vector2.init(
                         @floatCast(projectile.col.x),
@@ -162,7 +162,7 @@ pub fn Create(Storage: type) type {
                         const immovable = subset.getComponents(b, struct {
                             pos: components.Position,
                             col: components.RectangleCollider,
-                        }) catch unreachable;
+                        }).?;
 
                         if (physics.Intersection.circleAndRect(
                             projectile.col,
@@ -182,7 +182,7 @@ pub fn Create(Storage: type) type {
                             pos: components.Position,
                             col: components.RectangleCollider,
                             health: *components.Health,
-                        }) catch unreachable;
+                        }).?;
 
                         if (physics.Intersection.circleAndRect(
                             projectile.col,
@@ -190,7 +190,7 @@ pub fn Create(Storage: type) type {
                             killable.col,
                             killable.pos,
                         )) {
-                            const maybe_vocals = subset.getComponent(b, components.Vocals) catch null;
+                            const maybe_vocals = subset.getComponent(b, components.Vocals);
                             if (maybe_vocals) |vocals| {
                                 const on_dmg_index = context.rng.intRangeAtMost(u8, vocals.on_dmg_start, vocals.on_dmg_end);
                                 const on_dmg_sound = context.sound_repo[on_dmg_index];
@@ -202,7 +202,7 @@ pub fn Create(Storage: type) type {
                                 rl.playSound(on_dmg_sound);
                             }
 
-                            const maybe_vel = subset.getComponent(b, *components.Velocity) catch null;
+                            const maybe_vel = subset.getComponent(b, *components.Velocity);
                             if (maybe_vel) |kill_vel| {
                                 const proj_dir = projectile.vel.vec.normalize();
                                 const proj_impact = rl.Vector2.init(projectile.proj.weight, projectile.proj.weight);
@@ -233,7 +233,7 @@ pub fn Create(Storage: type) type {
                 components.Scale,
             },
         );
-        const MaybeDeadQuery = Storage.Query(
+        const MaybeDeadQuery = ecez.Query(
             struct {
                 entity: ecez.Entity,
                 pos: components.Position,
@@ -254,11 +254,11 @@ pub fn Create(Storage: type) type {
                 pos: components.Position,
                 scale: components.Scale,
                 cam: components.Camera,
-            }) catch unreachable;
+            }).?;
 
             while (living.next()) |item| {
                 if (item.health.value <= 0) {
-                    const maybe_vocals = subset.getComponent(item.entity, components.Vocals) catch null;
+                    const maybe_vocals = subset.getComponent(item.entity, components.Vocals);
                     if (maybe_vocals) |vocals| {
                         const on_death_index = context.rng.intRangeAtMost(u8, vocals.on_death_start, vocals.on_death_end);
                         const on_death_sound = context.sound_repo[on_death_index];
@@ -296,7 +296,7 @@ pub fn Create(Storage: type) type {
                 components.Position,
             },
         );
-        const HostileQuery = Storage.Query(
+        const HostileQuery = ecez.Query(
             struct {
                 pos: components.Position,
                 mov_dir: *components.DesiredMovedDir,
@@ -317,7 +317,7 @@ pub fn Create(Storage: type) type {
                 struct {
                     pos: components.Position,
                 },
-            ) catch @panic("missing player entity");
+            ).?;
 
             while (hostile_iter.next()) |item| {
                 const moving_in_dir = player.pos.vec.subtract(item.pos.vec).normalize();
@@ -327,7 +327,7 @@ pub fn Create(Storage: type) type {
             }
         }
 
-        const AttackRateQuery = Storage.Query(
+        const AttackRateQuery = ecez.Query(
             struct {
                 attack_rate: *components.AttackRate,
             },

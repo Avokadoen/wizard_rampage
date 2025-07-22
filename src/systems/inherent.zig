@@ -9,7 +9,7 @@ pub fn Create(Storage: type) type {
         const ParentVelSubset = Storage.Subset(.{
             components.Velocity,
         });
-        const InherentVelQuery = Storage.Query(
+        const InherentVelQuery = ecez.Query(
             struct {
                 vel: *components.Velocity,
                 child_of: components.ChildOf,
@@ -25,7 +25,7 @@ pub fn Create(Storage: type) type {
             defer zone.End();
 
             while (inherent_vel.next()) |item| {
-                const parent_vel = subset.getComponent(item.child_of.parent, components.Velocity) catch continue;
+                const parent_vel = subset.getComponent(item.child_of.parent, components.Velocity) orelse continue;
                 item.vel.* = parent_vel;
             }
         }
@@ -33,7 +33,7 @@ pub fn Create(Storage: type) type {
         const ParentPosSubset = Storage.Subset(.{
             components.Position,
         });
-        const InherentPosQuery = Storage.Query(
+        const InherentPosQuery = ecez.Query(
             struct {
                 pos: *components.Position,
                 child_of: components.ChildOf,
@@ -49,7 +49,7 @@ pub fn Create(Storage: type) type {
             defer zone.End();
 
             while (inherent_pos.next()) |item| {
-                const parent_pos = subset.getComponent(item.child_of.parent, components.Position) catch continue;
+                const parent_pos = subset.getComponent(item.child_of.parent, components.Position) orelse continue;
                 item.pos.vec = parent_pos.vec.add(item.child_of.offset);
             }
         }
@@ -57,7 +57,7 @@ pub fn Create(Storage: type) type {
         const ParentScaleSubset = Storage.Subset(.{
             components.Scale,
         });
-        const InherentScaleQuery = Storage.Query(
+        const InherentScaleQuery = ecez.Query(
             struct {
                 scale: *components.Scale,
                 child_of: components.ChildOf,
@@ -73,7 +73,7 @@ pub fn Create(Storage: type) type {
             defer zone.End();
 
             while (inherent_scale.next()) |item| {
-                const parent_scale = subset.getComponent(item.child_of.parent, components.Scale) catch continue;
+                const parent_scale = subset.getComponent(item.child_of.parent, components.Scale) orelse continue;
                 item.scale.vec = parent_scale.vec;
             }
         }
@@ -81,7 +81,7 @@ pub fn Create(Storage: type) type {
         const InherentInactiveFromParentSubset = Storage.Subset(.{
             *components.InactiveTag,
         });
-        const InherentInactiveQuery = Storage.Query(
+        const InherentInactiveQuery = ecez.Query(
             struct {
                 entity: ecez.Entity,
                 child_of: components.ChildOf,
@@ -106,7 +106,7 @@ pub fn Create(Storage: type) type {
         const InherentActiveFromParentSubset = Storage.Subset(.{
             *components.InactiveTag,
         });
-        const InherentActiveQuery = Storage.Query(
+        const InherentActiveQuery = ecez.Query(
             struct {
                 entity: ecez.Entity,
                 child_of: components.ChildOf,

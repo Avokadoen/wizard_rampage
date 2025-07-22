@@ -12,58 +12,58 @@ pub fn CreateInput(Storage: type) type {
     return struct {
         fn moveUp(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             _ = staff_entity;
-            const move_dir = storage.getComponent(player_entity, *components.DesiredMovedDir) catch unreachable;
+            const move_dir = storage.getComponent(player_entity, *components.DesiredMovedDir).?;
             move_dir.vec.y += -1;
         }
 
         fn moveDown(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             _ = staff_entity;
-            const move_dir = storage.getComponent(player_entity, *components.DesiredMovedDir) catch unreachable;
+            const move_dir = storage.getComponent(player_entity, *components.DesiredMovedDir).?;
             move_dir.vec.y += 1;
         }
 
         fn moveRight(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             _ = staff_entity;
-            const move_dir = storage.getComponent(player_entity, *components.DesiredMovedDir) catch unreachable;
+            const move_dir = storage.getComponent(player_entity, *components.DesiredMovedDir).?;
             move_dir.vec.x += 1;
         }
 
         fn moveLeft(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             _ = staff_entity;
-            const move_dir = storage.getComponent(player_entity, *components.DesiredMovedDir) catch unreachable;
+            const move_dir = storage.getComponent(player_entity, *components.DesiredMovedDir).?;
             move_dir.vec.x -= 1;
         }
 
         fn shootUp(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
-            const vel = storage.getComponent(player_entity, components.Velocity) catch unreachable;
+            const vel = storage.getComponent(player_entity, components.Velocity).?;
 
             const projectile_vel = vel.vec.subtract(rl.Vector2{ .x = 0, .y = 1000 });
             fireProjectile(projectile_vel, storage, player_entity, staff_entity);
         }
 
         fn shootDown(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
-            const vel = storage.getComponent(player_entity, components.Velocity) catch unreachable;
+            const vel = storage.getComponent(player_entity, components.Velocity).?;
 
             const projectile_vel = vel.vec.add(rl.Vector2{ .x = 0, .y = 1000 });
             fireProjectile(projectile_vel, storage, player_entity, staff_entity);
         }
 
         fn shootRight(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
-            const vel = storage.getComponent(player_entity, components.Velocity) catch unreachable;
+            const vel = storage.getComponent(player_entity, components.Velocity).?;
 
             const projectile_vel = vel.vec.add(rl.Vector2{ .x = 1000, .y = 0 });
             fireProjectile(projectile_vel, storage, player_entity, staff_entity);
         }
 
         fn shootLeft(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
-            const vel = storage.getComponent(player_entity, components.Velocity) catch unreachable;
+            const vel = storage.getComponent(player_entity, components.Velocity).?;
 
             const projectile_vel = vel.vec.subtract(rl.Vector2{ .x = 1000, .y = 0 });
             fireProjectile(projectile_vel, storage, player_entity, staff_entity);
         }
 
         fn fireProjectile(vel: rl.Vector2, storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
-            const ProjectileQuery = Storage.QueryAny(
+            const ProjectileQuery = ecez.QueryAny(
                 struct {
                     entity: ecez.Entity,
                     pos: *components.Position,
@@ -80,10 +80,10 @@ pub fn CreateInput(Storage: type) type {
                 .{},
             );
 
-            const fire_rate = storage.getComponent(staff_entity, *components.AttackRate) catch unreachable;
+            const fire_rate = storage.getComponent(staff_entity, *components.AttackRate).?;
             if (fire_rate.active_cooldown <= 0) {
-                const pos = storage.getComponent(player_entity, components.Position) catch unreachable;
-                const staff_comp_ptr = storage.getComponent(staff_entity, *components.Staff) catch unreachable;
+                const pos = storage.getComponent(player_entity, components.Position).?;
+                const staff_comp_ptr = storage.getComponent(staff_entity, *components.Staff).?;
                 const next_projectile = findNextStaffProjectile(staff_comp_ptr) orelse return;
 
                 const start_frame, const frame_count = switch (next_projectile.type) {

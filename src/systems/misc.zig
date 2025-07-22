@@ -12,7 +12,7 @@ pub fn Create(Storage: type) type {
         const LifeTimetSubset = Storage.Subset(.{
             *components.InactiveTag,
         });
-        const LifetimeQuery = Storage.Query(
+        const LifetimeQuery = ecez.Query(
             struct {
                 entity: ecez.Entity,
                 life_time: *components.LifeTime,
@@ -57,12 +57,12 @@ pub fn Create(Storage: type) type {
                     scale: components.Scale,
                     cam: components.Camera,
                 },
-            ) catch @panic("camera missing required comp");
+            ).?;
 
             const player = subset.getComponents(context.player_entity, struct {
                 pos: components.Position,
                 col: components.RectangleCollider,
-            }) catch @panic("player entity missing");
+            }).?;
 
             const camera_offset = rl.Vector2.init(
                 (camera.cam.resolution.x * 0.5 - player.col.dim.x * 0.5) / camera.scale.vec.x,
@@ -71,7 +71,7 @@ pub fn Create(Storage: type) type {
             camera.pos.vec = player.pos.vec.subtract(camera_offset);
         }
 
-        const OrientTextureQuery = Storage.Query(
+        const OrientTextureQuery = ecez.Query(
             struct {
                 velocity: components.Velocity,
                 texture: *components.Texture,
@@ -119,7 +119,7 @@ pub fn Create(Storage: type) type {
             }
         }
 
-        const OrientDrawOrderQuery = Storage.Query(
+        const OrientDrawOrderQuery = ecez.Query(
             struct {
                 texture: *components.Texture,
                 orientation_draw_order: components.OrientationBasedDrawOrder,
@@ -138,7 +138,7 @@ pub fn Create(Storage: type) type {
             }
         }
 
-        const AnimateQuery = Storage.Query(
+        const AnimateQuery = ecez.Query(
             struct {
                 texture: *components.Texture,
                 anim: *components.AnimTexture,

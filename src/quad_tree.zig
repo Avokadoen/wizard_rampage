@@ -92,7 +92,7 @@ pub fn CreateQuadTree(comptime Storage: type) type {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
-            const ImmovableRectangleQuery = Storage.Query(
+            const ImmovableRectangleQuery = ecez.Query(
                 struct {
                     entity: ecez.Entity,
                     pos: components.Position,
@@ -118,7 +118,7 @@ pub fn CreateQuadTree(comptime Storage: type) type {
                 }
             }
 
-            const MovableRectangleQuery = Storage.Query(
+            const MovableRectangleQuery = ecez.Query(
                 struct {
                     entity: ecez.Entity,
                     pos: components.Position,
@@ -129,7 +129,7 @@ pub fn CreateQuadTree(comptime Storage: type) type {
             );
             try self.genericInsert(allocator, storage, MovableRectangleQuery, EntityType.rect_movable);
 
-            const MovableCircleQuery = Storage.Query(
+            const MovableCircleQuery = ecez.Query(
                 struct {
                     entity: ecez.Entity,
                     pos: components.Position,
