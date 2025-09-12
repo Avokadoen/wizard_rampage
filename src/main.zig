@@ -1,18 +1,17 @@
 const std = @import("std");
 
-const rl = @import("raylib");
 const ecez = @import("ecez");
+const rl = @import("raylib");
+const tracy = @import("ztracy");
 
-const input = @import("input.zig");
-const systems = @import("systems.zig");
 const components = @import("components.zig");
+const GameSoundRepo = @import("GameSoundRepo.zig");
+const GameTextureRepo = @import("GameTextureRepo.zig");
+const input = @import("input.zig");
+const MainTextureRepo = @import("MainTextureRepo.zig");
 const physics = @import("physics_2d.zig");
 const quad_tree = @import("quad_tree.zig");
-const GameTextureRepo = @import("GameTextureRepo.zig");
-const MainTextureRepo = @import("MainTextureRepo.zig");
-const GameSoundRepo = @import("GameSoundRepo.zig");
-
-const tracy = @import("ztracy");
+const systems = @import("systems.zig");
 
 const arena_height = 3000;
 const arena_width = 3000;
@@ -24,33 +23,39 @@ const Inherent = systems.inherent.Create(Storage);
 const Misc = systems.misc.Create(Storage);
 const Physics = systems.physics.Create(Storage);
 
+const EventArgument = systems.ctx.ContextType(Storage);
+
 const Scheduler = ecez.CreateScheduler(
+    Storage,
     .{
         ecez.Event(
             "game_update",
             .{
+                Misc.lifeTime,
                 Combat.targetPlayerOrFlee,
                 Combat.tickAttackRate,
-                Misc.lifeTime,
                 Physics.updateVelocityBasedMoveDir,
                 Physics.updatePositionBasedOnVelocity,
                 Physics.updateVelocityBasedOnDrag,
                 Physics.rotateAfterVelocity,
                 Physics.recToRecCollisionResolve,
+                Combat.projectileHitKillable,
+                Combat.hostileMeleePlayer,
+                Combat.registerDead,
+                Combat.spawnBloodSplatter,
                 Inherent.velocity,
                 Inherent.position,
                 Inherent.scale,
                 Inherent.inactive,
                 Inherent.active,
-                Combat.projectileHitKillable,
-                Combat.hostileMeleePlayer,
-                Combat.registerDead,
                 Misc.cameraFollowPlayer,
                 Misc.orientTexture,
                 Misc.animateTexture,
                 Misc.orientationBasedDrawOrder,
             },
-            .{},
+            .{
+                .EventArgument = EventArgument,
+            },
         ),
     },
 );
@@ -362,7 +367,9 @@ pub fn main() anyerror!void {
                 var storage = try Storage.init(allocator);
                 defer storage.deinit();
 
-                var scheduler = try Scheduler.init(.{
+                var scheduler = Scheduler.uninitialized;
+
+                try scheduler.init(.{
                     .pool_allocator = allocator,
                     .query_submit_allocator = allocator,
                 });
@@ -871,11 +878,8 @@ pub fn main() anyerror!void {
                                 .player_entity = player_entity,
                                 .collision_as = &collision_as,
                             };
-                            scheduler.dispatchEvent(&storage, .game_update, update_context);
+                            try scheduler.dispatchEvent(&storage, .game_update, update_context);
                             scheduler.waitEvent(.game_update);
-
-                            // Spawn blood splatter
-                            try spawnBloodSplatter(&storage, sound_repo, random);
 
                             if (player_is_dead) {
                                 player_dead_frames += 1;
@@ -2008,162 +2012,6 @@ fn createTheFarmersWife(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) e
     });
 
     return the_wife;
-}
-
-pub fn spawnBloodSplatter(
-    storage: *Storage,
-    sound_repo: GameSoundRepo,
-    rng: std.Random,
-) !void {
-    const zone = tracy.ZoneN(@src(), @src().fn_name);
-    defer zone.End();
-
-    const InactiveGoreSplatterQuery = ecez.Query(
-        struct {
-            entity: ecez.Entity,
-            pos: *components.Position,
-            rot: *components.Rotation,
-            scale: *components.Scale,
-            texture: *components.Texture,
-            anim: *components.AnimTexture,
-            lifetime: *components.LifeTime,
-        },
-        .{
-            components.InactiveTag,
-            components.BloodGoreGroundTag,
-        },
-        .{},
-    );
-    var inactive_gore_iter = try InactiveGoreSplatterQuery.submit(storage.allocator, storage);
-    defer inactive_gore_iter.deinit(storage.allocator);
-
-    const InactiveBloodSplatterQuery = ecez.Query(
-        struct {
-            entity: ecez.Entity,
-            pos: *components.Position,
-            scale: *components.Scale,
-            texture: *components.Texture,
-            lifetime: *components.LifeTime,
-        },
-        .{
-            components.InactiveTag,
-            components.BloodSplatterGroundTag,
-        },
-        .{},
-    );
-    var inactive_blood_iter = try InactiveBloodSplatterQuery.submit(storage.allocator, storage);
-    defer inactive_blood_iter.deinit(storage.allocator);
-
-    const DiedThisFrameQuery = ecez.Query(
-        struct {
-            entity: ecez.Entity,
-            pos: components.Position,
-        },
-        .{components.DiedThisFrameTag},
-        .{},
-    );
-    var died_this_frame_iter = try DiedThisFrameQuery.submit(storage.allocator, storage);
-    defer died_this_frame_iter.deinit(storage.allocator);
-
-    const CameraQuery = ecez.Query(
-        struct {
-            pos: components.Position,
-            scale: components.Scale,
-            cam: components.Camera,
-        },
-        .{},
-        // exclude type
-        .{components.InactiveTag},
-    );
-    var camera_iter = try CameraQuery.submit(storage.allocator, storage);
-    defer camera_iter.deinit(storage.allocator);
-    const camera = camera_iter.next().?;
-
-    while (died_this_frame_iter.next()) |dead_this_frame| {
-        const default_scale = components.Scale{
-            .vec = rl.Vector2{
-                .x = 1,
-                .y = 1,
-            },
-        };
-
-        const scale = storage.getComponent(dead_this_frame.entity, components.Scale) orelse default_scale;
-
-        const splatter_offset = rl.Vector2.init(-100 * scale.vec.x, -100 * scale.vec.y);
-
-        const position = components.Position{
-            .vec = dead_this_frame.pos.vec.add(splatter_offset),
-        };
-
-        const blood_splatterlifetime: f32 = 6;
-        if (inactive_blood_iter.next()) |inactive_blood_splatter| {
-            storage.unsetComponents(inactive_blood_splatter.entity, .{components.InactiveTag});
-            inactive_blood_splatter.pos.* = position;
-            inactive_blood_splatter.scale.* = scale;
-            inactive_blood_splatter.lifetime.* = components.LifeTime{ .value = blood_splatterlifetime };
-        } else {
-            _ = try storage.createEntity(.{
-                position,
-                scale,
-                components.Texture{
-                    .type = @intFromEnum(GameTextureRepo.texture_type.blood_splatter),
-                    .index = @intFromEnum(GameTextureRepo.which_bloodsplat.Blood_Splat),
-                    .draw_order = .o0,
-                },
-                components.BloodSplatterGroundTag{},
-                components.LifeTime{ .value = blood_splatterlifetime },
-            });
-        }
-
-        const anim = components.AnimTexture{
-            .start_frame = @intFromEnum(GameTextureRepo.which_bloodsplat.Blood_Splat0001),
-            .current_frame = 0,
-            .frame_count = 8,
-            .frames_per_frame = 4,
-            .frames_drawn_current_frame = 0,
-        };
-        const lifetime_comp = components.LifeTime{
-            .value = @as(f32, @floatFromInt(anim.frame_count)) * @as(f32, @floatFromInt(anim.frames_per_frame)) / 60.0,
-        };
-
-        // gore should be larger than blood
-        const gore_scale = components.Scale{
-            .vec = rl.Vector2{ .x = scale.vec.x * 2, .y = scale.vec.y * 2 },
-        };
-        const gore_pos = components.Position{
-            .vec = position.vec.add(rl.Vector2{ .x = -50, .y = -40 }),
-        };
-        if (inactive_gore_iter.next()) |inactive_gore| {
-            storage.unsetComponents(inactive_gore.entity, .{components.InactiveTag});
-            inactive_gore.pos.* = gore_pos;
-            inactive_gore.scale.* = gore_scale;
-            // inactive_gore.anim.* = anim;
-            inactive_gore.lifetime.* = lifetime_comp;
-        } else {
-            const splatter_index = rng.intRangeAtMost(u8, @intFromEnum(GameSoundRepo.which_effects.Splatter_01), @intFromEnum(GameSoundRepo.which_effects.Splatter_03));
-            const splatter_sound = sound_repo.effects[splatter_index];
-
-            const pan = ((gore_pos.vec.x - camera.pos.vec.x) * camera.scale.vec.x) / camera.cam.resolution.x;
-            rl.setSoundPan(splatter_sound, pan);
-            rl.playSound(splatter_sound);
-
-            _ = try storage.createEntity(.{
-                gore_pos,
-                components.Rotation{ .value = 0 },
-                gore_scale,
-                components.Texture{
-                    .type = @intFromEnum(GameTextureRepo.texture_type.blood_splatter),
-                    .index = @intFromEnum(GameTextureRepo.which_bloodsplat.Blood_Splat0001),
-                    .draw_order = .o1,
-                },
-                anim,
-                lifetime_comp,
-                components.BloodGoreGroundTag{},
-            });
-        }
-
-        storage.unsetComponents(dead_this_frame.entity, .{components.DiedThisFrameTag});
-    }
 }
 
 pub fn staticTextureDraw(

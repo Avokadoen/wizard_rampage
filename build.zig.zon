@@ -4,13 +4,13 @@
     .version = "0.0.0",
 
     .dependencies = .{
-        .@"raylib-zig" = .{
-            .url = "https://github.com/Not-Nik/raylib-zig/archive/5bbafa4f86eb3e3f41a107bbec6b8822e0f87c93.tar.gz",
-            .hash = "raylib_zig-5.6.0-dev-KE8REE0uBQD5Lzuc6qSZPtE5li3iPyU4iGQEMPqOPI11",
-        },
         .ecez = .{
-            .url = "git+https://github.com/Avokadoen/ecez.git/?ref=HEAD#2451cbaabc63f0c76dc9c1eb7907f04cab2802e9",
-            .hash = "ecez-0.0.0-X-dkoDB6BQAccLq8iYbhXTztZ1Js_dnjbfZwN2co2Orp",
+            .url = "git+https://github.com/Avokadoen/ecez#ca1a93d097fae3ae208a8d5d5e86037a33e94107",
+            .hash = "ecez-2.3.0-X-dkoDASBgCd4GGvCUWSfQWC55HtR3BstQszHOaw4MVE",
+        },
+        .raylib_zig = .{
+            .url = "git+https://github.com/raylib-zig/raylib-zig#33f216d4fc6c5e5799a1a5bacd1f35fecab71577",
+            .hash = "raylib_zig-5.6.0-dev-KE8REEE1BQA24m93fHvVx4BhenkM_AZAwKfvNcjJt9Gy",
         },
     },
     .paths = .{

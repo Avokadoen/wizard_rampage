@@ -38,18 +38,20 @@ pub fn build(b: *std.Build) void {
         ) orelse false,
     };
 
-    const exe = b.addExecutable(.{
-        .name = "gamejam",
+    const wizard_rampage_mod = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
 
+    const exe = b.addExecutable(.{
+        .name = "wizard_rampage",
+        .root_module = wizard_rampage_mod,
+    });
+
     const exe_unit_tests = b.addTest(.{
-        .name = "gamejam_tests",
-        .root_source_file = b.path("src/main.zig"),
-        .target = target,
-        .optimize = optimize,
+        .name = "wizard_rampage_tests",
+        .root_module = wizard_rampage_mod,
     });
 
     // Create binary for tests to make it debuggable in vscode
@@ -59,7 +61,7 @@ pub fn build(b: *std.Build) void {
 
     // Raylib
     {
-        const raylib_dep = b.dependency("raylib-zig", .{
+        const raylib_dep = b.dependency("raylib_zig", .{
             .target = target,
             .optimize = optimize,
             .linux_display_backend = options.linux_display_backend,
@@ -82,6 +84,7 @@ pub fn build(b: *std.Build) void {
     {
         const ecez = b.dependency("ecez", .{
             .enable_ztracy = options.enable_ztracy,
+            .enable_ecez_dev_markers = options.enable_ztracy,
             .enable_fibers = options.enable_fibers,
             .on_demand = options.on_demand,
         });
