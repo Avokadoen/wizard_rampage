@@ -1,15 +1,14 @@
 const std = @import("std");
 
+const ecez = @import("ecez");
 const rl = @import("raylib");
 const tracy = @import("ztracy");
-const ecez = @import("ecez");
 
+const components = @import("../components.zig");
+const GameSoundRepo = @import("../GameSoundRepo.zig");
 const GameTextureRepo = @import("../GameTextureRepo.zig");
 const MainTextureRepo = @import("../MainTextureRepo.zig");
-const GameSoundRepo = @import("../GameSoundRepo.zig");
-
 const physics = @import("../physics_2d.zig");
-const components = @import("../components.zig");
 const ctx = @import("context.zig");
 
 pub fn Create(Storage: type) type {
@@ -213,10 +212,7 @@ pub fn Create(Storage: type) type {
             .{
                 *components.InactiveTag,
                 *components.DiedThisFrameTag,
-                components.FarmerTag,
-                components.FarmersWifeTag,
                 components.Camera,
-                components.Vocals,
                 components.Position,
                 components.Scale,
             },
@@ -226,6 +222,10 @@ pub fn Create(Storage: type) type {
                 entity: ecez.Entity,
                 pos: components.Position,
                 health: components.Health,
+                vocals: ?components.Vocals,
+                farmer_tag: ?components.FarmerTag,
+                wife_tag: ?components.FarmersWifeTag,
+                player_tag: ?components.PlayerTag,
             },
             .{},
             .{components.InactiveTag},
@@ -246,8 +246,7 @@ pub fn Create(Storage: type) type {
 
             while (living.next()) |item| {
                 if (item.health.value <= 0) {
-                    const maybe_vocals = subset.getComponent(item.entity, components.Vocals);
-                    if (maybe_vocals) |vocals| {
+                    if (item.vocals) |vocals| {
                         const on_death_index = context.rng.intRangeAtMost(u8, vocals.on_death_start, vocals.on_death_end);
                         const on_death_sound = context.sound_repo[on_death_index];
 
@@ -261,20 +260,18 @@ pub fn Create(Storage: type) type {
                         rl.playSound(on_death_sound);
                     }
 
-                    if (subset.hasComponents(item.entity, .{components.FarmerTag})) {
+                    if (item.farmer_tag) |_| {
                         context.farmer_kill_count.* += 1;
-                    } else if (subset.hasComponents(item.entity, .{components.FarmersWifeTag})) {
+                    } else if (item.wife_tag) |_| {
                         context.the_wife_kill_count.* += 1;
+                    } else if (item.player_tag) |_| {
+                        context.player_is_dead.* = true;
                     }
 
                     subset.setComponents(item.entity, .{
                         components.InactiveTag{},
                         components.DiedThisFrameTag{},
                     }) catch @panic("registerDead: oom");
-
-                    if (item.entity.id == context.player_entity.id) {
-                        context.player_is_dead.* = true;
-                    }
                 }
             }
         }
@@ -337,6 +334,7 @@ pub fn Create(Storage: type) type {
             struct {
                 entity: ecez.Entity,
                 pos: components.Position,
+                scale: ?components.Scale,
             },
             .{components.DiedThisFrameTag},
             .{},
@@ -379,10 +377,8 @@ pub fn Create(Storage: type) type {
                     },
                 };
 
-                const scale = subset.getComponent(dead_this_frame.entity, components.Scale) orelse default_scale;
-
+                const scale = dead_this_frame.scale orelse default_scale;
                 const splatter_offset = rl.Vector2.init(-100 * scale.vec.x, -100 * scale.vec.y);
-
                 const position = components.Position{
                     .vec = dead_this_frame.pos.vec.add(splatter_offset),
                 };

@@ -1,6 +1,6 @@
-const tracy = @import("ztracy");
 const ecez = @import("ecez");
 const rl = @import("raylib");
+const tracy = @import("ztracy");
 
 const components = @import("../components.zig");
 

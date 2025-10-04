@@ -205,8 +205,10 @@ pub fn CreateQuadTree(comptime Storage: type) type {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
-            std.debug.assert(world_pos.x >= 0 and world_pos.x < self.outer_bounds.x);
-            std.debug.assert(world_pos.y >= 0 and world_pos.y < self.outer_bounds.y);
+            std.debug.assert(world_pos.x >= 0);
+            std.debug.assert(world_pos.x < self.outer_bounds.x);
+            std.debug.assert(world_pos.y >= 0);
+            std.debug.assert(world_pos.y < self.outer_bounds.y);
 
             var local_pos = world_pos.divide(self.outer_bounds);
             for (0..tree_depth) |_| {
