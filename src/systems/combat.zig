@@ -37,7 +37,7 @@ pub fn Create(Storage: type) type {
             subset: *HostileMeleePlayerSubset,
             hostile_iter: *HostileMeleeQuery,
             context: Context,
-        ) void {
+        ) error{OutOfMemory}!void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
@@ -103,7 +103,7 @@ pub fn Create(Storage: type) type {
         pub fn projectileHitKillable(
             subset: *ProjectileHitKillableSubset,
             context: Context,
-        ) void {
+        ) error{OutOfMemory}!void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
@@ -158,7 +158,7 @@ pub fn Create(Storage: type) type {
                             immovable.pos,
                         )) {
                             // Assumption: objects without velocity does not have a health component
-                            subset.destroyEntity(a) catch @panic("oom");
+                            try subset.destroyEntity(a);
                             continue :proj_loop;
                         }
                     }
@@ -199,7 +199,7 @@ pub fn Create(Storage: type) type {
                             killable.health.value -= projectile.proj.dmg + extra_dmg;
 
                             if (!has_piercing) {
-                                subset.destroyEntity(a) catch @panic("oom");
+                                try subset.destroyEntity(a);
                                 continue :proj_loop;
                             }
                         }
@@ -234,7 +234,7 @@ pub fn Create(Storage: type) type {
             living: *MaybeDeadQuery,
             subset: *RegisterDeadSubset,
             context: Context,
-        ) void {
+        ) error{OutOfMemory}!void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
@@ -268,10 +268,10 @@ pub fn Create(Storage: type) type {
                         context.player_is_dead.* = true;
                     }
 
-                    subset.setComponents(item.entity, .{
+                    try subset.setComponents(item.entity, .{
                         components.InactiveTag{},
                         components.DiedThisFrameTag{},
-                    }) catch @panic("registerDead: oom");
+                    });
                 }
             }
         }
@@ -359,7 +359,7 @@ pub fn Create(Storage: type) type {
             died_this_frame_query: *DiedThisFrameQuery,
             subset: *SpawnBloodSplatterStorage,
             context: Context,
-        ) void {
+        ) error{OutOfMemory}!void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
@@ -384,7 +384,7 @@ pub fn Create(Storage: type) type {
                 };
 
                 const blood_splatterlifetime: f32 = 6;
-                _ = subset.createEntity(.{
+                _ = try subset.createEntity(.{
                     position,
                     scale,
                     components.Texture{
@@ -394,7 +394,7 @@ pub fn Create(Storage: type) type {
                     },
                     components.BloodSplatterGroundTag{},
                     components.LifeTime{ .value = blood_splatterlifetime },
-                }) catch @panic("oom");
+                });
 
                 const anim = components.AnimTexture{
                     .start_frame = @intFromEnum(GameTextureRepo.which_bloodsplat.Blood_Splat0001),
@@ -421,7 +421,7 @@ pub fn Create(Storage: type) type {
                 rl.setSoundPan(splatter_sound, pan);
                 rl.playSound(splatter_sound);
 
-                _ = subset.createEntity(.{
+                _ = try subset.createEntity(.{
                     gore_pos,
                     components.Rotation{ .value = 0 },
                     gore_scale,
@@ -433,7 +433,7 @@ pub fn Create(Storage: type) type {
                     anim,
                     lifetime_comp,
                     components.BloodGoreGroundTag{},
-                }) catch @panic("oom");
+                });
 
                 subset.unsetComponents(dead_this_frame.entity, .{components.DiedThisFrameTag});
             }

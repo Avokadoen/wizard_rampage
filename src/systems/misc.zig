@@ -1,6 +1,6 @@
-const tracy = @import("ztracy");
 const ecez = @import("ecez");
 const rl = @import("raylib");
+const tracy = @import("ztracy");
 
 const components = @import("../components.zig");
 const ctx = @import("context.zig");
@@ -23,13 +23,13 @@ pub fn Create(Storage: type) type {
         pub fn lifeTime(
             lifetime: *LifetimeQuery,
             subset: *LifeTimetSubset,
-        ) void {
+        ) error{OutOfMemory}!void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
             while (lifetime.next()) |item| {
                 if (item.life_time.value <= 0) {
-                    subset.setComponents(item.entity, .{components.InactiveTag{}}) catch (@panic("oom"));
+                    try subset.setComponents(item.entity, .{components.InactiveTag{}});
                 }
                 item.life_time.value -= Context.delta_time;
             }

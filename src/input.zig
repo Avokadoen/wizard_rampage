@@ -1,7 +1,7 @@
 const std = @import("std");
 
-const rl = @import("raylib");
 const ecez = @import("ecez");
+const rl = @import("raylib");
 
 const components = @import("components.zig");
 const GameTextureRepo = @import("GameTextureRepo.zig");

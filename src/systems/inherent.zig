@@ -92,13 +92,13 @@ pub fn Create(Storage: type) type {
         pub fn inactive(
             inherent_inactive: *InherentInactiveQuery,
             subset: *InherentInactiveFromParentSubset,
-        ) void {
+        ) error{OutOfMemory}!void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
             while (inherent_inactive.next()) |item| {
                 if (subset.hasComponents(item.child_of.parent, .{components.InactiveTag})) {
-                    subset.setComponents(item.entity, .{components.InactiveTag{}}) catch @panic("inherentInactiveFromParent: oom");
+                    try subset.setComponents(item.entity, .{components.InactiveTag{}});
                 }
             }
         }

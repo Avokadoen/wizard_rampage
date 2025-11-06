@@ -879,7 +879,7 @@ pub fn main() anyerror!void {
                                 .collision_as = &collision_as,
                             };
                             try scheduler.dispatchEvent(&storage, .game_update, update_context);
-                            scheduler.waitEvent(.game_update);
+                            try scheduler.waitEvent(.game_update);
 
                             if (player_is_dead) {
                                 player_dead_frames += 1;
