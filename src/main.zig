@@ -1369,8 +1369,8 @@ pub fn main() anyerror!void {
                                         switch (grabbed.old_slot.type) {
                                             .staff_index => |index| {
                                                 switch (grabbed.inv_item.item) {
-                                                    .projectile => |proj| staff.slots[index].projectile = proj,
-                                                    .modifier => |mod| staff.slots[index].modifier = mod,
+                                                    .projectile => |proj| staff.slots[index] = .{ .projectile = proj },
+                                                    .modifier => |mod| staff.slots[index] = .{ .modifier = mod },
                                                 }
                                                 staff.slot_cursor = 0;
                                                 staff.used_slots += 1;
