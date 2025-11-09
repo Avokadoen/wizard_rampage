@@ -171,5 +171,25 @@ pub fn Create(Storage: type) type {
                 item.vel.vec = item.vel.vec.multiply(drag);
             }
         }
+
+        const ClampPosQuery = ecez.Query(
+            struct {
+                pos: *components.Position,
+            },
+            .{},
+            .{components.InactiveTag},
+        );
+        /// To ensure that no object leaves the collision AS bounds, clamp positions
+        pub fn clampPosititions(clamp_pos_query: *ClampPosQuery, event_arg: Context) void {
+            const zone = tracy.ZoneN(@src(), @src().fn_name);
+            defer zone.End();
+
+            const bounds_x = event_arg.collision_as.outer_bounds.x - 1;
+            const bounds_y = event_arg.collision_as.outer_bounds.y - 1;
+            while (clamp_pos_query.next()) |item| {
+                item.pos.vec.x = std.math.clamp(item.pos.vec.x, 0, bounds_x);
+                item.pos.vec.y = std.math.clamp(item.pos.vec.y, 0, bounds_y);
+            }
+        }
     };
 }

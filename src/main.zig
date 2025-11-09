@@ -52,6 +52,7 @@ const Scheduler = ecez.CreateScheduler(
                 Misc.orientTexture,
                 Misc.animateTexture,
                 Misc.orientationBasedDrawOrder,
+                Physics.clampPosititions,
             },
             .{
                 .EventArgument = EventArgument,
