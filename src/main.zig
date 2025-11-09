@@ -16,6 +16,8 @@ const systems = @import("systems.zig");
 const arena_height = 3000;
 const arena_width = 3000;
 
+const draw_colliders = false;
+
 const Storage = ecez.CreateStorage(components.all);
 
 const Combat = systems.combat.Create(Storage);
@@ -960,7 +962,7 @@ pub fn main() anyerror!void {
                                 }
                             }
 
-                            if (@import("builtin").mode == .Debug and false) {
+                            if (@import("builtin").mode == .Debug and draw_colliders) {
                                 {
                                     const zone = tracy.ZoneN(@src(), "Debug draw rectangle");
                                     defer zone.End();
