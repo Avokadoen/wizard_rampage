@@ -359,7 +359,7 @@ pub fn Create(Storage: type) type {
             died_this_frame_query: *DiedThisFrameQuery,
             subset: *SpawnBloodSplatterStorage,
             context: Context,
-        ) error{OutOfMemory}!void {
+        ) !void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 

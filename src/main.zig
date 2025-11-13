@@ -1670,7 +1670,7 @@ pub fn main() anyerror!void {
 }
 
 // TODO: Body parts can be generic for player, farmer and wife
-fn createFarmer(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) error{OutOfMemory}!ecez.Entity {
+fn createFarmer(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) !ecez.Entity {
     const zone = tracy.ZoneN(@src(), @src().fn_name);
     defer zone.End();
 
@@ -1854,7 +1854,7 @@ fn createFarmer(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) error{Out
 }
 
 // TODO: Body parts can be generic for player, farmer and wife
-fn createTheFarmersWife(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) error{OutOfMemory}!ecez.Entity {
+fn createTheFarmersWife(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) !ecez.Entity {
     const zone = tracy.ZoneN(@src(), @src().fn_name);
     defer zone.End();
 
