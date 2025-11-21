@@ -12,51 +12,51 @@ pub fn CreateInput(Storage: type) type {
     return struct {
         fn moveUp(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             _ = staff_entity;
-            const move_dir = storage.getComponent(player_entity, *components.DesiredMovedDir).?;
+            const move_dir = storage.getComponent(player_entity, *components.physics.DesiredMovedDir).?;
             move_dir.vec.y += -1;
         }
 
         fn moveDown(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             _ = staff_entity;
-            const move_dir = storage.getComponent(player_entity, *components.DesiredMovedDir).?;
+            const move_dir = storage.getComponent(player_entity, *components.physics.DesiredMovedDir).?;
             move_dir.vec.y += 1;
         }
 
         fn moveRight(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             _ = staff_entity;
-            const move_dir = storage.getComponent(player_entity, *components.DesiredMovedDir).?;
+            const move_dir = storage.getComponent(player_entity, *components.physics.DesiredMovedDir).?;
             move_dir.vec.x += 1;
         }
 
         fn moveLeft(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             _ = staff_entity;
-            const move_dir = storage.getComponent(player_entity, *components.DesiredMovedDir).?;
+            const move_dir = storage.getComponent(player_entity, *components.physics.DesiredMovedDir).?;
             move_dir.vec.x -= 1;
         }
 
         fn shootUp(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
-            const vel = storage.getComponent(player_entity, components.Velocity).?;
+            const vel = storage.getComponent(player_entity, components.physics.Velocity).?;
 
             const projectile_vel = vel.vec.subtract(rl.Vector2{ .x = 0, .y = 1000 });
             fireProjectile(projectile_vel, storage, player_entity, staff_entity);
         }
 
         fn shootDown(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
-            const vel = storage.getComponent(player_entity, components.Velocity).?;
+            const vel = storage.getComponent(player_entity, components.physics.Velocity).?;
 
             const projectile_vel = vel.vec.add(rl.Vector2{ .x = 0, .y = 1000 });
             fireProjectile(projectile_vel, storage, player_entity, staff_entity);
         }
 
         fn shootRight(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
-            const vel = storage.getComponent(player_entity, components.Velocity).?;
+            const vel = storage.getComponent(player_entity, components.physics.Velocity).?;
 
             const projectile_vel = vel.vec.add(rl.Vector2{ .x = 1000, .y = 0 });
             fireProjectile(projectile_vel, storage, player_entity, staff_entity);
         }
 
         fn shootLeft(storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
-            const vel = storage.getComponent(player_entity, components.Velocity).?;
+            const vel = storage.getComponent(player_entity, components.physics.Velocity).?;
 
             const projectile_vel = vel.vec.subtract(rl.Vector2{ .x = 1000, .y = 0 });
             fireProjectile(projectile_vel, storage, player_entity, staff_entity);
@@ -65,7 +65,7 @@ pub fn CreateInput(Storage: type) type {
         fn fireProjectile(vel: rl.Vector2, storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
             const fire_rate = storage.getComponent(staff_entity, *components.combat.AttackRate).?;
             if (fire_rate.active_cooldown <= 0) {
-                const pos = storage.getComponent(player_entity, components.Position).?;
+                const pos = storage.getComponent(player_entity, components.physics.Position).?;
                 const staff_comp_ptr = storage.getComponent(staff_entity, *components.Staff).?;
                 const next_projectile = findNextStaffProjectile(staff_comp_ptr) orelse return;
 
@@ -91,13 +91,13 @@ pub fn CreateInput(Storage: type) type {
                 const proj_offset = norm_vel.multiply(rl.Vector2.init(15, 15));
 
                 _ = storage.createEntity(.{
-                    components.Position{
+                    components.physics.Position{
                         .vec = pos.vec.add(proj_offset),
                     },
-                    components.Rotation{ .value = 0 },
-                    components.Velocity{ .vec = vel },
-                    components.Drag{ .value = 0.98 },
-                    components.CircleCollider{
+                    components.physics.Rotation{ .value = 0 },
+                    components.physics.Velocity{ .vec = vel },
+                    components.physics.Drag{ .value = 0.98 },
+                    components.physics.CircleCollider{
                         .x = @floatCast(collider_offset_x * cs - collider_offset_y * sn),
                         .y = @floatCast(collider_offset_x * sn + collider_offset_y * cs),
                         .radius = 10,

@@ -4,14 +4,13 @@ const ecez = @import("ecez");
 const rl = @import("raylib");
 const tracy = @import("ztracy");
 
-const components = @import("../components.zig");
-const physics = @import("../physics_2d.zig");
-const ctx = @import("context.zig");
+const collision = @import("collision.zig");
 
-pub fn Create(Storage: type) type {
+const components = @import("components.zig");
+const other = @import("../components.zig");
+
+pub fn Create(Storage: type, EventArgument: type) type {
     return struct {
-        const Context = ctx.ContextType(Storage);
-
         const RecCollisionResolveSubset = Storage.Subset(
             &[_]type{
                 *components.Position,
@@ -21,7 +20,7 @@ pub fn Create(Storage: type) type {
         );
         pub fn recToRecCollisionResolve(
             subset: *RecCollisionResolveSubset,
-            context: Context,
+            context: EventArgument,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
@@ -64,19 +63,19 @@ pub fn Create(Storage: type) type {
                                 col: components.RectangleCollider,
                             }).?;
 
-                            const maybe_collision = physics.Intersection.rectAndRectResolve(
+                            const maybe_collide = collision.Intersection.rectAndRectResolve(
                                 a_rect.col,
                                 a_rect.pos.*,
                                 b_rect.col,
                                 b_rect.pos.*,
                             );
-                            if (maybe_collision) |collision| {
+                            if (maybe_collide) |collide| {
                                 if (moveable_immovable == immovable_value) {
                                     // TODO: reflect
-                                    a_rect.vel.vec = a_rect.vel.vec.add(collision);
-                                    a_rect.pos.vec = a_rect.pos.vec.add(collision);
+                                    a_rect.vel.vec = a_rect.vel.vec.add(collide);
+                                    a_rect.pos.vec = a_rect.pos.vec.add(collide);
                                 } else {
-                                    const half_col = collision.multiply(rl.Vector2.init(0.5, 0.5));
+                                    const half_col = collide.multiply(rl.Vector2.init(0.5, 0.5));
                                     // TODO: reflect
                                     a_rect.vel.vec = a_rect.vel.vec.add(half_col);
                                     a_rect.pos.vec = a_rect.pos.vec.add(half_col);
@@ -98,7 +97,7 @@ pub fn Create(Storage: type) type {
                 vel: components.Velocity,
             },
             .{},
-            .{components.InactiveTag},
+            .{other.InactiveTag},
         );
         pub fn rotateAfterVelocity(rot_vel_iter: *RotateVelocityQuery) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
@@ -142,13 +141,13 @@ pub fn Create(Storage: type) type {
                 vel: components.Velocity,
             },
             .{},
-            .{ components.InactiveTag, components.ChildOf },
+            .{ other.InactiveTag, other.ChildOf },
         );
         pub fn updatePositionBasedOnVelocity(update_pos: *UpdatePosBasedOnVelQuery) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
-            const dt = rl.Vector2.init(Context.delta_time, Context.delta_time);
+            const dt = rl.Vector2.init(EventArgument.delta_time, EventArgument.delta_time);
             while (update_pos.next()) |item| {
                 item.pos.vec = item.pos.vec.add(item.vel.vec.multiply(dt));
             }
@@ -160,7 +159,7 @@ pub fn Create(Storage: type) type {
                 drag: components.Drag,
             },
             .{},
-            .{ components.InactiveTag, components.ChildOf },
+            .{ other.InactiveTag, other.ChildOf },
         );
         pub fn updateVelocityBasedOnDrag(update_vel: *UpdateVelBasedOnDrag) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
@@ -177,10 +176,10 @@ pub fn Create(Storage: type) type {
                 pos: *components.Position,
             },
             .{},
-            .{components.InactiveTag},
+            .{other.InactiveTag},
         );
         /// To ensure that no object leaves the collision AS bounds, clamp positions
-        pub fn clampPosititions(clamp_pos_query: *ClampPosQuery, event_arg: Context) void {
+        pub fn clampPosititions(clamp_pos_query: *ClampPosQuery, event_arg: EventArgument) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 

@@ -2,16 +2,6 @@ const rl = @import("raylib");
 const ecez = @import("ecez");
 
 pub const all = [_]type{
-    Position,
-    Rotation,
-    Scale,
-    Velocity,
-    Drag,
-    MoveSpeed,
-    DesiredMovedDir,
-    RectangleCollider,
-    CircleCollider,
-    Collision,
     DrawRectangleTag,
     Texture,
     OrientationBasedDrawOrder,
@@ -35,50 +25,7 @@ pub const all = [_]type{
 };
 
 pub const combat = @import("combat/components.zig");
-
-pub const Position = struct {
-    vec: rl.Vector2,
-};
-
-pub const Rotation = struct {
-    value: f32,
-};
-
-pub const Scale = struct {
-    vec: rl.Vector2,
-};
-
-pub const Velocity = struct {
-    vec: rl.Vector2,
-};
-
-pub const DesiredMovedDir = struct {
-    vec: rl.Vector2,
-};
-
-pub const MoveSpeed = struct {
-    max: f32,
-    accelerate: f32,
-};
-
-pub const Drag = struct {
-    value: f32,
-};
-
-pub const RectangleCollider = struct {
-    dim: rl.Vector2,
-};
-
-pub const CircleCollider = packed struct {
-    x: f16,
-    y: f16,
-    radius: f32,
-};
-
-pub const Collision = struct {
-    this_point: rl.Vector2,
-    other_point: rl.Vector2,
-};
+pub const physics = @import("physics/components.zig");
 
 pub const DrawRectangleTag = struct {};
 pub const DrawCircleTag = struct {};
@@ -171,7 +118,7 @@ pub const Projectile = struct {
 pub const OldSlot = struct {
     pub const Type = union(enum) {
         staff_index: u32,
-        inventory_pos: Position,
+        inventory_pos: physics.Position,
     };
 
     type: Type,

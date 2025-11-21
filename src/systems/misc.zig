@@ -3,12 +3,11 @@ const rl = @import("raylib");
 const tracy = @import("ztracy");
 
 const components = @import("../components.zig");
+const physics = @import("../physics/components.zig");
 const ctx = @import("context.zig");
 
-pub fn Create(Storage: type) type {
+pub fn Create(Storage: type, EventArgument: type) type {
     return struct {
-        const Context = ctx.ContextType(Storage);
-
         const LifeTimetSubset = Storage.Subset(&[_]type{
             *components.InactiveTag,
         });
@@ -31,21 +30,21 @@ pub fn Create(Storage: type) type {
                 if (item.life_time.value <= 0) {
                     try subset.setComponents(item.entity, .{components.InactiveTag{}});
                 }
-                item.life_time.value -= Context.delta_time;
+                item.life_time.value -= EventArgument.delta_time;
             }
         }
 
         const CameraFollowPlayerSubset = Storage.Subset(
             &[_]type{
-                *components.Position,
-                components.RectangleCollider,
-                *components.Scale,
+                *physics.Position,
+                physics.RectangleCollider,
+                *physics.Scale,
                 *components.Camera,
             },
         );
         pub fn cameraFollowPlayer(
             subset: *CameraFollowPlayerSubset,
-            context: Context,
+            context: EventArgument,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
@@ -53,15 +52,15 @@ pub fn Create(Storage: type) type {
             const camera = subset.getComponents(
                 context.camera_entity,
                 struct {
-                    pos: *components.Position,
-                    scale: components.Scale,
+                    pos: *physics.Position,
+                    scale: physics.Scale,
                     cam: components.Camera,
                 },
             ).?;
 
             const player = subset.getComponents(context.player_entity, struct {
-                pos: components.Position,
-                col: components.RectangleCollider,
+                pos: physics.Position,
+                col: physics.RectangleCollider,
             }).?;
 
             const camera_offset = rl.Vector2.init(
@@ -73,7 +72,7 @@ pub fn Create(Storage: type) type {
 
         const OrientTextureQuery = ecez.Query(
             struct {
-                velocity: components.Velocity,
+                velocity: physics.Velocity,
                 texture: *components.Texture,
                 orientation_texture: components.OrientationTexture,
             },

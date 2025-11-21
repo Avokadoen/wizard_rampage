@@ -3,15 +3,16 @@ const rl = @import("raylib");
 const tracy = @import("ztracy");
 
 const components = @import("../components.zig");
+const physics = @import("../physics/components.zig");
 
 pub fn Create(Storage: type) type {
     return struct {
         const ParentVelSubset = Storage.Subset(&[_]type{
-            components.Velocity,
+            physics.Velocity,
         });
         const InherentVelQuery = ecez.Query(
             struct {
-                vel: *components.Velocity,
+                vel: *physics.Velocity,
                 child_of: components.ChildOf,
             },
             .{},
@@ -25,17 +26,17 @@ pub fn Create(Storage: type) type {
             defer zone.End();
 
             while (inherent_vel.next()) |item| {
-                const parent_vel = subset.getComponent(item.child_of.parent, components.Velocity) orelse continue;
+                const parent_vel = subset.getComponent(item.child_of.parent, physics.Velocity) orelse continue;
                 item.vel.* = parent_vel;
             }
         }
 
         const ParentPosSubset = Storage.Subset(&[_]type{
-            components.Position,
+            physics.Position,
         });
         const InherentPosQuery = ecez.Query(
             struct {
-                pos: *components.Position,
+                pos: *physics.Position,
                 child_of: components.ChildOf,
             },
             .{},
@@ -49,17 +50,17 @@ pub fn Create(Storage: type) type {
             defer zone.End();
 
             while (inherent_pos.next()) |item| {
-                const parent_pos = subset.getComponent(item.child_of.parent, components.Position) orelse continue;
+                const parent_pos = subset.getComponent(item.child_of.parent, physics.Position) orelse continue;
                 item.pos.vec = parent_pos.vec.add(item.child_of.offset);
             }
         }
 
         const ParentScaleSubset = Storage.Subset(&[_]type{
-            components.Scale,
+            physics.Scale,
         });
         const InherentScaleQuery = ecez.Query(
             struct {
-                scale: *components.Scale,
+                scale: *physics.Scale,
                 child_of: components.ChildOf,
             },
             .{},
@@ -73,7 +74,7 @@ pub fn Create(Storage: type) type {
             defer zone.End();
 
             while (inherent_scale.next()) |item| {
-                const parent_scale = subset.getComponent(item.child_of.parent, components.Scale) orelse continue;
+                const parent_scale = subset.getComponent(item.child_of.parent, physics.Scale) orelse continue;
                 item.scale.vec = parent_scale.vec;
             }
         }

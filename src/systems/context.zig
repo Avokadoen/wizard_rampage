@@ -1,9 +1,8 @@
 const std = @import("std");
 const rl = @import("raylib");
 const ecez = @import("ecez");
-const quad_tree = @import("../quad_tree.zig");
 
-pub fn ContextType(comptime Storage: type) type {
+pub fn ContextType(comptime QuadTree: type) type {
     return struct {
         const Context = @This();
 
@@ -18,6 +17,6 @@ pub fn ContextType(comptime Storage: type) type {
         cursor_position: rl.Vector2,
         camera_entity: ecez.Entity,
         player_entity: ecez.Entity,
-        collision_as: *const quad_tree.CreateQuadTree(Storage),
+        collision_as: *const QuadTree,
     };
 }

@@ -9,8 +9,8 @@ const GameSoundRepo = @import("GameSoundRepo.zig");
 const GameTextureRepo = @import("GameTextureRepo.zig");
 const input = @import("input.zig");
 const MainTextureRepo = @import("MainTextureRepo.zig");
-const physics = @import("physics_2d.zig");
-const quad_tree = @import("quad_tree.zig");
+const collision = @import("physics/collision.zig");
+const quad_tree = @import("physics/quad_tree.zig");
 const systems = @import("systems.zig");
 
 const arena_height = 3000;
@@ -18,14 +18,16 @@ const arena_width = 3000;
 
 const draw_colliders = false;
 
-const all_components = components.all ++ components.combat.array;
+const all_components = components.all ++ components.physics.array ++ components.combat.array;
 const Storage = ecez.CreateStorage(&all_components);
-const EventArgument = systems.ctx.ContextType(Storage);
+const QuadTree = quad_tree.CreateQuadTree(Storage);
+
+const EventArgument = systems.ctx.ContextType(QuadTree);
 
 const Combat = systems.combat.Create(Storage, EventArgument);
 const Inherent = systems.inherent.Create(Storage);
-const Misc = systems.misc.Create(Storage);
-const Physics = systems.physics.Create(Storage);
+const Misc = systems.misc.Create(Storage, EventArgument);
+const Physics = systems.physics.Create(Storage, EventArgument);
 
 const Scheduler = ecez.CreateScheduler(
     Storage,
@@ -62,8 +64,6 @@ const Scheduler = ecez.CreateScheduler(
         ),
     },
 );
-
-const QuadTree = quad_tree.CreateQuadTree(Storage);
 
 const Input = input.CreateInput(Storage);
 
@@ -386,8 +386,8 @@ pub fn main() anyerror!void {
                 // Create camera
                 const camera_entity = try create_camera_blk: {
                     break :create_camera_blk storage.createEntity(.{
-                        components.Position{ .vec = rl.Vector2.zero() },
-                        components.Scale{ .vec = rl.Vector2.init(2, 2) },
+                        components.physics.Position{ .vec = rl.Vector2.zero() },
+                        components.physics.Scale{ .vec = rl.Vector2.init(2, 2) },
                         components.Camera{ .resolution = rl.Vector2{
                             .x = window_width,
                             .y = window_height,
@@ -404,12 +404,12 @@ pub fn main() anyerror!void {
                     while (i < arena_width) : (i += hor_fence_width) {
                         // South
                         _ = try storage.createEntity(.{
-                            components.Position{ .vec = rl.Vector2.init(
+                            components.physics.Position{ .vec = rl.Vector2.init(
                                 @floatFromInt(i),
                                 arena_height - @as(f32, @floatFromInt(hor_fence_height)),
                             ) },
-                            components.Scale{ .vec = rl.Vector2.init(1, 1) },
-                            components.RectangleCollider{ .dim = .{
+                            components.physics.Scale{ .vec = rl.Vector2.init(1, 1) },
+                            components.physics.RectangleCollider{ .dim = .{
                                 .x = @floatFromInt(hor_fence_width),
                                 .y = @floatFromInt(hor_fence_height),
                             } },
@@ -422,12 +422,12 @@ pub fn main() anyerror!void {
                         });
                         // North
                         _ = try storage.createEntity(.{
-                            components.Position{ .vec = rl.Vector2.init(
+                            components.physics.Position{ .vec = rl.Vector2.init(
                                 @floatFromInt(i),
                                 1,
                             ) },
-                            components.Scale{ .vec = rl.Vector2.init(1, 1) },
-                            components.RectangleCollider{ .dim = .{
+                            components.physics.Scale{ .vec = rl.Vector2.init(1, 1) },
+                            components.physics.RectangleCollider{ .dim = .{
                                 .x = @floatFromInt(hor_fence_width),
                                 .y = @floatFromInt(hor_fence_height),
                             } },
@@ -446,14 +446,14 @@ pub fn main() anyerror!void {
                     while (i < arena_width - vert_fence_height) : (i += vert_fence_height) {
                         // West
                         _ = try storage.createEntity(.{
-                            components.Position{ .vec = rl.Vector2.init(
+                            components.physics.Position{ .vec = rl.Vector2.init(
                                 0,
                                 @floatFromInt(i),
                             ) },
-                            components.Scale{
+                            components.physics.Scale{
                                 .vec = rl.Vector2.init(1, 1),
                             },
-                            components.RectangleCollider{ .dim = .{
+                            components.physics.RectangleCollider{ .dim = .{
                                 .x = @floatFromInt(vert_fence_width),
                                 .y = @floatFromInt(vert_fence_height),
                             } },
@@ -466,14 +466,14 @@ pub fn main() anyerror!void {
                         });
                         // East
                         _ = try storage.createEntity(.{
-                            components.Position{ .vec = rl.Vector2.init(
+                            components.physics.Position{ .vec = rl.Vector2.init(
                                 arena_width - @as(f32, @floatFromInt(vert_fence_width + 1)),
                                 @floatFromInt(i),
                             ) },
-                            components.Scale{
+                            components.physics.Scale{
                                 .vec = rl.Vector2.init(1, 1),
                             },
-                            components.RectangleCollider{ .dim = .{
+                            components.physics.RectangleCollider{ .dim = .{
                                 .x = @floatFromInt(vert_fence_width),
                                 .y = @floatFromInt(vert_fence_height),
                             } },
@@ -492,11 +492,11 @@ pub fn main() anyerror!void {
                         const pos_x = -arena_width * 0.5 + random.float(f32) * arena_width * 1.5;
                         const pos_y = -arena_height * 0.5 + random.float(f32) * arena_height * 1.5;
                         _ = try storage.createEntity(.{
-                            .pos = components.Position{ .vec = rl.Vector2.init(
+                            .pos = components.physics.Position{ .vec = rl.Vector2.init(
                                 pos_x,
                                 pos_y,
                             ) },
-                            .scale = components.Scale{
+                            .scale = components.physics.Scale{
                                 .vec = rl.Vector2.init(
                                     4 + random.float(f32) * 2,
                                     4 + random.float(f32) * 2,
@@ -514,11 +514,11 @@ pub fn main() anyerror!void {
                         const pos_y = -arena_height * 0.5 + random.float(f32) * arena_height * 1.5;
 
                         _ = try storage.createEntity(.{
-                            .pos = components.Position{ .vec = rl.Vector2.init(
+                            .pos = components.physics.Position{ .vec = rl.Vector2.init(
                                 pos_x,
                                 pos_y,
                             ) },
-                            .scale = components.Scale{
+                            .scale = components.physics.Scale{
                                 .vec = rl.Vector2.init(
                                     1 + random.float(f32),
                                     1 + random.float(f32),
@@ -536,11 +536,11 @@ pub fn main() anyerror!void {
                         const pos_y = random.float(f32) * arena_height * 1.5;
                         const texture = if (random.boolean()) @intFromEnum(GameTextureRepo.which_decor.Daisies) else @intFromEnum(GameTextureRepo.which_decor.Rocks);
                         _ = try storage.createEntity(.{
-                            .pos = components.Position{ .vec = rl.Vector2.init(
+                            .pos = components.physics.Position{ .vec = rl.Vector2.init(
                                 pos_x,
                                 pos_y,
                             ) },
-                            .scale = components.Scale{ .vec = rl.Vector2{
+                            .scale = components.physics.Scale{ .vec = rl.Vector2{
                                 .x = 0.1 + random.float(f32),
                                 .y = 0.1 + random.float(f32),
                             } },
@@ -555,25 +555,25 @@ pub fn main() anyerror!void {
 
                 const player_entity = create_player_blk: {
                     const player = try storage.createEntity(.{
-                        components.Position{
+                        components.physics.Position{
                             .vec = room_center.subtract(player_hit_box),
                         },
-                        components.Scale{
+                        components.physics.Scale{
                             .vec = player_scale,
                         },
-                        components.Velocity{
+                        components.physics.Velocity{
                             .vec = rl.Vector2.zero(),
                         },
-                        components.Drag{ .value = 0.8 },
-                        components.MoveSpeed{
+                        components.physics.Drag{ .value = 0.8 },
+                        components.physics.MoveSpeed{
                             // TODO: this will make players with smaller res move faster.
                             .max = 500,
                             .accelerate = 100,
                         },
-                        components.DesiredMovedDir{
+                        components.physics.DesiredMovedDir{
                             .vec = rl.Vector2.zero(),
                         },
-                        components.RectangleCollider{
+                        components.physics.RectangleCollider{
                             .dim = player_hit_box,
                         },
                         components.DrawRectangleTag{},
@@ -592,9 +592,9 @@ pub fn main() anyerror!void {
 
                     // Cloak
                     _ = try storage.createEntity(.{
-                        components.Position{ .vec = rl.Vector2.zero() },
-                        components.Scale{ .vec = player_scale },
-                        components.Velocity{
+                        components.physics.Position{ .vec = rl.Vector2.zero() },
+                        components.physics.Scale{ .vec = player_scale },
+                        components.physics.Velocity{
                             .vec = rl.Vector2.zero(),
                         },
                         components.Texture{
@@ -612,9 +612,9 @@ pub fn main() anyerror!void {
                     });
                     // Head
                     _ = try storage.createEntity(.{
-                        components.Position{ .vec = rl.Vector2.zero() },
-                        components.Scale{ .vec = player_scale },
-                        components.Velocity{
+                        components.physics.Position{ .vec = rl.Vector2.zero() },
+                        components.physics.Scale{ .vec = player_scale },
+                        components.physics.Velocity{
                             .vec = rl.Vector2.zero(),
                         },
                         components.Texture{
@@ -632,9 +632,9 @@ pub fn main() anyerror!void {
                     });
                     // Hat
                     _ = try storage.createEntity(.{
-                        components.Position{ .vec = rl.Vector2.zero() },
-                        components.Scale{ .vec = player_scale },
-                        components.Velocity{
+                        components.physics.Position{ .vec = rl.Vector2.zero() },
+                        components.physics.Scale{ .vec = player_scale },
+                        components.physics.Velocity{
                             .vec = rl.Vector2.zero(),
                         },
                         components.Texture{
@@ -653,9 +653,9 @@ pub fn main() anyerror!void {
 
                     // Left hand
                     _ = try storage.createEntity(.{
-                        components.Position{ .vec = rl.Vector2.zero() },
-                        components.Scale{ .vec = player_scale },
-                        components.Velocity{
+                        components.physics.Position{ .vec = rl.Vector2.zero() },
+                        components.physics.Scale{ .vec = player_scale },
+                        components.physics.Velocity{
                             .vec = rl.Vector2.zero(),
                         },
                         components.Texture{
@@ -685,9 +685,9 @@ pub fn main() anyerror!void {
                     });
                     // Right hand
                     _ = try storage.createEntity(.{
-                        components.Position{ .vec = rl.Vector2.zero() },
-                        components.Scale{ .vec = player_scale },
-                        components.Velocity{
+                        components.physics.Position{ .vec = rl.Vector2.zero() },
+                        components.physics.Scale{ .vec = player_scale },
+                        components.physics.Velocity{
                             .vec = rl.Vector2.zero(),
                         },
                         components.Texture{
@@ -749,9 +749,9 @@ pub fn main() anyerror!void {
                     };
 
                     break :create_player_staff_blk try storage.createEntity(.{
-                        components.Position{ .vec = rl.Vector2.zero() },
-                        components.Scale{ .vec = player_scale },
-                        components.Velocity{
+                        components.physics.Position{ .vec = rl.Vector2.zero() },
+                        components.physics.Scale{ .vec = player_scale },
+                        components.physics.Velocity{
                             .vec = rl.Vector2.zero(),
                         },
                         components.Texture{
@@ -870,7 +870,7 @@ pub fn main() anyerror!void {
                             try collision_as.updateMovableEntities(allocator, &storage);
 
                             // system update dispatch
-                            const update_context = systems.ctx.ContextType(Storage){
+                            const update_context = EventArgument{
                                 .sound_repo = &sound_repo.effects,
                                 .rng = random,
                                 .farmer_kill_count = &farmer_kill_count,
@@ -902,8 +902,8 @@ pub fn main() anyerror!void {
                         {
                             // Start gameplay drawing
                             const camera = create_rl_camera_blk: {
-                                const camera_pos = storage.getComponent(camera_entity, components.Position).?;
-                                const camera_zoom = storage.getComponent(camera_entity, components.Scale).?;
+                                const camera_pos = storage.getComponent(camera_entity, components.physics.Position).?;
+                                const camera_zoom = storage.getComponent(camera_entity, components.physics.Scale).?;
 
                                 break :create_rl_camera_blk rl.Camera2D{
                                     .offset = rl.Vector2{
@@ -939,7 +939,7 @@ pub fn main() anyerror!void {
                                 const TextureDrawQuery = ecez.Query(
                                     struct {
                                         entity: ecez.Entity,
-                                        pos: components.Position,
+                                        pos: components.physics.Position,
                                         texture: components.Texture,
                                     },
                                     .{},
@@ -969,8 +969,8 @@ pub fn main() anyerror!void {
 
                                     const RectangleDrawQuery = ecez.Query(
                                         struct {
-                                            pos: components.Position,
-                                            col: components.RectangleCollider,
+                                            pos: components.physics.Position,
+                                            col: components.physics.RectangleCollider,
                                         },
                                         .{components.DrawRectangleTag},
                                         .{components.InactiveTag},
@@ -996,7 +996,7 @@ pub fn main() anyerror!void {
 
                                     const CircleDrawQuery = ecez.Query(
                                         struct {
-                                            pos: components.Position,
+                                            pos: components.physics.Position,
                                             col: components.CircleCollider,
                                         },
                                         .{components.DrawCircleTag},
@@ -1033,7 +1033,7 @@ pub fn main() anyerror!void {
                             const GrabbedItemQuery = ecez.QueryAny(
                                 struct {
                                     entity: ecez.Entity,
-                                    pos: *components.Position,
+                                    pos: *components.physics.Position,
                                     old_slot: components.OldSlot,
                                     inv_item: components.InventoryItem,
                                     attach_to_cursor: components.AttachToCursor,
@@ -1045,7 +1045,7 @@ pub fn main() anyerror!void {
                             const UnusedGrabbedItemQuery = ecez.QueryAny(
                                 struct {
                                     entity: ecez.Entity,
-                                    pos: *components.Position,
+                                    pos: *components.physics.Position,
                                     old_slot: *components.OldSlot,
                                     inv_item: *components.InventoryItem,
                                     attach_to_cursor: *components.AttachToCursor,
@@ -1057,7 +1057,7 @@ pub fn main() anyerror!void {
                             const InInvenventoryQuery = ecez.Query(
                                 struct {
                                     entity: ecez.Entity,
-                                    pos: components.Position,
+                                    pos: components.physics.Position,
                                     inv_item: components.InventoryItem,
                                 },
                                 .{},
@@ -1298,7 +1298,7 @@ pub fn main() anyerror!void {
                                                 storage.unsetComponents(unused_grabbed_item.entity, .{components.InactiveTag});
                                             } else {
                                                 _ = try storage.createEntity(.{
-                                                    components.Position{
+                                                    components.physics.Position{
                                                         .vec = rl.Vector2.zero(), // set later
                                                     },
                                                     components.OldSlot{
@@ -1675,22 +1675,22 @@ fn createFarmer(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) !ecez.Ent
     defer zone.End();
 
     const farmer = try storage.createEntity(.{
-        components.Position{ .vec = pos },
-        components.Scale{
+        components.physics.Position{ .vec = pos },
+        components.physics.Scale{
             .vec = scale,
         },
-        components.Velocity{
+        components.physics.Velocity{
             .vec = rl.Vector2.zero(),
         },
-        components.Drag{ .value = 0.7 },
-        components.MoveSpeed{
+        components.physics.Drag{ .value = 0.7 },
+        components.physics.MoveSpeed{
             .max = 240,
             .accelerate = 40,
         },
-        components.DesiredMovedDir{
+        components.physics.DesiredMovedDir{
             .vec = rl.Vector2.zero(),
         },
-        components.RectangleCollider{
+        components.physics.RectangleCollider{
             .dim = player_hit_box,
         },
         components.DrawRectangleTag{},
@@ -1718,9 +1718,9 @@ fn createFarmer(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) !ecez.Ent
 
     // Cloak
     _ = try storage.createEntity(.{
-        components.Position{ .vec = rl.Vector2.zero() },
-        components.Scale{ .vec = rl.Vector2{ .x = 1, .y = 1 } },
-        components.Velocity{
+        components.physics.Position{ .vec = rl.Vector2.zero() },
+        components.physics.Scale{ .vec = rl.Vector2{ .x = 1, .y = 1 } },
+        components.physics.Velocity{
             .vec = rl.Vector2.zero(),
         },
         components.Texture{
@@ -1738,11 +1738,11 @@ fn createFarmer(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) !ecez.Ent
     });
     // Head
     _ = try storage.createEntity(.{
-        components.Position{ .vec = rl.Vector2.zero() },
-        components.Scale{
+        components.physics.Position{ .vec = rl.Vector2.zero() },
+        components.physics.Scale{
             .vec = rl.Vector2{ .x = 1, .y = 1 },
         },
-        components.Velocity{
+        components.physics.Velocity{
             .vec = rl.Vector2.zero(),
         },
         components.Texture{
@@ -1760,11 +1760,11 @@ fn createFarmer(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) !ecez.Ent
     });
     // Hat
     _ = try storage.createEntity(.{
-        components.Position{ .vec = rl.Vector2.zero() },
-        components.Scale{
+        components.physics.Position{ .vec = rl.Vector2.zero() },
+        components.physics.Scale{
             .vec = rl.Vector2{ .x = 1, .y = 1 },
         },
-        components.Velocity{
+        components.physics.Velocity{
             .vec = rl.Vector2.zero(),
         },
         components.Texture{
@@ -1783,11 +1783,11 @@ fn createFarmer(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) !ecez.Ent
 
     // Left hand
     _ = try storage.createEntity(.{
-        components.Position{ .vec = rl.Vector2.zero() },
-        components.Scale{
+        components.physics.Position{ .vec = rl.Vector2.zero() },
+        components.physics.Scale{
             .vec = rl.Vector2{ .x = 1, .y = 1 },
         },
-        components.Velocity{
+        components.physics.Velocity{
             .vec = rl.Vector2.zero(),
         },
         components.Texture{
@@ -1817,11 +1817,11 @@ fn createFarmer(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) !ecez.Ent
     });
     // Right hand
     _ = try storage.createEntity(.{
-        components.Position{ .vec = rl.Vector2.zero() },
-        components.Scale{
+        components.physics.Position{ .vec = rl.Vector2.zero() },
+        components.physics.Scale{
             .vec = rl.Vector2{ .x = 1, .y = 1 },
         },
-        components.Velocity{
+        components.physics.Velocity{
             .vec = rl.Vector2.zero(),
         },
         components.Texture{
@@ -1859,22 +1859,22 @@ fn createTheFarmersWife(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) !
     defer zone.End();
 
     const the_wife = try storage.createEntity(.{
-        components.Position{ .vec = pos },
-        components.Scale{ .vec = scale },
-        components.Velocity{
+        components.physics.Position{ .vec = pos },
+        components.physics.Scale{ .vec = scale },
+        components.physics.Velocity{
             .vec = rl.Vector2.zero(),
         },
-        components.Drag{
+        components.physics.Drag{
             .value = 0.7,
         },
-        components.MoveSpeed{
+        components.physics.MoveSpeed{
             .max = 300,
             .accelerate = 45,
         },
-        components.DesiredMovedDir{
+        components.physics.DesiredMovedDir{
             .vec = rl.Vector2.zero(),
         },
-        components.RectangleCollider{
+        components.physics.RectangleCollider{
             .dim = player_hit_box.scale(2.3),
         },
         components.DrawRectangleTag{},
@@ -1902,11 +1902,11 @@ fn createTheFarmersWife(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) !
 
     // Chest
     _ = try storage.createEntity(.{
-        components.Position{ .vec = rl.Vector2.zero() },
-        components.Scale{
+        components.physics.Position{ .vec = rl.Vector2.zero() },
+        components.physics.Scale{
             .vec = rl.Vector2{ .x = 1, .y = 1 },
         },
-        components.Velocity{
+        components.physics.Velocity{
             .vec = rl.Vector2.zero(),
         },
         components.Texture{
@@ -1924,11 +1924,11 @@ fn createTheFarmersWife(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) !
     });
     // Head
     _ = try storage.createEntity(.{
-        components.Position{ .vec = rl.Vector2.zero() },
-        components.Scale{
+        components.physics.Position{ .vec = rl.Vector2.zero() },
+        components.physics.Scale{
             .vec = rl.Vector2{ .x = 1, .y = 1 },
         },
-        components.Velocity{
+        components.physics.Velocity{
             .vec = rl.Vector2.zero(),
         },
         components.Texture{
@@ -1947,11 +1947,11 @@ fn createTheFarmersWife(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) !
 
     // Left hand
     _ = try storage.createEntity(.{
-        components.Position{ .vec = rl.Vector2.zero() },
-        components.Scale{
+        components.physics.Position{ .vec = rl.Vector2.zero() },
+        components.physics.Scale{
             .vec = rl.Vector2{ .x = 1, .y = 1 },
         },
-        components.Velocity{
+        components.physics.Velocity{
             .vec = rl.Vector2.zero(),
         },
         components.Texture{
@@ -1981,11 +1981,11 @@ fn createTheFarmersWife(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) !
     });
     // Right hand
     _ = try storage.createEntity(.{
-        components.Position{ .vec = rl.Vector2.zero() },
-        components.Scale{
+        components.physics.Position{ .vec = rl.Vector2.zero() },
+        components.physics.Scale{
             .vec = rl.Vector2{ .x = 1, .y = 1 },
         },
-        components.Velocity{
+        components.physics.Velocity{
             .vec = rl.Vector2.zero(),
         },
         components.Texture{
@@ -2020,7 +2020,7 @@ fn createTheFarmersWife(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) !
 pub fn staticTextureDraw(
     comptime order: components.Texture.DrawOrder,
     entity: ecez.Entity,
-    pos: components.Position,
+    pos: components.physics.Position,
     static_texture: components.Texture,
     texture_repo: []const []const rl.Texture,
     storage: Storage,
@@ -2030,12 +2030,12 @@ pub fn staticTextureDraw(
 
     if (static_texture.draw_order != order) return;
 
-    const default_scale = components.Scale{
+    const default_scale = components.physics.Scale{
         .vec = rl.Vector2{ .x = 1, .y = 1 },
     };
 
-    const rotation = storage.getComponent(entity, components.Rotation) orelse components.Rotation{ .value = 0 };
-    const scale = storage.getComponent(entity, components.Scale) orelse default_scale;
+    const rotation = storage.getComponent(entity, components.physics.Rotation) orelse components.physics.Rotation{ .value = 0 };
+    const scale = storage.getComponent(entity, components.physics.Scale) orelse default_scale;
     const texture = texture_repo[static_texture.type][static_texture.index];
 
     const rect_texture = rl.Rectangle{
@@ -2065,5 +2065,5 @@ fn randomPointOnCircle(radius: usize, pos: rl.Vector2, rand: std.Random) rl.Vect
 }
 
 test {
-    _ = @import("physics_2d.zig");
+    _ = @import("physics/collision.zig");
 }

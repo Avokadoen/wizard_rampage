@@ -9,14 +9,16 @@ const other = @import("../components.zig");
 const GameSoundRepo = @import("../GameSoundRepo.zig");
 const GameTextureRepo = @import("../GameTextureRepo.zig");
 const MainTextureRepo = @import("../MainTextureRepo.zig");
-const physics = @import("../physics_2d.zig");
+
+const physics = @import("../physics/components.zig");
+const collision = @import("../physics/collision.zig");
 
 pub fn Create(Storage: type, EventArgument: type) type {
     return struct {
         const HostileMeleePlayerSubset = Storage.Subset(
             &[_]type{
-                other.Position,
-                other.RectangleCollider,
+                physics.Position,
+                physics.RectangleCollider,
                 other.Vocals,
                 other.InactiveTag,
                 *components.Health,
@@ -24,7 +26,7 @@ pub fn Create(Storage: type, EventArgument: type) type {
         );
         const HostileMeleeQuery = ecez.Query(
             struct {
-                pos: other.Position,
+                pos: physics.Position,
                 attack_rate: *components.AttackRate,
                 melee: components.Melee,
             },
@@ -49,8 +51,8 @@ pub fn Create(Storage: type, EventArgument: type) type {
             }
 
             const player_r = subset.getComponents(context.player_entity, struct {
-                pos: other.Position,
-                col: other.RectangleCollider,
+                pos: physics.Position,
+                col: physics.RectangleCollider,
                 vocals: other.Vocals,
             }).?;
 
@@ -65,7 +67,7 @@ pub fn Create(Storage: type, EventArgument: type) type {
             );
             const on_dmg_sound = context.sound_repo[on_dmg_index];
 
-            const player_circle = other.CircleCollider{
+            const player_circle = physics.CircleCollider{
                 .x = 0,
                 .y = 0,
                 .radius = player_r.col.dim.x,
@@ -74,19 +76,19 @@ pub fn Create(Storage: type, EventArgument: type) type {
             while (hostile_iter.next()) |hostile| {
                 if (hostile.attack_rate.active_cooldown > 0) continue;
 
-                const hostile_circle = other.CircleCollider{
+                const hostile_circle = physics.CircleCollider{
                     .x = 0,
                     .y = 0,
                     .radius = hostile.melee.range,
                 };
 
-                const collision = physics.Intersection.circleAndCircle(
+                const collide = collision.Intersection.circleAndCircle(
                     player_circle,
                     player_r.pos,
                     hostile_circle,
                     hostile.pos,
                 );
-                if (collision) {
+                if (collide) {
                     hostile.attack_rate.active_cooldown = hostile.attack_rate.cooldown;
                     player_w.health.value -= hostile.melee.dmg;
 
@@ -106,8 +108,8 @@ pub fn Create(Storage: type, EventArgument: type) type {
             defer zone.End();
 
             const camera = subset.getComponents(context.camera_entity, struct {
-                pos: other.Position,
-                scale: other.Scale,
+                pos: physics.Position,
+                scale: physics.Scale,
                 cam: other.Camera,
             }).?;
 
@@ -118,9 +120,9 @@ pub fn Create(Storage: type, EventArgument: type) type {
 
                 proj_loop: for (leaf_node.circle_movable_entities.items) |a| {
                     const projectile = subset.getComponents(a, struct {
-                        pos: other.Position,
-                        col: other.CircleCollider,
-                        vel: other.Velocity,
+                        pos: physics.Position,
+                        col: physics.CircleCollider,
+                        vel: physics.Velocity,
                         proj: other.Projectile,
                     }) orelse continue :proj_loop; // projectile was deleted this frame
 
@@ -128,7 +130,7 @@ pub fn Create(Storage: type, EventArgument: type) type {
                         @floatCast(projectile.col.x),
                         @floatCast(projectile.col.y),
                     );
-                    const proj_pos = other.Position{
+                    const proj_pos = physics.Position{
                         .vec = projectile.pos.vec.add(offset),
                     };
 
@@ -145,11 +147,11 @@ pub fn Create(Storage: type, EventArgument: type) type {
 
                     for (leaf_node.immovable_entities.items) |b| {
                         const immovable = subset.getComponents(b, struct {
-                            pos: other.Position,
-                            col: other.RectangleCollider,
+                            pos: physics.Position,
+                            col: physics.RectangleCollider,
                         }).?;
 
-                        if (physics.Intersection.circleAndRect(
+                        if (collision.Intersection.circleAndRect(
                             projectile.col,
                             proj_pos,
                             immovable.col,
@@ -164,12 +166,12 @@ pub fn Create(Storage: type, EventArgument: type) type {
                     for (leaf_node.rect_movable_entities.items) |b| {
                         // Assumption: All movable are killable
                         const killable = subset.getComponents(b, struct {
-                            pos: other.Position,
-                            col: other.RectangleCollider,
+                            pos: physics.Position,
+                            col: physics.RectangleCollider,
                             health: *components.Health,
                         }).?;
 
-                        if (physics.Intersection.circleAndRect(
+                        if (collision.Intersection.circleAndRect(
                             projectile.col,
                             proj_pos,
                             killable.col,
@@ -187,7 +189,7 @@ pub fn Create(Storage: type, EventArgument: type) type {
                                 rl.playSound(on_dmg_sound);
                             }
 
-                            const maybe_vel = subset.getComponent(b, *other.Velocity);
+                            const maybe_vel = subset.getComponent(b, *physics.Velocity);
                             if (maybe_vel) |kill_vel| {
                                 const proj_dir = projectile.vel.vec.normalize();
                                 const proj_impact = rl.Vector2.init(projectile.proj.weight, projectile.proj.weight);
@@ -211,14 +213,14 @@ pub fn Create(Storage: type, EventArgument: type) type {
                 *other.InactiveTag,
                 *components.DiedThisFrameTag,
                 other.Camera,
-                other.Position,
-                other.Scale,
+                physics.Position,
+                physics.Scale,
             },
         );
         const MaybeDeadQuery = ecez.Query(
             struct {
                 entity: ecez.Entity,
-                pos: other.Position,
+                pos: physics.Position,
                 health: components.Health,
                 vocals: ?other.Vocals,
                 farmer_tag: ?other.FarmerTag,
@@ -237,8 +239,8 @@ pub fn Create(Storage: type, EventArgument: type) type {
             defer zone.End();
 
             const camera = subset.getComponents(context.camera_entity, struct {
-                pos: other.Position,
-                scale: other.Scale,
+                pos: physics.Position,
+                scale: physics.Scale,
                 cam: other.Camera,
             }).?;
 
@@ -276,13 +278,13 @@ pub fn Create(Storage: type, EventArgument: type) type {
 
         const TargetPlayerOrFleeSubset = Storage.Subset(
             &[_]type{
-                other.Position,
+                physics.Position,
             },
         );
         const HostileQuery = ecez.Query(
             struct {
-                pos: other.Position,
-                mov_dir: *other.DesiredMovedDir,
+                pos: physics.Position,
+                mov_dir: *physics.DesiredMovedDir,
             },
             .{components.HostileTag},
             .{other.InactiveTag},
@@ -298,7 +300,7 @@ pub fn Create(Storage: type, EventArgument: type) type {
             const player = subset.getComponents(
                 context.player_entity,
                 struct {
-                    pos: other.Position,
+                    pos: physics.Position,
                 },
             ).?;
 
@@ -331,8 +333,8 @@ pub fn Create(Storage: type, EventArgument: type) type {
         const DiedThisFrameQuery = ecez.Query(
             struct {
                 entity: ecez.Entity,
-                pos: other.Position,
-                scale: ?other.Scale,
+                pos: physics.Position,
+                scale: ?physics.Scale,
             },
             .{components.DiedThisFrameTag},
             .{},
@@ -341,9 +343,9 @@ pub fn Create(Storage: type, EventArgument: type) type {
         const SpawnBloodSplatterStorage = Storage.Subset(
             &[_]type{
                 other.Camera,
-                *other.Position,
-                *other.Rotation,
-                *other.Scale,
+                *physics.Position,
+                *physics.Rotation,
+                *physics.Scale,
                 *other.Texture,
                 *components.BloodSplatterGroundTag,
                 *components.BloodGoreGroundTag,
@@ -362,13 +364,13 @@ pub fn Create(Storage: type, EventArgument: type) type {
             defer zone.End();
 
             const camera = subset.getComponents(context.camera_entity, struct {
-                pos: other.Position,
-                scale: other.Scale,
+                pos: physics.Position,
+                scale: physics.Scale,
                 cam: other.Camera,
             }).?;
 
             while (died_this_frame_query.next()) |dead_this_frame| {
-                const default_scale = other.Scale{
+                const default_scale = physics.Scale{
                     .vec = rl.Vector2{
                         .x = 1,
                         .y = 1,
@@ -377,7 +379,7 @@ pub fn Create(Storage: type, EventArgument: type) type {
 
                 const scale = dead_this_frame.scale orelse default_scale;
                 const splatter_offset = rl.Vector2.init(-100 * scale.vec.x, -100 * scale.vec.y);
-                const position = other.Position{
+                const position = physics.Position{
                     .vec = dead_this_frame.pos.vec.add(splatter_offset),
                 };
 
@@ -406,10 +408,10 @@ pub fn Create(Storage: type, EventArgument: type) type {
                 };
 
                 // gore should be larger than blood
-                const gore_scale = other.Scale{
+                const gore_scale = physics.Scale{
                     .vec = rl.Vector2{ .x = scale.vec.x * 2, .y = scale.vec.y * 2 },
                 };
-                const gore_pos = other.Position{
+                const gore_pos = physics.Position{
                     .vec = position.vec.add(rl.Vector2{ .x = -50, .y = -40 }),
                 };
                 const splatter_index = context.rng.intRangeAtMost(u8, @intFromEnum(GameSoundRepo.which_effects.Splatter_01), @intFromEnum(GameSoundRepo.which_effects.Splatter_03));
@@ -421,7 +423,7 @@ pub fn Create(Storage: type, EventArgument: type) type {
 
                 _ = try subset.createEntity(.{
                     gore_pos,
-                    other.Rotation{ .value = 0 },
+                    physics.Rotation{ .value = 0 },
                     gore_scale,
                     other.Texture{
                         .type = @intFromEnum(GameTextureRepo.texture_type.blood_splatter),

@@ -5,8 +5,8 @@ const ecez = @import("ecez");
 const rl = @import("raylib");
 const tracy = @import("ztracy");
 
-const components = @import("components.zig");
-const physics_2d = @import("physics_2d.zig");
+const components = @import("../components.zig");
+const collision = @import("collision.zig");
 
 pub const null_index = std.math.maxInt(u16);
 pub const Node = struct {
@@ -95,13 +95,13 @@ pub fn CreateQuadTree(comptime Storage: type) type {
             const ImmovableRectangleQuery = ecez.Query(
                 struct {
                     entity: ecez.Entity,
-                    pos: components.Position,
-                    col: components.RectangleCollider,
+                    pos: components.physics.Position,
+                    col: components.physics.RectangleCollider,
                 },
                 .{},
                 .{
                     components.InactiveTag,
-                    components.Velocity,
+                    components.physics.Velocity,
                 },
             );
             try self.genericInsert(allocator, storage, ImmovableRectangleQuery, EntityType.immovable);
@@ -121,10 +121,10 @@ pub fn CreateQuadTree(comptime Storage: type) type {
             const MovableRectangleQuery = ecez.Query(
                 struct {
                     entity: ecez.Entity,
-                    pos: components.Position,
-                    col: components.RectangleCollider,
+                    pos: components.physics.Position,
+                    col: components.physics.RectangleCollider,
                 },
-                .{components.Velocity},
+                .{components.physics.Velocity},
                 .{components.InactiveTag},
             );
             try self.genericInsert(allocator, storage, MovableRectangleQuery, EntityType.rect_movable);
@@ -132,10 +132,10 @@ pub fn CreateQuadTree(comptime Storage: type) type {
             const MovableCircleQuery = ecez.Query(
                 struct {
                     entity: ecez.Entity,
-                    pos: components.Position,
-                    col: components.CircleCollider,
+                    pos: components.physics.Position,
+                    col: components.physics.CircleCollider,
                 },
-                .{components.Velocity},
+                .{components.physics.Velocity},
                 .{components.InactiveTag},
             );
             try self.genericInsert(allocator, storage, MovableCircleQuery, EntityType.circle_movable);
@@ -375,7 +375,7 @@ pub fn CreateQuadTree(comptime Storage: type) type {
 
                 const pos, const x_span, const y_span = calc_span_blk: {
                     switch (@TypeOf(entity.col)) {
-                        components.RectangleCollider => {
+                        components.physics.RectangleCollider => {
                             const leaf_cell_pos = self.getLeafPos(entity.pos.vec);
                             const x_span_float = @floor((leaf_cell_pos.x * leaf_size.x + entity.col.dim.x) / leaf_size.x);
                             const y_span_float = @floor((leaf_cell_pos.y * leaf_size.y + entity.col.dim.y) / leaf_size.y);
@@ -385,7 +385,7 @@ pub fn CreateQuadTree(comptime Storage: type) type {
                                 @as(usize, @intFromFloat(y_span_float)),
                             };
                         },
-                        components.CircleCollider => {
+                        components.physics.CircleCollider => {
                             const center_pos = entity.pos.vec.add(rl.Vector2{
                                 .x = @floatCast(entity.col.x),
                                 .y = @floatCast(entity.col.y),
