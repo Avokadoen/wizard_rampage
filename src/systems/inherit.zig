@@ -10,7 +10,7 @@ pub fn Create(Storage: type) type {
         const ParentVelSubset = Storage.Subset(&[_]type{
             physics.Velocity,
         });
-        const InherentVelQuery = ecez.Query(
+        const InheritVelQuery = ecez.Query(
             struct {
                 vel: *physics.Velocity,
                 child_of: components.ChildOf,
@@ -19,7 +19,7 @@ pub fn Create(Storage: type) type {
             .{components.InactiveTag},
         );
         pub fn velocity(
-            inherent_vel: *InherentVelQuery,
+            inherent_vel: *InheritVelQuery,
             subset: *ParentVelSubset,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
@@ -34,7 +34,7 @@ pub fn Create(Storage: type) type {
         const ParentPosSubset = Storage.Subset(&[_]type{
             physics.Position,
         });
-        const InherentPosQuery = ecez.Query(
+        const InheritPosQuery = ecez.Query(
             struct {
                 pos: *physics.Position,
                 child_of: components.ChildOf,
@@ -43,7 +43,7 @@ pub fn Create(Storage: type) type {
             .{components.InactiveTag},
         );
         pub fn position(
-            inherent_pos: *InherentPosQuery,
+            inherent_pos: *InheritPosQuery,
             subset: *ParentPosSubset,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
@@ -58,7 +58,7 @@ pub fn Create(Storage: type) type {
         const ParentScaleSubset = Storage.Subset(&[_]type{
             physics.Scale,
         });
-        const InherentScaleQuery = ecez.Query(
+        const InheritScaleQuery = ecez.Query(
             struct {
                 scale: *physics.Scale,
                 child_of: components.ChildOf,
@@ -67,7 +67,7 @@ pub fn Create(Storage: type) type {
             .{components.InactiveTag},
         );
         pub fn scale(
-            inherent_scale: *InherentScaleQuery,
+            inherent_scale: *InheritScaleQuery,
             subset: *ParentScaleSubset,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
@@ -79,10 +79,10 @@ pub fn Create(Storage: type) type {
             }
         }
 
-        const InherentInactiveFromParentSubset = Storage.Subset(&[_]type{
+        const InheritInactiveFromParentSubset = Storage.Subset(&[_]type{
             *components.InactiveTag,
         });
-        const InherentInactiveQuery = ecez.Query(
+        const InheritInactiveQuery = ecez.Query(
             struct {
                 entity: ecez.Entity,
                 child_of: components.ChildOf,
@@ -91,8 +91,8 @@ pub fn Create(Storage: type) type {
             .{components.InactiveTag},
         );
         pub fn inactive(
-            inherent_inactive: *InherentInactiveQuery,
-            subset: *InherentInactiveFromParentSubset,
+            inherent_inactive: *InheritInactiveQuery,
+            subset: *InheritInactiveFromParentSubset,
         ) error{OutOfMemory}!void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
@@ -104,10 +104,10 @@ pub fn Create(Storage: type) type {
             }
         }
 
-        const InherentActiveFromParentSubset = Storage.Subset(&[_]type{
+        const InheritActiveFromParentSubset = Storage.Subset(&[_]type{
             *components.InactiveTag,
         });
-        const InherentActiveQuery = ecez.Query(
+        const InheritActiveQuery = ecez.Query(
             struct {
                 entity: ecez.Entity,
                 child_of: components.ChildOf,
@@ -116,8 +116,8 @@ pub fn Create(Storage: type) type {
             .{},
         );
         pub fn active(
-            inherent_active: *InherentActiveQuery,
-            subset: *InherentActiveFromParentSubset,
+            inherent_active: *InheritActiveQuery,
+            subset: *InheritActiveFromParentSubset,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();

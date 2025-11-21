@@ -25,7 +25,7 @@ const QuadTree = quad_tree.CreateQuadTree(Storage);
 const EventArgument = systems.event_argument.Create(QuadTree);
 
 const Combat = systems.combat.Create(Storage, EventArgument);
-const Inherent = systems.inherent.Create(Storage);
+const Inherit = systems.inherit.Create(Storage);
 const Misc = systems.misc.Create(Storage, EventArgument);
 const Physics = systems.physics.Create(Storage, EventArgument);
 
@@ -47,11 +47,11 @@ const Scheduler = ecez.CreateScheduler(
                 Combat.hostileMeleePlayer,
                 Combat.registerDead,
                 Combat.spawnBloodSplatter,
-                Inherent.velocity,
-                Inherent.position,
-                Inherent.scale,
-                Inherent.inactive,
-                Inherent.active,
+                Inherit.velocity,
+                Inherit.position,
+                Inherit.scale,
+                Inherit.inactive,
+                Inherit.active,
                 Misc.cameraFollowPlayer,
                 Misc.orientTexture,
                 Misc.animateTexture,
