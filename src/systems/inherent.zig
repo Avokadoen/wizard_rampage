@@ -6,7 +6,7 @@ const components = @import("../components.zig");
 
 pub fn Create(Storage: type) type {
     return struct {
-        const ParentVelSubset = Storage.Subset(.{
+        const ParentVelSubset = Storage.Subset(&[_]type{
             components.Velocity,
         });
         const InherentVelQuery = ecez.Query(
@@ -30,7 +30,7 @@ pub fn Create(Storage: type) type {
             }
         }
 
-        const ParentPosSubset = Storage.Subset(.{
+        const ParentPosSubset = Storage.Subset(&[_]type{
             components.Position,
         });
         const InherentPosQuery = ecez.Query(
@@ -54,7 +54,7 @@ pub fn Create(Storage: type) type {
             }
         }
 
-        const ParentScaleSubset = Storage.Subset(.{
+        const ParentScaleSubset = Storage.Subset(&[_]type{
             components.Scale,
         });
         const InherentScaleQuery = ecez.Query(
@@ -78,7 +78,7 @@ pub fn Create(Storage: type) type {
             }
         }
 
-        const InherentInactiveFromParentSubset = Storage.Subset(.{
+        const InherentInactiveFromParentSubset = Storage.Subset(&[_]type{
             *components.InactiveTag,
         });
         const InherentInactiveQuery = ecez.Query(
@@ -103,7 +103,7 @@ pub fn Create(Storage: type) type {
             }
         }
 
-        const InherentActiveFromParentSubset = Storage.Subset(.{
+        const InherentActiveFromParentSubset = Storage.Subset(&[_]type{
             *components.InactiveTag,
         });
         const InherentActiveQuery = ecez.Query(

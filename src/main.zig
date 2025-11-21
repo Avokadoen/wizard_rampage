@@ -18,7 +18,7 @@ const arena_width = 3000;
 
 const draw_colliders = false;
 
-const Storage = ecez.CreateStorage(components.all);
+const Storage = ecez.CreateStorage(&components.all);
 
 const Combat = systems.combat.Create(Storage);
 const Inherent = systems.inherent.Create(Storage);

@@ -16,7 +16,7 @@ pub fn Create(Storage: type) type {
         const Context = ctx.ContextType(Storage);
 
         const HostileMeleePlayerSubset = Storage.Subset(
-            .{
+            &[_]type{
                 components.Position,
                 components.RectangleCollider,
                 components.Vocals,
@@ -99,7 +99,7 @@ pub fn Create(Storage: type) type {
             }
         }
 
-        const ProjectileHitKillableSubset = Storage.Subset(Storage.AllComponentWriteAccess);
+        const ProjectileHitKillableSubset = Storage.Subset(Storage.all_components_write_access);
         pub fn projectileHitKillable(
             subset: *ProjectileHitKillableSubset,
             context: Context,
@@ -209,7 +209,7 @@ pub fn Create(Storage: type) type {
         }
 
         const RegisterDeadSubset = Storage.Subset(
-            .{
+            &[_]type{
                 *components.InactiveTag,
                 *components.DiedThisFrameTag,
                 components.Camera,
@@ -277,7 +277,7 @@ pub fn Create(Storage: type) type {
         }
 
         const TargetPlayerOrFleeSubset = Storage.Subset(
-            .{
+            &[_]type{
                 components.Position,
             },
         );
@@ -341,7 +341,7 @@ pub fn Create(Storage: type) type {
         );
 
         const SpawnBloodSplatterStorage = Storage.Subset(
-            .{
+            &[_]type{
                 components.Camera,
                 *components.Position,
                 *components.Rotation,

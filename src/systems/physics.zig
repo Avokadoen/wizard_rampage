@@ -13,7 +13,7 @@ pub fn Create(Storage: type) type {
         const Context = ctx.ContextType(Storage);
 
         const RecCollisionResolveSubset = Storage.Subset(
-            .{
+            &[_]type{
                 *components.Position,
                 *components.Velocity,
                 components.RectangleCollider,

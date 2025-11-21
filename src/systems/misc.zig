@@ -9,7 +9,7 @@ pub fn Create(Storage: type) type {
     return struct {
         const Context = ctx.ContextType(Storage);
 
-        const LifeTimetSubset = Storage.Subset(.{
+        const LifeTimetSubset = Storage.Subset(&[_]type{
             *components.InactiveTag,
         });
         const LifetimeQuery = ecez.Query(
@@ -36,7 +36,7 @@ pub fn Create(Storage: type) type {
         }
 
         const CameraFollowPlayerSubset = Storage.Subset(
-            .{
+            &[_]type{
                 *components.Position,
                 components.RectangleCollider,
                 *components.Scale,

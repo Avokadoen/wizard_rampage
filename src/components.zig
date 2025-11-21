@@ -1,7 +1,7 @@
 const rl = @import("raylib");
 const ecez = @import("ecez");
 
-pub const all = .{
+pub const all = [_]type{
     Position,
     Rotation,
     Scale,

@@ -5,8 +5,8 @@
 
     .dependencies = .{
         .ecez = .{
-            .url = "git+https://github.com/Avokadoen/ecez#07df43beb5d3c8d4404c915608b9081839a455b7",
-            .hash = "ecez-2.3.0-X-dkoItrBgCIZaqfkUlMEkA4mBCoukpVvQcDOCI7q7qc",
+            .url = "git+https://github.com/Avokadoen/ecez#d4afecf031c9a46a56bf3df9a5b2c99efefd346e",
+            .hash = "ecez-2.3.0-X-dkoDpoBgBVAK2CvB_e_D3KO8ZDTKhn49QNmmt9Nhxx",
         },
         .raylib_zig = .{
             .url = "git+https://github.com/raylib-zig/raylib-zig#33f216d4fc6c5e5799a1a5bacd1f35fecab71577",
