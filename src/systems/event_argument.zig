@@ -2,10 +2,8 @@ const std = @import("std");
 const rl = @import("raylib");
 const ecez = @import("ecez");
 
-pub fn ContextType(comptime QuadTree: type) type {
+pub fn Create(comptime QuadTree: type) type {
     return struct {
-        const Context = @This();
-
         pub const delta_time: f32 = 1.0 / 60.0;
 
         sound_repo: []const rl.Sound,

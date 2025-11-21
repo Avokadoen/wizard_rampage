@@ -22,7 +22,7 @@ const all_components = components.all ++ components.physics.array ++ components.
 const Storage = ecez.CreateStorage(&all_components);
 const QuadTree = quad_tree.CreateQuadTree(Storage);
 
-const EventArgument = systems.ctx.ContextType(QuadTree);
+const EventArgument = systems.event_argument.Create(QuadTree);
 
 const Combat = systems.combat.Create(Storage, EventArgument);
 const Inherent = systems.inherent.Create(Storage);

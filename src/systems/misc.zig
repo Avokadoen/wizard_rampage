@@ -4,7 +4,6 @@ const tracy = @import("ztracy");
 
 const components = @import("../components.zig");
 const physics = @import("../physics/components.zig");
-const ctx = @import("context.zig");
 
 pub fn Create(Storage: type, EventArgument: type) type {
     return struct {
