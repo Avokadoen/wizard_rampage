@@ -18,14 +18,14 @@ const arena_width = 3000;
 
 const draw_colliders = false;
 
-const Storage = ecez.CreateStorage(&components.all);
+const all_components = components.all ++ components.combat.array;
+const Storage = ecez.CreateStorage(&all_components);
+const EventArgument = systems.ctx.ContextType(Storage);
 
-const Combat = systems.combat.Create(Storage);
+const Combat = systems.combat.Create(Storage, EventArgument);
 const Inherent = systems.inherent.Create(Storage);
 const Misc = systems.misc.Create(Storage);
 const Physics = systems.physics.Create(Storage);
-
-const EventArgument = systems.ctx.ContextType(Storage);
 
 const Scheduler = ecez.CreateScheduler(
     Storage,
@@ -578,7 +578,7 @@ pub fn main() anyerror!void {
                         },
                         components.DrawRectangleTag{},
                         components.PlayerTag{},
-                        components.Health{
+                        components.combat.Health{
                             .max = 100,
                             .value = 100,
                         },
@@ -774,7 +774,7 @@ pub fn main() anyerror!void {
                         components.OrientationTexture{
                             .start_texture_index = @intFromEnum(GameTextureRepo.which_player.Staff0001),
                         },
-                        components.AttackRate{
+                        components.combat.AttackRate{
                             .cooldown = 10,
                             .active_cooldown = 0,
                         },
@@ -1441,7 +1441,7 @@ pub fn main() anyerror!void {
 
                                     rl.setShaderValueTexture(shader_cauldron, shader_blood_texture_location, blood_texture);
                                     {
-                                        const player_health = storage.getComponent(player_entity, components.Health).?;
+                                        const player_health = storage.getComponent(player_entity, components.combat.Health).?;
                                         const health_ratio = @as(f32, @floatFromInt(player_health.value)) / @as(f32, @floatFromInt(player_health.max));
                                         rl.setShaderValue(
                                             shader_cauldron,
@@ -1694,17 +1694,17 @@ fn createFarmer(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) !ecez.Ent
             .dim = player_hit_box,
         },
         components.DrawRectangleTag{},
-        components.AttackRate{
+        components.combat.AttackRate{
             .active_cooldown = 0,
             .cooldown = 60 * 3,
         },
-        components.HostileTag{},
+        components.combat.HostileTag{},
         components.FarmerTag{},
-        components.Melee{
+        components.combat.Melee{
             .dmg = 5,
             .range = 50,
         },
-        components.Health{
+        components.combat.Health{
             .max = 50,
             .value = 50,
         },
@@ -1878,17 +1878,17 @@ fn createTheFarmersWife(storage: *Storage, pos: rl.Vector2, scale: rl.Vector2) !
             .dim = player_hit_box.scale(2.3),
         },
         components.DrawRectangleTag{},
-        components.AttackRate{
+        components.combat.AttackRate{
             .active_cooldown = 0,
             .cooldown = 60 * 3,
         },
-        components.HostileTag{},
+        components.combat.HostileTag{},
         components.FarmersWifeTag{},
-        components.Health{
+        components.combat.Health{
             .max = 500,
             .value = 500,
         },
-        components.Melee{
+        components.combat.Melee{
             .dmg = 10,
             .range = 80,
         },

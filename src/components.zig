@@ -19,12 +19,10 @@ pub const all = [_]type{
     AnimTexture,
     DrawCircleTag,
     Camera,
-    AttackRate,
     PlayerTag,
     LifeTime,
     InactiveTag,
     ChildOf,
-    HostileTag,
     FarmerTag,
     FarmersWifeTag,
     Staff,
@@ -32,14 +30,11 @@ pub const all = [_]type{
     Projectile,
     InventoryItem,
     Inventory,
-    Melee,
-    Health,
-    DiedThisFrameTag,
-    BloodSplatterGroundTag,
-    BloodGoreGroundTag,
     AttachToCursor,
     Vocals,
 };
+
+pub const combat = @import("combat/components.zig");
 
 pub const Position = struct {
     vec: rl.Vector2,
@@ -120,10 +115,7 @@ pub const AnimTexture = struct {
 pub const Camera = struct {
     resolution: rl.Vector2,
 };
-pub const AttackRate = struct {
-    cooldown: u8,
-    active_cooldown: u8,
-};
+
 pub const PlayerTag = struct {};
 
 pub const LifeTime = struct {
@@ -136,7 +128,6 @@ pub const ChildOf = struct {
     offset: rl.Vector2,
 };
 
-pub const HostileTag = struct {};
 pub const FarmerTag = struct {};
 pub const FarmersWifeTag = struct {};
 
@@ -201,20 +192,6 @@ pub const InventoryItem = struct {
 
     item: Item,
 };
-
-pub const Melee = struct {
-    dmg: i32,
-    range: f32,
-};
-
-pub const Health = struct {
-    max: i32,
-    value: i32,
-};
-
-pub const DiedThisFrameTag = struct {};
-pub const BloodSplatterGroundTag = struct {};
-pub const BloodGoreGroundTag = struct {};
 
 pub const AttachToCursor = struct {
     offset: rl.Vector2,

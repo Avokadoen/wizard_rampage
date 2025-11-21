@@ -63,7 +63,7 @@ pub fn CreateInput(Storage: type) type {
         }
 
         fn fireProjectile(vel: rl.Vector2, storage: *Storage, player_entity: ecez.Entity, staff_entity: ecez.Entity) void {
-            const fire_rate = storage.getComponent(staff_entity, *components.AttackRate).?;
+            const fire_rate = storage.getComponent(staff_entity, *components.combat.AttackRate).?;
             if (fire_rate.active_cooldown <= 0) {
                 const pos = storage.getComponent(player_entity, components.Position).?;
                 const staff_comp_ptr = storage.getComponent(staff_entity, *components.Staff).?;

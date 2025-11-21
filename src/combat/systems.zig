@@ -4,39 +4,37 @@ const ecez = @import("ecez");
 const rl = @import("raylib");
 const tracy = @import("ztracy");
 
-const components = @import("../components.zig");
+const components = @import("components.zig");
+const other = @import("../components.zig");
 const GameSoundRepo = @import("../GameSoundRepo.zig");
 const GameTextureRepo = @import("../GameTextureRepo.zig");
 const MainTextureRepo = @import("../MainTextureRepo.zig");
 const physics = @import("../physics_2d.zig");
-const ctx = @import("context.zig");
 
-pub fn Create(Storage: type) type {
+pub fn Create(Storage: type, EventArgument: type) type {
     return struct {
-        const Context = ctx.ContextType(Storage);
-
         const HostileMeleePlayerSubset = Storage.Subset(
             &[_]type{
-                components.Position,
-                components.RectangleCollider,
-                components.Vocals,
-                components.InactiveTag,
+                other.Position,
+                other.RectangleCollider,
+                other.Vocals,
+                other.InactiveTag,
                 *components.Health,
             },
         );
         const HostileMeleeQuery = ecez.Query(
             struct {
-                pos: components.Position,
+                pos: other.Position,
                 attack_rate: *components.AttackRate,
                 melee: components.Melee,
             },
             .{components.HostileTag},
-            .{components.InactiveTag},
+            .{other.InactiveTag},
         );
         pub fn hostileMeleePlayer(
             subset: *HostileMeleePlayerSubset,
             hostile_iter: *HostileMeleeQuery,
-            context: Context,
+            context: EventArgument,
         ) error{OutOfMemory}!void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
@@ -46,14 +44,14 @@ pub fn Create(Storage: type) type {
                 return;
             }
 
-            if (subset.hasComponents(context.player_entity, .{components.InactiveTag})) {
+            if (subset.hasComponents(context.player_entity, .{other.InactiveTag})) {
                 return;
             }
 
             const player_r = subset.getComponents(context.player_entity, struct {
-                pos: components.Position,
-                col: components.RectangleCollider,
-                vocals: components.Vocals,
+                pos: other.Position,
+                col: other.RectangleCollider,
+                vocals: other.Vocals,
             }).?;
 
             const player_w = subset.getComponents(context.player_entity, struct {
@@ -67,7 +65,7 @@ pub fn Create(Storage: type) type {
             );
             const on_dmg_sound = context.sound_repo[on_dmg_index];
 
-            const player_circle = components.CircleCollider{
+            const player_circle = other.CircleCollider{
                 .x = 0,
                 .y = 0,
                 .radius = player_r.col.dim.x,
@@ -76,7 +74,7 @@ pub fn Create(Storage: type) type {
             while (hostile_iter.next()) |hostile| {
                 if (hostile.attack_rate.active_cooldown > 0) continue;
 
-                const hostile_circle = components.CircleCollider{
+                const hostile_circle = other.CircleCollider{
                     .x = 0,
                     .y = 0,
                     .radius = hostile.melee.range,
@@ -102,15 +100,15 @@ pub fn Create(Storage: type) type {
         const ProjectileHitKillableSubset = Storage.Subset(Storage.all_components_write_access);
         pub fn projectileHitKillable(
             subset: *ProjectileHitKillableSubset,
-            context: Context,
+            context: EventArgument,
         ) error{OutOfMemory}!void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
             const camera = subset.getComponents(context.camera_entity, struct {
-                pos: components.Position,
-                scale: components.Scale,
-                cam: components.Camera,
+                pos: other.Position,
+                scale: other.Scale,
+                cam: other.Camera,
             }).?;
 
             leaf_loop: for (context.collision_as.leaf_node_storage.items) |leaf_node| {
@@ -120,17 +118,17 @@ pub fn Create(Storage: type) type {
 
                 proj_loop: for (leaf_node.circle_movable_entities.items) |a| {
                     const projectile = subset.getComponents(a, struct {
-                        pos: components.Position,
-                        col: components.CircleCollider,
-                        vel: components.Velocity,
-                        proj: components.Projectile,
+                        pos: other.Position,
+                        col: other.CircleCollider,
+                        vel: other.Velocity,
+                        proj: other.Projectile,
                     }) orelse continue :proj_loop; // projectile was deleted this frame
 
                     const offset = rl.Vector2.init(
                         @floatCast(projectile.col.x),
                         @floatCast(projectile.col.y),
                     );
-                    const proj_pos = components.Position{
+                    const proj_pos = other.Position{
                         .vec = projectile.pos.vec.add(offset),
                     };
 
@@ -147,8 +145,8 @@ pub fn Create(Storage: type) type {
 
                     for (leaf_node.immovable_entities.items) |b| {
                         const immovable = subset.getComponents(b, struct {
-                            pos: components.Position,
-                            col: components.RectangleCollider,
+                            pos: other.Position,
+                            col: other.RectangleCollider,
                         }).?;
 
                         if (physics.Intersection.circleAndRect(
@@ -166,8 +164,8 @@ pub fn Create(Storage: type) type {
                     for (leaf_node.rect_movable_entities.items) |b| {
                         // Assumption: All movable are killable
                         const killable = subset.getComponents(b, struct {
-                            pos: components.Position,
-                            col: components.RectangleCollider,
+                            pos: other.Position,
+                            col: other.RectangleCollider,
                             health: *components.Health,
                         }).?;
 
@@ -177,7 +175,7 @@ pub fn Create(Storage: type) type {
                             killable.col,
                             killable.pos,
                         )) {
-                            const maybe_vocals = subset.getComponent(b, components.Vocals);
+                            const maybe_vocals = subset.getComponent(b, other.Vocals);
                             if (maybe_vocals) |vocals| {
                                 const on_dmg_index = context.rng.intRangeAtMost(u8, vocals.on_dmg_start, vocals.on_dmg_end);
                                 const on_dmg_sound = context.sound_repo[on_dmg_index];
@@ -189,7 +187,7 @@ pub fn Create(Storage: type) type {
                                 rl.playSound(on_dmg_sound);
                             }
 
-                            const maybe_vel = subset.getComponent(b, *components.Velocity);
+                            const maybe_vel = subset.getComponent(b, *other.Velocity);
                             if (maybe_vel) |kill_vel| {
                                 const proj_dir = projectile.vel.vec.normalize();
                                 const proj_impact = rl.Vector2.init(projectile.proj.weight, projectile.proj.weight);
@@ -210,38 +208,38 @@ pub fn Create(Storage: type) type {
 
         const RegisterDeadSubset = Storage.Subset(
             &[_]type{
-                *components.InactiveTag,
+                *other.InactiveTag,
                 *components.DiedThisFrameTag,
-                components.Camera,
-                components.Position,
-                components.Scale,
+                other.Camera,
+                other.Position,
+                other.Scale,
             },
         );
         const MaybeDeadQuery = ecez.Query(
             struct {
                 entity: ecez.Entity,
-                pos: components.Position,
+                pos: other.Position,
                 health: components.Health,
-                vocals: ?components.Vocals,
-                farmer_tag: ?components.FarmerTag,
-                wife_tag: ?components.FarmersWifeTag,
-                player_tag: ?components.PlayerTag,
+                vocals: ?other.Vocals,
+                farmer_tag: ?other.FarmerTag,
+                wife_tag: ?other.FarmersWifeTag,
+                player_tag: ?other.PlayerTag,
             },
             .{},
-            .{components.InactiveTag},
+            .{other.InactiveTag},
         );
         pub fn registerDead(
             living: *MaybeDeadQuery,
             subset: *RegisterDeadSubset,
-            context: Context,
+            context: EventArgument,
         ) error{OutOfMemory}!void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
             const camera = subset.getComponents(context.camera_entity, struct {
-                pos: components.Position,
-                scale: components.Scale,
-                cam: components.Camera,
+                pos: other.Position,
+                scale: other.Scale,
+                cam: other.Camera,
             }).?;
 
             while (living.next()) |item| {
@@ -269,7 +267,7 @@ pub fn Create(Storage: type) type {
                     }
 
                     try subset.setComponents(item.entity, .{
-                        components.InactiveTag{},
+                        other.InactiveTag{},
                         components.DiedThisFrameTag{},
                     });
                 }
@@ -278,21 +276,21 @@ pub fn Create(Storage: type) type {
 
         const TargetPlayerOrFleeSubset = Storage.Subset(
             &[_]type{
-                components.Position,
+                other.Position,
             },
         );
         const HostileQuery = ecez.Query(
             struct {
-                pos: components.Position,
-                mov_dir: *components.DesiredMovedDir,
+                pos: other.Position,
+                mov_dir: *other.DesiredMovedDir,
             },
             .{components.HostileTag},
-            .{components.InactiveTag},
+            .{other.InactiveTag},
         );
         pub fn targetPlayerOrFlee(
             hostile_iter: *HostileQuery,
             subset: *TargetPlayerOrFleeSubset,
-            context: Context,
+            context: EventArgument,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
@@ -300,7 +298,7 @@ pub fn Create(Storage: type) type {
             const player = subset.getComponents(
                 context.player_entity,
                 struct {
-                    pos: components.Position,
+                    pos: other.Position,
                 },
             ).?;
 
@@ -317,7 +315,7 @@ pub fn Create(Storage: type) type {
                 attack_rate: *components.AttackRate,
             },
             .{},
-            .{components.InactiveTag},
+            .{other.InactiveTag},
         );
         pub fn tickAttackRate(attack_rate: *AttackRateQuery) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
@@ -333,8 +331,8 @@ pub fn Create(Storage: type) type {
         const DiedThisFrameQuery = ecez.Query(
             struct {
                 entity: ecez.Entity,
-                pos: components.Position,
-                scale: ?components.Scale,
+                pos: other.Position,
+                scale: ?other.Scale,
             },
             .{components.DiedThisFrameTag},
             .{},
@@ -342,35 +340,35 @@ pub fn Create(Storage: type) type {
 
         const SpawnBloodSplatterStorage = Storage.Subset(
             &[_]type{
-                components.Camera,
-                *components.Position,
-                *components.Rotation,
-                *components.Scale,
-                *components.Texture,
+                other.Camera,
+                *other.Position,
+                *other.Rotation,
+                *other.Scale,
+                *other.Texture,
                 *components.BloodSplatterGroundTag,
                 *components.BloodGoreGroundTag,
-                *components.LifeTime,
-                *components.AnimTexture,
-                *components.LifeTime,
+                *other.LifeTime,
+                *other.AnimTexture,
+                *other.LifeTime,
                 *components.DiedThisFrameTag,
             },
         );
         pub fn spawnBloodSplatter(
             died_this_frame_query: *DiedThisFrameQuery,
             subset: *SpawnBloodSplatterStorage,
-            context: Context,
+            context: EventArgument,
         ) !void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
             const camera = subset.getComponents(context.camera_entity, struct {
-                pos: components.Position,
-                scale: components.Scale,
-                cam: components.Camera,
+                pos: other.Position,
+                scale: other.Scale,
+                cam: other.Camera,
             }).?;
 
             while (died_this_frame_query.next()) |dead_this_frame| {
-                const default_scale = components.Scale{
+                const default_scale = other.Scale{
                     .vec = rl.Vector2{
                         .x = 1,
                         .y = 1,
@@ -379,39 +377,39 @@ pub fn Create(Storage: type) type {
 
                 const scale = dead_this_frame.scale orelse default_scale;
                 const splatter_offset = rl.Vector2.init(-100 * scale.vec.x, -100 * scale.vec.y);
-                const position = components.Position{
+                const position = other.Position{
                     .vec = dead_this_frame.pos.vec.add(splatter_offset),
                 };
 
-                const blood_splatterlifetime: f32 = 6;
+                const blood_splatter_lifetime: f32 = 6;
                 _ = try subset.createEntity(.{
                     position,
                     scale,
-                    components.Texture{
+                    other.Texture{
                         .type = @intFromEnum(GameTextureRepo.texture_type.blood_splatter),
                         .index = @intFromEnum(GameTextureRepo.which_bloodsplat.Blood_Splat),
                         .draw_order = .o0,
                     },
                     components.BloodSplatterGroundTag{},
-                    components.LifeTime{ .value = blood_splatterlifetime },
+                    other.LifeTime{ .value = blood_splatter_lifetime },
                 });
 
-                const anim = components.AnimTexture{
+                const anim = other.AnimTexture{
                     .start_frame = @intFromEnum(GameTextureRepo.which_bloodsplat.Blood_Splat0001),
                     .current_frame = 0,
                     .frame_count = 8,
                     .frames_per_frame = 4,
                     .frames_drawn_current_frame = 0,
                 };
-                const lifetime_comp = components.LifeTime{
+                const lifetime_comp = other.LifeTime{
                     .value = @as(f32, @floatFromInt(anim.frame_count)) * @as(f32, @floatFromInt(anim.frames_per_frame)) / 60.0,
                 };
 
                 // gore should be larger than blood
-                const gore_scale = components.Scale{
+                const gore_scale = other.Scale{
                     .vec = rl.Vector2{ .x = scale.vec.x * 2, .y = scale.vec.y * 2 },
                 };
-                const gore_pos = components.Position{
+                const gore_pos = other.Position{
                     .vec = position.vec.add(rl.Vector2{ .x = -50, .y = -40 }),
                 };
                 const splatter_index = context.rng.intRangeAtMost(u8, @intFromEnum(GameSoundRepo.which_effects.Splatter_01), @intFromEnum(GameSoundRepo.which_effects.Splatter_03));
@@ -423,9 +421,9 @@ pub fn Create(Storage: type) type {
 
                 _ = try subset.createEntity(.{
                     gore_pos,
-                    components.Rotation{ .value = 0 },
+                    other.Rotation{ .value = 0 },
                     gore_scale,
-                    components.Texture{
+                    other.Texture{
                         .type = @intFromEnum(GameTextureRepo.texture_type.blood_splatter),
                         .index = @intFromEnum(GameTextureRepo.which_bloodsplat.Blood_Splat0001),
                         .draw_order = .o1,
