@@ -88,12 +88,6 @@ const frames_after_wife_kill_to_victory_state = 60 * 10;
 const frames_after_player_dead_to_death_state = 60 * 3;
 
 pub fn main() anyerror!void {
-    if (@import("builtin").mode == .Debug) {
-        inline for (comptime Scheduler.dumpDependencyChain(.game_update), 0..) |dep, system_index| {
-            std.debug.print("{d}: {any}\n", .{ system_index, dep });
-        }
-    }
-
     // Initialize window
     const window_width, const window_height = window_init: {
         // init window and gl
@@ -370,13 +364,17 @@ pub fn main() anyerror!void {
                 var storage = try Storage.init(allocator);
                 defer storage.deinit();
 
-                var scheduler = Scheduler.uninitialized;
-
-                try scheduler.init(.{
+                var scheduler = try Scheduler.init(.{
+                    .gpa = allocator,
                     .pool_allocator = allocator,
                     .query_submit_allocator = allocator,
                 });
                 defer scheduler.deinit();
+
+                if (@import("builtin").mode == .Debug) {
+                    const graph = scheduler.getEventSystemGraph(.game_update);
+                    graph.dump();
+                }
 
                 const room_center = rl.Vector2.init(
                     window_width * @as(f32, 0.5),

@@ -99,7 +99,7 @@ pub fn Create(Storage: type, EventArgument: type) type {
             }
         }
 
-        const ProjectileHitKillableSubset = Storage.Subset(Storage.all_components_write_access);
+        const ProjectileHitKillableSubset = Storage.Subset(&Storage.all_components_write_access);
         pub fn projectileHitKillable(
             subset: *ProjectileHitKillableSubset,
             context: EventArgument,
