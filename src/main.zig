@@ -944,9 +944,7 @@ pub fn main() anyerror!void {
                                     .{components.InactiveTag},
                                 );
                                 inline for (@typeInfo(components.Texture.DrawOrder).@"enum".fields) |order| {
-                                    var texture_iter = try TextureDrawQuery.submit(allocator, &storage);
-                                    defer texture_iter.deinit(allocator);
-
+                                    var texture_iter = TextureDrawQuery.prepare(&storage);
                                     while (texture_iter.next()) |texture| {
                                         staticTextureDraw(
                                             @enumFromInt(order.value),
@@ -973,7 +971,7 @@ pub fn main() anyerror!void {
                                         .{components.DrawRectangleTag},
                                         .{components.InactiveTag},
                                     );
-                                    var rect_iter = try RectangleDrawQuery.submit(allocator, &storage);
+                                    var rect_iter = try RectangleDrawQuery.prepare(&storage);
                                     defer rect_iter.deinit(allocator);
 
                                     while (rect_iter.next()) |rect| {
@@ -1000,7 +998,7 @@ pub fn main() anyerror!void {
                                         .{components.DrawCircleTag},
                                         .{components.InactiveTag},
                                     );
-                                    var circle_iter = try CircleDrawQuery.submit(allocator, &storage);
+                                    var circle_iter = try CircleDrawQuery.prepare(&storage);
                                     defer circle_iter.deinit(allocator);
 
                                     while (circle_iter.next()) |circle| {
@@ -1028,7 +1026,7 @@ pub fn main() anyerror!void {
 
                         // UI Drawing
                         {
-                            const GrabbedItemQuery = ecez.QueryAny(
+                            const GrabbedItemQuery = ecez.Query(
                                 struct {
                                     entity: ecez.Entity,
                                     pos: *components.physics.Position,
@@ -1040,7 +1038,7 @@ pub fn main() anyerror!void {
                                 .{components.InactiveTag},
                             );
 
-                            const UnusedGrabbedItemQuery = ecez.QueryAny(
+                            const UnusedGrabbedItemQuery = ecez.Query(
                                 struct {
                                     entity: ecez.Entity,
                                     pos: *components.physics.Position,
@@ -1115,9 +1113,7 @@ pub fn main() anyerror!void {
                                     rl.Color.white,
                                 );
 
-                                var inventory_item_iterator = try InInvenventoryQuery.submit(allocator, &storage);
-                                defer inventory_item_iterator.deinit(allocator);
-
+                                var inventory_item_iterator = InInvenventoryQuery.prepare(&storage);
                                 while (inventory_item_iterator.next()) |item| {
                                     const texture = switch (item.inv_item.item) {
                                         .projectile => |proj| switch (proj.type) {
@@ -1137,7 +1133,7 @@ pub fn main() anyerror!void {
                                     rl.drawTextureRec(texture, item_rect, pos, rl.Color.white);
 
                                     var grabbed_query = GrabbedItemQuery.prepare(&storage);
-                                    const no_grabbed_item = grabbed_query.getAny() == null;
+                                    const no_grabbed_item = grabbed_query.next() == null;
 
                                     if (no_grabbed_item) {
                                         const is_hovered = rl.checkCollisionPointRec(mouse_pos, rl.Rectangle{
@@ -1223,7 +1219,7 @@ pub fn main() anyerror!void {
                                     const grab_offset_x = -item_rect.width * 0.5;
 
                                     var grabbed_item_iter = GrabbedItemQuery.prepare(&storage);
-                                    const grabbed_item = grabbed_item_iter.getAny();
+                                    const grabbed_item = grabbed_item_iter.next();
 
                                     if (rl.isMouseButtonReleased(.left)) {
                                         if (grabbed_item) |grabbed| {
@@ -1286,7 +1282,7 @@ pub fn main() anyerror!void {
                                             staff.used_slots -= 1;
 
                                             var unused_grabbed_item_iter = UnusedGrabbedItemQuery.prepare(&storage);
-                                            if (unused_grabbed_item_iter.getAny()) |unused_grabbed_item| {
+                                            if (unused_grabbed_item_iter.next()) |unused_grabbed_item| {
                                                 unused_grabbed_item.old_slot.* = components.OldSlot{
                                                     .type = .{ .staff_index = @intCast(i) },
                                                 };
@@ -1353,7 +1349,7 @@ pub fn main() anyerror!void {
                             }
 
                             var attached_iter = GrabbedItemQuery.prepare(&storage);
-                            if (attached_iter.getAny()) |grabbed| {
+                            if (attached_iter.next()) |grabbed| {
                                 if (rl.isMouseButtonReleased(rl.MouseButton.left) and in_inventory) {
                                     const is_inventory_hovered = rl.checkCollisionPointRec(mouse_pos, inventory_rect);
                                     if (is_inventory_hovered) {
@@ -1529,9 +1525,7 @@ pub fn main() anyerror!void {
                                     }
                                 }
 
-                                var inventory_iter = try InInvenventoryQuery.submit(allocator, &storage);
-                                defer inventory_iter.deinit(allocator);
-
+                                var inventory_iter = InInvenventoryQuery.prepare(&storage);
                                 while (inventory_iter.next()) |inv_item| {
                                     var buf: [256]u8 = undefined;
                                     const txt = switch (inv_item.inv_item.item) {

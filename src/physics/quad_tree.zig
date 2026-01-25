@@ -367,9 +367,7 @@ pub fn CreateQuadTree(comptime Storage: type) type {
 
             const leaf_size = self.nodeSize(tree_depth);
 
-            var query = try Query.submit(allocator, storage);
-            defer query.deinit(allocator);
-
+            var query = Query.prepare(storage);
             while (query.next()) |entity| {
                 // Start by finding pos point
 
