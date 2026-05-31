@@ -13,7 +13,7 @@ const MainTextureRepo = @import("../MainTextureRepo.zig");
 const physics = @import("../physics/components.zig");
 const collision = @import("../physics/collision.zig");
 
-pub fn Create(Storage: type, EventArgument: type) type {
+pub fn Create(Storage: type, CommonArgument: type) type {
     return struct {
         const HostileMeleePlayerSubset = Storage.Subset(
             &[_]type{
@@ -36,7 +36,7 @@ pub fn Create(Storage: type, EventArgument: type) type {
         pub fn hostileMeleePlayer(
             subset: *HostileMeleePlayerSubset,
             hostile_iter: *HostileMeleeQuery,
-            context: EventArgument,
+            context: CommonArgument,
         ) error{OutOfMemory}!void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
@@ -102,7 +102,7 @@ pub fn Create(Storage: type, EventArgument: type) type {
         const ProjectileHitKillableSubset = Storage.Subset(&Storage.all_components_write_access);
         pub fn projectileHitKillable(
             subset: *ProjectileHitKillableSubset,
-            context: EventArgument,
+            context: CommonArgument,
         ) error{OutOfMemory}!void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
@@ -233,7 +233,7 @@ pub fn Create(Storage: type, EventArgument: type) type {
         pub fn registerDead(
             living: *MaybeDeadQuery,
             subset: *RegisterDeadSubset,
-            context: EventArgument,
+            context: CommonArgument,
         ) error{OutOfMemory}!void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
@@ -292,7 +292,7 @@ pub fn Create(Storage: type, EventArgument: type) type {
         pub fn targetPlayerOrFlee(
             hostile_iter: *HostileQuery,
             subset: *TargetPlayerOrFleeSubset,
-            context: EventArgument,
+            context: CommonArgument,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
@@ -358,7 +358,7 @@ pub fn Create(Storage: type, EventArgument: type) type {
         pub fn spawnBloodSplatter(
             died_this_frame_query: *DiedThisFrameQuery,
             subset: *SpawnBloodSplatterStorage,
-            context: EventArgument,
+            context: CommonArgument,
         ) !void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();

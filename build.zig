@@ -71,11 +71,11 @@ pub fn build(b: *std.Build) void {
         const raygui = raylib_dep.module("raygui"); // raygui module
         const raylib_artifact = raylib_dep.artifact("raylib"); // raylib C library
 
-        exe.linkLibrary(raylib_artifact);
+        exe.root_module.linkLibrary(raylib_artifact);
         exe.root_module.addImport("raylib", raylib);
         exe.root_module.addImport("raygui", raygui);
 
-        exe_unit_tests.linkLibrary(raylib_artifact);
+        exe_unit_tests.root_module.linkLibrary(raylib_artifact);
         exe_unit_tests.root_module.addImport("raylib", raylib);
         exe_unit_tests.root_module.addImport("raygui", raygui);
     }
@@ -103,7 +103,7 @@ pub fn build(b: *std.Build) void {
         exe.root_module.addImport("ztracy", ztracy_module);
         exe_unit_tests.root_module.addImport("ztracy", ztracy_module);
 
-        exe.linkLibrary(ztracy_dep.artifact("tracy"));
+        exe.root_module.linkLibrary(ztracy_dep.artifact("tracy"));
     }
 
     // This *creates* a Run step in the build graph, to be executed when another

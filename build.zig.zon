@@ -5,12 +5,12 @@
 
     .dependencies = .{
         .ecez = .{
-            .url = "git+https://codeberg.org/avokado/ecez/#39db0f1d2566679207a7af4a8af36393273feca7",
-            .hash = "ecez-2.3.0-X-dkoE0PBgDLkxsZfiqq3Y1krjE20e6gaWeg3BxD4WnW",
+            .url = "git+https://codeberg.org/avokado/ecez#48a2c786cb3de7c675f7f006635a38aaf930bafc",
+            .hash = "ecez-2.4.0-X-dkoGxBBgDPKsmozxo9m8E2clvFjzZg3SybxyBQSgYe",
         },
         .raylib_zig = .{
-            .url = "git+https://github.com/raylib-zig/raylib-zig#33f216d4fc6c5e5799a1a5bacd1f35fecab71577",
-            .hash = "raylib_zig-5.6.0-dev-KE8REEE1BQA24m93fHvVx4BhenkM_AZAwKfvNcjJt9Gy",
+            .url = "git+https://github.com/raylib-zig/raylib-zig#97be2c7ae646a2f09856604b138c427c0af1b952",
+            .hash = "raylib_zig-6.0.0-KE8REDJ4BQBu7lKwYNt6R4j5ywPeS37zqW6zrtjCcRwH",
         },
     },
     .paths = .{

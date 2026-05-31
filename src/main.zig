@@ -22,46 +22,41 @@ const all_components = components.all ++ components.physics.array ++ components.
 const Storage = ecez.CreateStorage(&all_components);
 const QuadTree = quad_tree.CreateQuadTree(Storage);
 
-const EventArgument = systems.event_argument.Create(QuadTree);
+const CommonArgument = systems.common_argument.Create(QuadTree);
 
-const Combat = systems.combat.Create(Storage, EventArgument);
+const Combat = systems.combat.Create(Storage, CommonArgument);
 const Inherit = systems.inherit.Create(Storage);
-const Misc = systems.misc.Create(Storage, EventArgument);
-const Physics = systems.physics.Create(Storage, EventArgument);
+const Misc = systems.misc.Create(Storage, CommonArgument);
+const Physics = systems.physics.Create(Storage, CommonArgument);
 
 const Scheduler = ecez.CreateScheduler(
     Storage,
     .{
-        ecez.Event(
-            "game_update",
-            .{
-                Misc.lifeTime,
-                Combat.targetPlayerOrFlee,
-                Combat.tickAttackRate,
-                Physics.updateVelocityBasedMoveDir,
-                Physics.updatePositionBasedOnVelocity,
-                Physics.updateVelocityBasedOnDrag,
-                Physics.rotateAfterVelocity,
-                Physics.recToRecCollisionResolve,
-                Combat.projectileHitKillable,
-                Combat.hostileMeleePlayer,
-                Combat.registerDead,
-                Combat.spawnBloodSplatter,
-                Inherit.velocity,
-                Inherit.position,
-                Inherit.scale,
-                Inherit.inactive,
-                Inherit.active,
-                Misc.cameraFollowPlayer,
-                Misc.orientTexture,
-                Misc.animateTexture,
-                Misc.orientationBasedDrawOrder,
-                Physics.clampPosititions,
-            },
-            .{
-                .EventArgument = EventArgument,
-            },
-        ),
+        Misc.lifeTime,
+        Combat.targetPlayerOrFlee,
+        Combat.tickAttackRate,
+        Physics.updateVelocityBasedMoveDir,
+        Physics.updatePositionBasedOnVelocity,
+        Physics.updateVelocityBasedOnDrag,
+        Physics.rotateAfterVelocity,
+        Physics.recToRecCollisionResolve,
+        Combat.projectileHitKillable,
+        Combat.hostileMeleePlayer,
+        Combat.registerDead,
+        Combat.spawnBloodSplatter,
+        Inherit.velocity,
+        Inherit.position,
+        Inherit.scale,
+        Inherit.inactive,
+        Inherit.active,
+        Misc.cameraFollowPlayer,
+        Misc.orientTexture,
+        Misc.animateTexture,
+        Misc.orientationBasedDrawOrder,
+        Physics.clampPosititions,
+    },
+    .{
+        .CommonArgument = CommonArgument,
     },
 );
 
@@ -86,6 +81,8 @@ const farmer_spawn_timer: u64 = 10;
 const farmers_to_kill_before_wife_spawns = 100;
 const frames_after_wife_kill_to_victory_state = 60 * 10;
 const frames_after_player_dead_to_death_state = 60 * 3;
+
+const benchmark_mode: bool = false;
 
 pub fn main() anyerror!void {
     // Initialize window
@@ -123,7 +120,7 @@ pub fn main() anyerror!void {
         game,
         end_screen: EndScreen,
     };
-    var current_state: LoopStateUnion = .main_menu;
+    var current_state: LoopStateUnion = if (benchmark_mode) .game else .main_menu;
 
     outer_loop: while (true) {
         switch (current_state) {
@@ -346,10 +343,6 @@ pub fn main() anyerror!void {
                 }
             },
             .game => {
-                const micro_ts = std.time.microTimestamp();
-                var prng = std.Random.DefaultPrng.init(@as(*const u64, @ptrCast(&micro_ts)).*);
-                const random = prng.random();
-
                 const load_assets_zone = tracy.ZoneN(@src(), "game load assets and init");
 
                 const texture_repo = try GameTextureRepo.init();
@@ -361,18 +354,26 @@ pub fn main() anyerror!void {
                 var tracy_allocator = tracy.TracyAllocator.init(std.heap.c_allocator);
                 const allocator = tracy_allocator.allocator();
 
+                var threaded_io = std.Io.Threaded.init(allocator, .{});
+                defer threaded_io.deinit();
+
+                const io = threaded_io.io();
+
+                const micro_ts = std.Io.Clock.now(.real, io).toMicroseconds();
+                var prng = std.Random.DefaultPrng.init(@intCast(micro_ts));
+                const random = prng.random();
+
                 var storage = try Storage.init(allocator);
                 defer storage.deinit();
 
                 var scheduler = try Scheduler.init(.{
                     .gpa = allocator,
-                    .pool_allocator = allocator,
                     .query_submit_allocator = allocator,
                 });
                 defer scheduler.deinit();
 
                 if (@import("builtin").mode == .Debug) {
-                    const graph = scheduler.getEventSystemGraph(.game_update);
+                    const graph = scheduler.getSystemGraph();
                     graph.dump();
                 }
 
@@ -816,6 +817,13 @@ pub fn main() anyerror!void {
                 var player_is_dead: bool = false;
                 var player_dead_frames: u32 = 0;
 
+                if (benchmark_mode) {
+                    for (0..10_000) |_| {
+                        const farmer_pos = randomPointOnCircle(arena_height / 3, rl.Vector2{ .x = arena_height / 2, .y = arena_width / 2 }, random);
+                        _ = try createFarmer(&storage, farmer_pos, player_scale);
+                    }
+                }
+
                 // TODO: pause
                 while (!rl.windowShouldClose()) {
                     tracy.FrameMark();
@@ -839,13 +847,15 @@ pub fn main() anyerror!void {
                         in_inventory = !in_inventory;
                     }
                     if (!in_inventory) {
-                        spawn_cooldown += 1;
+                        if (benchmark_mode == false) {
+                            spawn_cooldown += 1;
 
-                        if ((max_farmers > nr_farmers) and spawn_cooldown >= farmer_spawn_timer) {
-                            const farmer_pos = randomPointOnCircle(arena_height / 3, rl.Vector2{ .x = arena_height / 2, .y = arena_width / 2 }, random);
-                            _ = try createFarmer(&storage, farmer_pos, player_scale);
-                            nr_farmers += 1;
-                            spawn_cooldown = 0;
+                            if ((max_farmers > nr_farmers) and spawn_cooldown >= farmer_spawn_timer) {
+                                const farmer_pos = randomPointOnCircle(arena_height / 3, rl.Vector2{ .x = arena_height / 2, .y = arena_width / 2 }, random);
+                                _ = try createFarmer(&storage, farmer_pos, player_scale);
+                                nr_farmers += 1;
+                                spawn_cooldown = 0;
+                            }
                         }
 
                         if (farmer_kill_count >= farmers_to_kill_before_wife_spawns and the_wife_spawned == false) {
@@ -868,7 +878,7 @@ pub fn main() anyerror!void {
                             try collision_as.updateMovableEntities(allocator, &storage);
 
                             // system update dispatch
-                            const update_context = EventArgument{
+                            const update_context = CommonArgument{
                                 .sound_repo = &sound_repo.effects,
                                 .rng = random,
                                 .farmer_kill_count = &farmer_kill_count,
@@ -879,8 +889,8 @@ pub fn main() anyerror!void {
                                 .player_entity = player_entity,
                                 .collision_as = &collision_as,
                             };
-                            try scheduler.dispatchEvent(&storage, .game_update, update_context);
-                            try scheduler.waitEvent(.game_update);
+                            try scheduler.dispatch(io, &storage, update_context);
+                            try scheduler.wait(io);
 
                             if (player_is_dead) {
                                 player_dead_frames += 1;
@@ -944,7 +954,8 @@ pub fn main() anyerror!void {
                                     .{components.InactiveTag},
                                 );
                                 inline for (@typeInfo(components.Texture.DrawOrder).@"enum".fields) |order| {
-                                    var texture_iter = TextureDrawQuery.prepare(&storage);
+                                    var texture_iter = try TextureDrawQuery.submit(allocator, &storage);
+                                    defer texture_iter.deinit(allocator);
                                     while (texture_iter.next()) |texture| {
                                         staticTextureDraw(
                                             @enumFromInt(order.value),
@@ -1026,7 +1037,7 @@ pub fn main() anyerror!void {
 
                         // UI Drawing
                         {
-                            const GrabbedItemQuery = ecez.Query(
+                            const GrabbedItemQuery = ecez.QueryAny(
                                 struct {
                                     entity: ecez.Entity,
                                     pos: *components.physics.Position,
@@ -1038,7 +1049,7 @@ pub fn main() anyerror!void {
                                 .{components.InactiveTag},
                             );
 
-                            const UnusedGrabbedItemQuery = ecez.Query(
+                            const UnusedGrabbedItemQuery = ecez.QueryAny(
                                 struct {
                                     entity: ecez.Entity,
                                     pos: *components.physics.Position,
@@ -1113,7 +1124,8 @@ pub fn main() anyerror!void {
                                     rl.Color.white,
                                 );
 
-                                var inventory_item_iterator = InInvenventoryQuery.prepare(&storage);
+                                var inventory_item_iterator = try InInvenventoryQuery.submit(allocator, &storage);
+                                defer inventory_item_iterator.deinit(allocator);
                                 while (inventory_item_iterator.next()) |item| {
                                     const texture = switch (item.inv_item.item) {
                                         .projectile => |proj| switch (proj.type) {
@@ -1132,7 +1144,8 @@ pub fn main() anyerror!void {
                                     };
                                     rl.drawTextureRec(texture, item_rect, pos, rl.Color.white);
 
-                                    var grabbed_query = GrabbedItemQuery.prepare(&storage);
+                                    var grabbed_query = try GrabbedItemQuery.submit(allocator, &storage);
+                                    defer grabbed_query.deinit(allocator);
                                     const no_grabbed_item = grabbed_query.next() == null;
 
                                     if (no_grabbed_item) {
@@ -1218,7 +1231,8 @@ pub fn main() anyerror!void {
 
                                     const grab_offset_x = -item_rect.width * 0.5;
 
-                                    var grabbed_item_iter = GrabbedItemQuery.prepare(&storage);
+                                    var grabbed_item_iter = try GrabbedItemQuery.submit(allocator, &storage);
+                                    defer grabbed_item_iter.deinit(allocator);
                                     const grabbed_item = grabbed_item_iter.next();
 
                                     if (rl.isMouseButtonReleased(.left)) {
@@ -1525,7 +1539,8 @@ pub fn main() anyerror!void {
                                     }
                                 }
 
-                                var inventory_iter = InInvenventoryQuery.prepare(&storage);
+                                var inventory_iter = try InInvenventoryQuery.submit(allocator, &storage);
+                                defer inventory_iter.deinit(allocator);
                                 while (inventory_iter.next()) |inv_item| {
                                     var buf: [256]u8 = undefined;
                                     const txt = switch (inv_item.inv_item.item) {

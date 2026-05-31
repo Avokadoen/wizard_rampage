@@ -9,7 +9,7 @@ const collision = @import("collision.zig");
 const components = @import("components.zig");
 const other = @import("../components.zig");
 
-pub fn Create(Storage: type, EventArgument: type) type {
+pub fn Create(Storage: type, CommonArgument: type) type {
     return struct {
         const RecCollisionResolveSubset = Storage.Subset(
             &[_]type{
@@ -20,7 +20,7 @@ pub fn Create(Storage: type, EventArgument: type) type {
         );
         pub fn recToRecCollisionResolve(
             subset: *RecCollisionResolveSubset,
-            context: EventArgument,
+            context: CommonArgument,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
@@ -147,7 +147,7 @@ pub fn Create(Storage: type, EventArgument: type) type {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 
-            const dt = rl.Vector2.init(EventArgument.delta_time, EventArgument.delta_time);
+            const dt = rl.Vector2.init(CommonArgument.delta_time, CommonArgument.delta_time);
             while (update_pos.next()) |item| {
                 item.pos.vec = item.pos.vec.add(item.vel.vec.multiply(dt));
             }
@@ -179,7 +179,7 @@ pub fn Create(Storage: type, EventArgument: type) type {
             .{other.InactiveTag},
         );
         /// To ensure that no object leaves the collision AS bounds, clamp positions
-        pub fn clampPosititions(clamp_pos_query: *ClampPosQuery, event_arg: EventArgument) void {
+        pub fn clampPosititions(clamp_pos_query: *ClampPosQuery, event_arg: CommonArgument) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();
 

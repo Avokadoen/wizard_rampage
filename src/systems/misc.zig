@@ -5,7 +5,7 @@ const tracy = @import("ztracy");
 const components = @import("../components.zig");
 const physics = @import("../physics/components.zig");
 
-pub fn Create(Storage: type, EventArgument: type) type {
+pub fn Create(Storage: type, CommonArgument: type) type {
     return struct {
         const LifeTimetSubset = Storage.Subset(&[_]type{
             *components.InactiveTag,
@@ -29,7 +29,7 @@ pub fn Create(Storage: type, EventArgument: type) type {
                 if (item.life_time.value <= 0) {
                     try subset.setComponents(item.entity, .{components.InactiveTag{}});
                 }
-                item.life_time.value -= EventArgument.delta_time;
+                item.life_time.value -= CommonArgument.delta_time;
             }
         }
 
@@ -43,7 +43,7 @@ pub fn Create(Storage: type, EventArgument: type) type {
         );
         pub fn cameraFollowPlayer(
             subset: *CameraFollowPlayerSubset,
-            context: EventArgument,
+            context: CommonArgument,
         ) void {
             const zone = tracy.ZoneN(@src(), @src().fn_name);
             defer zone.End();

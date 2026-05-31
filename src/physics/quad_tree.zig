@@ -16,9 +16,9 @@ pub const Node = struct {
 pub const LeafNode = struct {
     parent_index: u16,
 
-    circle_movable_entities: std.ArrayListUnmanaged(ecez.Entity) = .{},
-    rect_movable_entities: std.ArrayListUnmanaged(ecez.Entity) = .{},
-    immovable_entities: std.ArrayListUnmanaged(ecez.Entity) = .{},
+    circle_movable_entities: std.ArrayListUnmanaged(ecez.Entity) = .empty,
+    rect_movable_entities: std.ArrayListUnmanaged(ecez.Entity) = .empty,
+    immovable_entities: std.ArrayListUnmanaged(ecez.Entity) = .empty,
 
     pub fn isActive(self: LeafNode) bool {
         return self.parent_index != null_index;
@@ -38,9 +38,9 @@ pub fn CreateQuadTree(comptime Storage: type) type {
         leaf_node_storage: std.ArrayListUnmanaged(LeafNode),
 
         // unused node indices
-        vacant_node_index_storage: std.ArrayListUnmanaged(u16) = .{},
+        vacant_node_index_storage: std.ArrayListUnmanaged(u16) = .empty,
         // unused leaf node indices
-        vacant_leaf_node_index_storage: std.ArrayListUnmanaged(u16) = .{},
+        vacant_leaf_node_index_storage: std.ArrayListUnmanaged(u16) = .empty,
 
         pub fn init(
             allocator: Allocator,
@@ -367,7 +367,8 @@ pub fn CreateQuadTree(comptime Storage: type) type {
 
             const leaf_size = self.nodeSize(tree_depth);
 
-            var query = Query.prepare(storage);
+            var query = try Query.submit(allocator, storage);
+            defer query.deinit(allocator);
             while (query.next()) |entity| {
                 // Start by finding pos point
 
